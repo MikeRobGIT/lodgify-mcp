@@ -148,3 +148,8 @@ params = {
 - Unit test coverage target: ≥90% for client code
 - Integration tests for all MCP tools
 - Clear separation between MCP server and HTTP client layers
+
+## Task Master AI Instructions
+
+**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
+@./.taskmaster/CLAUDE.md
