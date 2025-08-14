@@ -380,22 +380,141 @@ Delete or cancel a booking.
 
 ### Availability & Rates
 
+#### ✨ **Recommended Availability Tools**
+
+#### `lodgify.check_next_availability`
+**Best for: "When is this property next available?"**
+
+Find the next available date for a property by analyzing bookings.
+
+**Parameters:**
+- `propertyId` (required): Property ID
+- `fromDate` (optional): Start date to check from (YYYY-MM-DD, defaults to today)
+- `daysToCheck` (optional): Number of days to check ahead (1-365, defaults to 90)
+
+**Example:**
+```javascript
+{
+  "propertyId": "435707",
+  "fromDate": "2025-08-14",
+  "daysToCheck": 30
+}
+```
+
+**Response:**
+```json
+{
+  "nextAvailableDate": "2025-08-19",
+  "availableUntil": "2025-09-13", 
+  "blockedPeriods": [
+    {
+      "arrival": "2025-08-16",
+      "departure": "2025-08-18",
+      "status": "Booked",
+      "isBlocked": true
+    }
+  ],
+  "totalDaysAvailable": 25,
+  "message": "Available from 2025-08-19 to 2025-09-13 (25 days)"
+}
+```
+
+#### `lodgify.check_date_range_availability`
+**Best for: "Are these specific dates available?"**
+
+Check if a specific date range is available for booking.
+
+**Parameters:**
+- `propertyId` (required): Property ID
+- `checkInDate` (required): Check-in date (YYYY-MM-DD)
+- `checkOutDate` (required): Check-out date (YYYY-MM-DD)
+
+**Example:**
+```javascript
+{
+  "propertyId": "435707",
+  "checkInDate": "2025-08-20",
+  "checkOutDate": "2025-08-25"
+}
+```
+
+**Response:**
+```json
+{
+  "isAvailable": true,
+  "conflictingBookings": [],
+  "message": "Available for 5 nights from 2025-08-20 to 2025-08-25"
+}
+```
+
+#### `lodgify.get_availability_calendar`
+**Best for: "Show me a calendar view of availability"**
+
+Get a calendar view showing available and blocked dates.
+
+**Parameters:**
+- `propertyId` (required): Property ID
+- `fromDate` (optional): Start date (YYYY-MM-DD, defaults to today)
+- `daysToShow` (optional): Number of days to show (1-90, defaults to 30)
+
+**Example:**
+```javascript
+{
+  "propertyId": "435707",
+  "fromDate": "2025-08-14",
+  "daysToShow": 14
+}
+```
+
+**Response:**
+```json
+{
+  "calendar": [
+    {
+      "date": "2025-08-14",
+      "isAvailable": false,
+      "bookingStatus": "Tentative",
+      "isToday": true
+    },
+    {
+      "date": "2025-08-15",
+      "isAvailable": true,
+      "isToday": false
+    }
+  ],
+  "summary": {
+    "totalDays": 14,
+    "availableDays": 10,
+    "blockedDays": 4,
+    "availabilityRate": 71
+  }
+}
+```
+
+#### **Raw API Availability Tools**
+
 #### `lodgify.availability_property`
-Check availability for an entire property.
+Get raw availability data for an entire property (advanced use).
 
 **Parameters:**
 - `propertyId` (required): Property ID
 - `params` (optional): Query parameters
-  - `from`: Start date
-  - `to`: End date
+  - `from`: Start date (YYYY-MM-DD)
+  - `to`: End date (YYYY-MM-DD)
+
+**Note:** Returns technical availability data. For easier availability checking, use the recommended tools above.
 
 #### `lodgify.availability_room`
-Check availability for a specific room type.
+Get raw availability data for a specific room type (advanced use).
 
 **Parameters:**
 - `propertyId` (required): Property ID
 - `roomTypeId` (required): Room Type ID
 - `params` (optional): Query parameters
+  - `from`: Start date (YYYY-MM-DD)
+  - `to`: End date (YYYY-MM-DD)
+
+**Note:** Returns technical availability data. For easier availability checking, use the recommended tools above.
 
 #### `lodgify.daily_rates`
 Get daily rates calendar for a property.
@@ -777,6 +896,14 @@ npm run dev
 - Ensure the server is running: Check process logs
 - Verify MCP configuration path is absolute
 - Restart your MCP client after configuration changes
+
+#### Availability Queries Issues
+- **Raw availability returns "0001-01-01" dates**: This is expected. Use the new helper tools instead:
+  - `lodgify_check_next_availability` for finding next available dates
+  - `lodgify_check_date_range_availability` for checking specific dates
+  - `lodgify_get_availability_calendar` for calendar views
+- **Unexpected availability results**: The helper tools analyze actual bookings to determine availability, providing more accurate results than the raw API
+- **Date format errors**: Always use YYYY-MM-DD format for dates (e.g., "2025-08-14")
 
 ## Contributing
 

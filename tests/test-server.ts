@@ -46,6 +46,27 @@ export function createTestServer(mockClient: any) {
       },
     },
     {
+      name: 'lodgify.find_properties',
+      description: 'Find properties in the system when you don\'t know the exact property ID',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          searchTerm: {
+            type: 'string',
+            description: 'Optional search term to filter properties by name',
+          },
+          includePropertyIds: {
+            type: 'boolean',
+            description: 'Include property IDs found in recent bookings',
+          },
+          limit: {
+            type: 'number',
+            description: 'Maximum number of properties to return',
+          },
+        },
+      },
+    },
+    {
       name: 'lodgify.list_deleted_properties',
       description: 'List deleted properties (GET /v2/deletedProperties)',
       inputSchema: {
@@ -316,6 +337,48 @@ export function createTestServer(mockClient: any) {
 
           case 'lodgify.get_thread':
             result = await mockClient.getThread(args.threadGuid)
+            break
+
+          case 'lodgify.find_properties':
+            // Mock implementation for find_properties
+            const properties = []
+            const propertyIds = new Set()
+            
+            // Add properties from listProperties
+            const propertiesData = await mockClient.listProperties(args.params)
+            if (propertiesData?.items) {
+              for (const property of propertiesData.items.slice(0, args.limit || 10)) {
+                properties.push({
+                  id: property.id.toString(),
+                  name: property.name || `Property ${property.id}`,
+                  source: 'property_list'
+                })
+                propertyIds.add(property.id.toString())
+              }
+            }
+            
+            // Add property IDs from bookings if enabled
+            if (args.includePropertyIds !== false) {
+              const bookingsData = await mockClient.listBookings()
+              if (bookingsData?.items) {
+                for (const booking of bookingsData.items) {
+                  if (booking.property_id && !propertyIds.has(booking.property_id.toString())) {
+                    properties.push({
+                      id: booking.property_id.toString(),
+                      name: `Property ${booking.property_id}`,
+                      source: 'bookings'
+                    })
+                    propertyIds.add(booking.property_id.toString())
+                  }
+                }
+              }
+            }
+            
+            result = {
+              properties,
+              message: `Found ${properties.length} property(ies)`,
+              suggestions: ['Use one of these property IDs with availability tools']
+            }
             break
 
           default:

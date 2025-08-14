@@ -11,6 +11,115 @@ import { z } from 'zod'
 import { config } from 'dotenv'
 import { LodgifyClient } from './lodgify.js'
 
+// Helper function to find properties when ID is unknown
+async function findProperties(
+  client: LodgifyClient,
+  searchTerm?: string,
+  includePropertyIds: boolean = true,
+  limit: number = 10
+): Promise<{
+  properties: Array<{
+    id: string
+    name?: string
+    source?: string
+  }>
+  message: string
+  suggestions: string[]
+}> {
+  const properties: Array<{ id: string; name?: string; source?: string }> = []
+  const propertyIds = new Set<string>()
+  const suggestions: string[] = []
+
+  try {
+    // Get properties from property list API
+    try {
+      const propertiesData = await client.listProperties() as any
+      const propertyList = propertiesData?.items || propertiesData || []
+      
+      for (const property of propertyList.slice(0, limit)) {
+        if (property.id) {
+          const propertyName = property.name || property.title || ''
+          const matchesSearch = !searchTerm || 
+            propertyName.toLowerCase().includes(searchTerm.toLowerCase())
+          
+          if (matchesSearch) {
+            properties.push({
+              id: property.id.toString(),
+              name: propertyName,
+              source: 'property_list'
+            })
+            propertyIds.add(property.id.toString())
+          }
+        }
+      }
+    } catch (error) {
+      suggestions.push('Property list API may not be available or accessible')
+    }
+
+    // Get property IDs from recent bookings if enabled
+    if (includePropertyIds && properties.length < limit) {
+      try {
+        const bookingsData = await client.listBookings() as any
+        const bookings = bookingsData?.items || []
+        
+        const uniquePropertyIds = new Set<string>()
+        for (const booking of bookings) {
+          if (booking.property_id && !propertyIds.has(booking.property_id.toString())) {
+            uniquePropertyIds.add(booking.property_id.toString())
+          }
+        }
+
+        // Add property IDs from bookings
+        for (const propId of Array.from(uniquePropertyIds).slice(0, limit - properties.length)) {
+          properties.push({
+            id: propId,
+            name: `Property ${propId}`,
+            source: 'bookings'
+          })
+          propertyIds.add(propId)
+        }
+      } catch (error) {
+        suggestions.push('Could not retrieve property IDs from bookings')
+      }
+    }
+
+    // Generate helpful suggestions
+    if (properties.length === 0) {
+      suggestions.push('No properties found. Try using lodgify_list_properties to see all properties.')
+      suggestions.push('Check if your API key has proper permissions to access properties.')
+    } else if (searchTerm && properties.length === 0) {
+      suggestions.push(`No properties found matching "${searchTerm}". Try a broader search term.`)
+    }
+
+    if (properties.length > 0) {
+      suggestions.push('Use one of these property IDs with availability tools like lodgify_check_next_availability')
+      if (searchTerm) {
+        suggestions.push('Property names are case-insensitive. Try partial matches for better results.')
+      }
+    }
+
+    const message = properties.length > 0 
+      ? `Found ${properties.length} property(ies)${searchTerm ? ` matching "${searchTerm}"` : ''}`
+      : `No properties found${searchTerm ? ` matching "${searchTerm}"` : ''}`
+
+    return {
+      properties,
+      message,
+      suggestions
+    }
+  } catch (error) {
+    return {
+      properties: [],
+      message: 'Error searching for properties',
+      suggestions: [
+        'Check your API key and permissions',
+        'Try using lodgify_list_properties directly',
+        'Verify your network connection'
+      ]
+    }
+  }
+}
+
 // Load environment variables
 config()
 
@@ -241,6 +350,31 @@ const UpdateRateSchema = z.object({
   payload: UpdateRatePayloadSchema,
 })
 
+// New Availability Helper Schemas
+const FindPropertiesSchema = z.object({
+  searchTerm: z.string().optional(),
+  includePropertyIds: z.boolean().default(true).optional(),
+  limit: z.number().min(1).max(50).default(10).optional(),
+})
+
+const CheckNextAvailabilitySchema = z.object({
+  propertyId: IdSchema,
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
+  daysToCheck: z.number().min(1).max(365).optional(),
+})
+
+const CheckDateRangeAvailabilitySchema = z.object({
+  propertyId: IdSchema,
+  checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+})
+
+const GetAvailabilityCalendarSchema = z.object({
+  propertyId: IdSchema,
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
+  daysToShow: z.number().min(1).max(90).optional(),
+})
+
 // ============================================================================
 // Register Tools
 // ============================================================================
@@ -415,7 +549,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     // Availability Tools
     {
       name: 'lodgify_availability_room',
-      description: 'Get availability for a specific room type (GET /v2/availability/{propertyId}/{roomTypeId})',
+      description: 'Get raw availability data for a specific room type (GET /v2/availability/{propertyId}/{roomTypeId}). Note: This returns technical availability data. For easier availability checking, use lodgify_check_next_availability or lodgify_get_availability_calendar instead.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -429,7 +563,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           params: {
             type: 'object',
-            description: 'Optional query parameters (date range, etc.)',
+            description: 'Optional query parameters including from/to dates (YYYY-MM-DD format)',
+            properties: {
+              from: {
+                type: 'string',
+                description: 'Start date (YYYY-MM-DD)',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+              },
+              to: {
+                type: 'string',
+                description: 'End date (YYYY-MM-DD)',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+              },
+            },
           },
         },
         required: ['propertyId', 'roomTypeId'],
@@ -437,7 +583,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'lodgify_availability_property',
-      description: 'Get availability for a property (GET /v2/availability/{propertyId})',
+      description: 'Get raw availability data for a property (GET /v2/availability/{propertyId}). Note: This returns technical availability data. For easier availability checking, use lodgify_check_next_availability or lodgify_get_availability_calendar instead.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -447,7 +593,120 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           params: {
             type: 'object',
-            description: 'Optional query parameters (date range, etc.)',
+            description: 'Optional query parameters including from/to dates (YYYY-MM-DD format)',
+            properties: {
+              from: {
+                type: 'string',
+                description: 'Start date (YYYY-MM-DD)',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+              },
+              to: {
+                type: 'string',
+                description: 'End date (YYYY-MM-DD)',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+              },
+            },
+          },
+        },
+        required: ['propertyId'],
+      },
+    },
+
+    // Enhanced Availability Helper Tools
+    {
+      name: 'lodgify_find_properties',
+      description: 'Find properties in the system when you don\'t know the exact property ID. Searches properties by name, gets property IDs from bookings, or lists all properties.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          searchTerm: {
+            type: 'string',
+            description: 'Optional search term to filter properties by name (case-insensitive)',
+          },
+          includePropertyIds: {
+            type: 'boolean',
+            description: 'Include property IDs found in recent bookings (default: true)',
+            default: true,
+          },
+          limit: {
+            type: 'number',
+            description: 'Maximum number of properties to return (default: 10)',
+            default: 10,
+            minimum: 1,
+            maximum: 50,
+          },
+        },
+      },
+    },
+    {
+      name: 'lodgify_check_next_availability',
+      description: 'Find the next available date for a property by analyzing bookings. Returns when the property is next available and for how long. If property ID is unknown, use lodgify_find_properties first.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          propertyId: {
+            type: 'string',
+            description: 'Property ID',
+          },
+          fromDate: {
+            type: 'string',
+            description: 'Start date to check from (YYYY-MM-DD). Defaults to today if not provided.',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+          },
+          daysToCheck: {
+            type: 'number',
+            description: 'Number of days to check ahead (1-365). Defaults to 90 days.',
+            minimum: 1,
+            maximum: 365,
+          },
+        },
+        required: ['propertyId'],
+      },
+    },
+    {
+      name: 'lodgify_check_date_range_availability',
+      description: 'Check if a specific date range is available for booking at a property.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          propertyId: {
+            type: 'string',
+            description: 'Property ID',
+          },
+          checkInDate: {
+            type: 'string',
+            description: 'Check-in date (YYYY-MM-DD)',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+          },
+          checkOutDate: {
+            type: 'string',
+            description: 'Check-out date (YYYY-MM-DD)',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+          },
+        },
+        required: ['propertyId', 'checkInDate', 'checkOutDate'],
+      },
+    },
+    {
+      name: 'lodgify_get_availability_calendar',
+      description: 'Get a calendar view of availability for a property showing available and blocked dates.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          propertyId: {
+            type: 'string',
+            description: 'Property ID',
+          },
+          fromDate: {
+            type: 'string',
+            description: 'Start date for calendar (YYYY-MM-DD). Defaults to today if not provided.',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+          },
+          daysToShow: {
+            type: 'number',
+            description: 'Number of days to show in calendar (1-90). Defaults to 30 days.',
+            minimum: 1,
+            maximum: 90,
           },
         },
         required: ['propertyId'],
@@ -798,6 +1057,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'lodgify_update_rate': {
         const input = UpdateRateSchema.parse(args)
         result = await client.updateRate(input.id, input.payload)
+        break
+      }
+
+      // Enhanced Availability Helper Tools
+      case 'lodgify_find_properties': {
+        const input = FindPropertiesSchema.parse(args)
+        result = await findProperties(client, input.searchTerm, input.includePropertyIds, input.limit)
+        break
+      }
+
+      case 'lodgify_check_next_availability': {
+        const input = CheckNextAvailabilitySchema.parse(args)
+        result = await client.getNextAvailableDate(input.propertyId, input.fromDate, input.daysToCheck)
+        break
+      }
+
+      case 'lodgify_check_date_range_availability': {
+        const input = CheckDateRangeAvailabilitySchema.parse(args)
+        result = await client.checkDateRangeAvailability(input.propertyId, input.checkInDate, input.checkOutDate)
+        break
+      }
+
+      case 'lodgify_get_availability_calendar': {
+        const input = GetAvailabilityCalendarSchema.parse(args)
+        result = await client.getAvailabilityCalendar(input.propertyId, input.fromDate, input.daysToShow)
         break
       }
 
