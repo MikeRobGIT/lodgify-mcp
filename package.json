@@ -1,0 +1,68 @@
+{
+  "name": "lodgify-mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for Lodgify Public API v2 - Expose Lodgify endpoints as MCP tools for AI assistants",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "lodgify-mcp": "dist/server.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "lodgify",
+    "api",
+    "property-management",
+    "vacation-rental",
+    "booking",
+    "hospitality",
+    "ai-tools",
+    "claude"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/lodgify-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/lodgify-mcp/issues"
+  },
+  "homepage": "https://github.com/yourusername/lodgify-mcp#readme",
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.24.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^20.17.10",
+    "@vitest/ui": "^3.2.4",
+    "happy-dom": "^18.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

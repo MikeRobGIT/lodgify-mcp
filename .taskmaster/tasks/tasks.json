@@ -9,7 +9,7 @@
         "testStrategy": "Verify package.json has all required dependencies, tsconfig.json compiles without errors, .env.example exists with correct structure, and 'npm run typecheck' passes without errors",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -17,7 +17,7 @@
             "description": "Initialize package.json file with project metadata (name: 'lodgify-mcp', version: '0.1.0') and configure all npm scripts for development, building, testing, linting, and type checking",
             "dependencies": [],
             "details": "1. Create package.json with name 'lodgify-mcp' and version '0.1.0'\n2. Set type: 'module' for ES modules support\n3. Define main entry point as 'dist/server.js'\n4. Add all npm scripts:\n   - 'dev': 'tsx src/server.ts' for development\n   - 'build': 'tsc' for TypeScript compilation\n   - 'start': 'node dist/server.js' for production\n   - 'test': 'vitest' for testing\n   - 'lint': 'eslint src/**/*.ts' for linting\n   - 'typecheck': 'tsc --noEmit' for type validation\n5. Set engines field to specify Node.js >=18 or Bun >=1.0 compatibility",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -26,7 +26,7 @@
             "description": "Create tsconfig.json with strict TypeScript settings, ES2022 target, and proper module resolution for Node.js compatibility",
             "dependencies": [],
             "details": "1. Create tsconfig.json in project root\n2. Configure compiler options:\n   - 'target': 'ES2022' for modern JavaScript features\n   - 'module': 'commonjs' for Node.js compatibility\n   - 'lib': ['ES2022'] for runtime features\n   - 'strict': true for strict type checking\n   - 'esModuleInterop': true for module interop\n   - 'skipLibCheck': true for faster builds\n   - 'forceConsistentCasingInFileNames': true\n   - 'outDir': './dist' for build output\n   - 'rootDir': './src' for source files\n   - 'resolveJsonModule': true for JSON imports\n3. Set include: ['src/**/*'] and exclude: ['node_modules', 'dist', 'tests']",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -38,7 +38,7 @@
               "1.2"
             ],
             "details": "1. Install production dependencies:\n   - @modelcontextprotocol/sdk (latest)\n   - zod (latest)\n   - dotenv (latest)\n2. Install development dependencies:\n   - @types/node (^20)\n   - typescript (^5)\n   - tsx (latest)\n   - eslint (^8)\n   - @typescript-eslint/parser (latest)\n   - @typescript-eslint/eslint-plugin (latest)\n   - vitest (latest)\n3. Create .gitignore with:\n   - node_modules/\n   - dist/\n   - .env\n   - *.log\n   - .DS_Store\n4. Create .env.example with:\n   - LODGIFY_API_KEY=your_api_key_here\n   - LOG_LEVEL=info\n   - DEBUG_HTTP=0\n5. Verify installation with 'npm run typecheck' to ensure configuration is valid",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -53,7 +53,7 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -61,7 +61,7 @@
             "description": "Set up the basic LodgifyClient class in src/lodgify.ts with constructor, private properties, and TypeScript interfaces for request options and error structures",
             "dependencies": [],
             "details": "Create src/lodgify.ts file with: 1) LodgifyClient class definition, 2) Constructor accepting apiKey string parameter and storing it as private property, 3) TypeScript interfaces for RequestOptions (headers, body, params), 4) Error type definition matching the spec (error: true, message, status, path, detail?), 5) Private baseUrl constant set to 'https://api.lodgify.com', 6) Import statements for necessary Node.js/TypeScript utilities",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -72,7 +72,7 @@
               "2.1"
             ],
             "details": "Implement private async request method with: 1) Method signature accepting HTTP method, path, and optional RequestOptions, 2) Construct full URL using baseUrl + path, 3) Set required headers including 'X-ApiKey' with the stored apiKey and 'Content-Type: application/json', 4) Merge any additional headers from options, 5) Handle optional JSON body serialization when body is provided, 6) Use native fetch API for making the HTTP request, 7) Basic response handling to check response.ok status",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -83,7 +83,7 @@
               "2.2"
             ],
             "details": "Enhance request method with: 1) Private formatError method that takes a Response object, 2) Extract error details from response body when available (try-catch for JSON parsing), 3) Create standardized error object with { error: true, message, status: response.status, path: request path, detail: parsed error body if available }, 4) Handle different HTTP error status codes with appropriate messages (400: Bad Request, 401: Unauthorized, 404: Not Found, 500: Server Error, etc.), 5) Throw formatted errors for non-ok responses, 6) Add proper error type annotations for TypeScript",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -94,7 +94,7 @@
               "2.3"
             ],
             "details": "Wrap request logic in retry loop: 1) Initialize attempt counter starting at 0, 2) While loop with max 5 attempts condition, 3) Check if response.status === 429 before error handling, 4) Extract Retry-After header value using response.headers.get('Retry-After'), 5) Calculate delay: use Retry-After if present (parse as integer seconds), otherwise use exponential backoff Math.pow(2, attempt), 6) Cap maximum delay at 30 seconds using Math.min, 7) Implement sleep utility function using setTimeout wrapped in Promise, 8) Increment attempt counter and continue loop on retry, 9) Return successful response.json() when not 429 and response.ok",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -105,7 +105,7 @@
               "2.4"
             ],
             "details": "Add logging throughout the client: 1) Create private log method that checks process.env.LOG_LEVEL (error, warn, info, debug), 2) Add debug logs for: outgoing request details (method, path, headers minus API key), retry attempts with delay time, response status codes, 3) Add info logs for: successful requests completion, retry attempt numbers, 4) Add error logs for: final failure after max retries, error response details (sanitized), 5) Use console.log for info/debug, console.warn for warnings, console.error for errors, 6) Conditionally enable verbose HTTP debugging when process.env.DEBUG_HTTP === '1' to log full request/response details",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -120,7 +120,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -128,7 +128,7 @@
             "description": "Create the flattenParams method in lodgify.ts that handles bracket notation and basic nested structures",
             "dependencies": [],
             "details": "Implement the private flattenParams function that processes parameters with bracket notation (e.g., 'roomTypes[0].Id'), arrays, and nested objects. The function should handle direct bracket notation keys, convert arrays to indexed bracket notation (param[0], param[1]), and transform nested objects to bracket notation (param[key]). Ensure proper string conversion for all values and handle undefined/null values gracefully.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -139,7 +139,7 @@
               "3.1"
             ],
             "details": "Enhance the flattenParams function to support deeply nested structures like 'param[0].subkey.deepkey' and mixed notation patterns. Implement proper URL encoding for special characters in both keys and values. Handle edge cases such as empty arrays, empty objects, and keys that already contain encoded characters. Ensure the URLSearchParams output is properly formatted for API consumption.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -150,7 +150,7 @@
               "3.2"
             ],
             "details": "Modify the request method in lodgify.ts to use flattenParams for GET requests when query parameters are provided. Create unit tests covering: simple key-value pairs, array notation (param[0]), object notation (param[key]), nested notation (param[0].subkey), mixed complex parameters, URL encoding of special characters, null/undefined handling, and empty collections. Ensure the integration preserves existing functionality while adding the new flattening capability.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -165,7 +165,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -173,7 +173,7 @@
             "description": "Create the first two property management methods in lodgify.ts: listProperties with optional query parameters and getProperty with ID validation",
             "dependencies": [],
             "details": "Implement listProperties method that accepts optional params, builds query string using flattenParams, and makes GET request to /v2/properties. Implement getProperty method that validates ID parameter is provided, encodes it properly, and makes GET request to /v2/properties/{id}. Both methods should use the request method from the base client and handle errors appropriately.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -184,7 +184,7 @@
               "4.1"
             ],
             "details": "Implement listPropertyRooms method that takes propertyId parameter, validates it exists, constructs path /v2/properties/{propertyId}/rooms with proper encoding. Implement listDeletedProperties method that accepts optional params for filtering/pagination, builds query string similar to listProperties, and makes GET request to /v2/deletedProperties. Follow the same error handling pattern established in the first two methods.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -196,7 +196,7 @@
               "4.2"
             ],
             "details": "In server.ts, define Zod schemas for each tool's input validation (optional params for list operations, required id for get operations). Register tools: lodgify.list_properties, lodgify.get_property, lodgify.list_property_rooms, and lodgify.list_deleted_properties with descriptive names and descriptions. Map each tool to the corresponding client method with proper parameter passing and error handling.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -207,7 +207,7 @@
               "4.3"
             ],
             "details": "Create test file tests/properties.test.ts with integration tests covering: 1) List properties with various pagination params, 2) Get single property by valid ID, 3) List rooms for existing property, 4) List deleted properties with date filters, 5) Handle invalid/missing property IDs with proper error responses, 6) Verify query parameter encoding works correctly, 7) Test empty results scenarios. Use mocked HTTP responses to avoid API calls during testing.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -222,7 +222,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -230,7 +230,7 @@
             "description": "Add listBookings method for GET /v2/reservations/bookings with date range and status filters support, and getBooking method for GET /v2/reservations/bookings/{id} to retrieve individual booking details",
             "dependencies": [],
             "details": "In lodgify.ts, implement:\n1. listBookings(params?: Record<string, any>): Handle optional query parameters for date ranges (dateFrom, dateTo) and status filters\n2. getBooking(id: string): Validate booking ID is provided, encode ID in path, return booking details\nBoth methods use existing GET request pattern from property tools",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -241,7 +241,7 @@
               "5.1"
             ],
             "details": "Add to lodgify.ts:\n1. getBookingPaymentLink(id: string): GET /v2/reservations/bookings/{id}/quote/paymentLink\n2. createBookingPaymentLink(id: string, payload: object): POST request with JSON body containing amount, currency, and other payment details\nExtend request method to handle POST with body serialization using JSON.stringify",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -252,7 +252,7 @@
               "5.2"
             ],
             "details": "Implement updateKeyCodes(id: string, payload: object):\n- PUT /v2/reservations/bookings/{id}/keyCodes\n- Validate booking ID exists\n- Serialize payload to JSON for request body\n- Extend request method to support PUT verb\n- Handle response and errors consistently with other methods",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -263,7 +263,7 @@
               "5.3"
             ],
             "details": "In server.ts, register:\n1. lodgify.list_bookings with optional date/status params schema\n2. lodgify.get_booking with required id schema\n3. lodgify.get_booking_payment_link with required id schema\n4. lodgify.create_booking_payment_link with id and payload validation\n5. lodgify.update_key_codes with id and keyCodes payload schema\nDefine comprehensive Zod schemas for POST/PUT payloads",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -274,7 +274,7 @@
               "5.4"
             ],
             "details": "In tests/booking-tools.test.ts:\n1. Test listBookings with date range filters\n2. Test getBooking with valid/invalid IDs\n3. Test payment link retrieval and creation with valid payloads\n4. Test updateKeyCodes with key code data\n5. Verify POST/PUT body serialization\n6. Test error handling for missing required fields\n7. Mock API responses for all endpoints",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -289,7 +289,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -297,7 +297,7 @@
             "description": "Create getAvailabilityRoom and getAvailabilityProperty methods in lodgify.ts with proper date validation and path parameter handling",
             "dependencies": [],
             "details": "Implement two methods:\n1. getAvailabilityRoom(propertyId: string, roomTypeId: string, params?: Record<string, any>) - GET /v2/availability/{propertyId}/{roomTypeId}\n2. getAvailabilityProperty(propertyId: string, params?: Record<string, any>) - GET /v2/availability/{propertyId}\nBoth should validate date parameters if provided and properly encode path parameters using encodeURIComponent",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -306,7 +306,7 @@
             "description": "Create getDailyRates and getRateSettings methods with required parameter validation for rate calendar and settings retrieval",
             "dependencies": [],
             "details": "Implement two methods:\n1. getDailyRates(params: Record<string, any>) - GET /v2/rates/calendar with validation for required params: propertyId, from, to\n2. getRateSettings(params: Record<string, any>) - GET /v2/rates/settings\nThrow descriptive errors when required parameters are missing for getDailyRates",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -315,7 +315,7 @@
             "description": "Create getQuote method with support for nested parameters using bracket notation and comprehensive validation",
             "dependencies": [],
             "details": "Implement getQuote(propertyId: string, params: Record<string, any>) - GET /v2/quote/{propertyId}\nValidate required propertyId and date range (from, to)\nSupport complex nested parameters:\n- roomTypes[0].Id, roomTypes[1].Id for multiple room types\n- guest_breakdown[adults], guest_breakdown[children] for guest details\n- addOns[0].Id, addOns[1].Id for additional services\nUse flattenParams method to properly encode bracket notation",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -328,7 +328,7 @@
               "6.3"
             ],
             "details": "Register in server.ts:\n1. lodgify.availability_room - with propertyId, roomTypeId, and optional date params\n2. lodgify.availability_property - with propertyId and optional date params\n3. lodgify.daily_rates - with required propertyId, from, to params\n4. lodgify.rate_settings - with optional filter params\n5. lodgify.get_quote - with propertyId and complex nested params schema\nDefine comprehensive Zod schemas for input validation, especially for the quote tool's nested structure",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -339,7 +339,7 @@
               "6.4"
             ],
             "details": "Create test cases:\n1. Availability endpoints with valid date ranges and property/room IDs\n2. Daily rates with missing required parameters (should throw errors)\n3. Quote generation with complex nested parameters (roomTypes[0].Id=123&guest_breakdown[adults]=2)\n4. Verify bracket notation is properly encoded in query strings\n5. Test error handling for invalid property IDs and date formats\n6. Mock API responses to validate response parsing\nEnsure ≥90% code coverage for new methods",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -356,7 +356,7 @@
           5,
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -364,7 +364,7 @@
             "description": "Set up the MCP Server instance, load environment variables, and validate the API key requirement",
             "dependencies": [],
             "details": "Import necessary modules from @modelcontextprotocol/sdk, create server instance with name 'lodgify-mcp' and version '0.1.0', load LODGIFY_API_KEY from environment variables using process.env, throw error if API key is missing, instantiate LodgifyClient with the API key",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -375,7 +375,7 @@
               "7.1"
             ],
             "details": "Create schemas for: ListPropertiesSchema, GetPropertySchema, ListPropertyRoomsSchema, ListDeletedPropertiesSchema, DailyRatesSchema, RateSettingsSchema, ListBookingsSchema, GetBookingSchema, PaymentLinkSchemas (get/create), UpdateKeyCodesSchema, AvailabilitySchemas (room/property), GetQuoteSchema, GetThreadSchema. Each schema should validate required parameters (IDs, date ranges, etc.) and optional query parameters",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -386,7 +386,7 @@
               "7.2"
             ],
             "details": "Set request handler for 'tools/list', return array of tool definitions including: lodgify.list_properties, lodgify.get_property, lodgify.list_property_rooms, lodgify.list_deleted_properties, lodgify.daily_rates, lodgify.rate_settings, lodgify.list_bookings, lodgify.get_booking, lodgify.get_booking_payment_link, lodgify.create_booking_payment_link, lodgify.update_key_codes, lodgify.availability_room, lodgify.availability_property, lodgify.get_quote, lodgify.get_thread. Each tool must have name, description referencing the API endpoint, and inputSchema reference",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -397,7 +397,7 @@
               "7.3"
             ],
             "details": "Implement switch statement handling all tool names, parse arguments with corresponding Zod schema, call appropriate LodgifyClient method, format responses as MCP content with type 'text' and stringified JSON, handle errors with try-catch blocks returning error content, ensure proper async/await for all client calls",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -408,7 +408,7 @@
               "7.4"
             ],
             "details": "Register resources/list handler returning health resource with uri 'lodgify://health', name 'Health Check', and description. Implement resources/read handler that checks for lodgify://health URI, returns health status JSON including server version, API key presence (masked), current timestamp, and connection status",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -419,7 +419,7 @@
               "7.5"
             ],
             "details": "Import StdioServerTransport from SDK, create transport instance, await server.connect(transport), add error handling for connection failures, log server startup success, handle graceful shutdown on SIGINT/SIGTERM signals",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -434,7 +434,7 @@
         "dependencies": [
           7
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -442,7 +442,7 @@
             "description": "Add the getThread method to lodgify.ts with GUID validation and proper error handling for the messaging endpoint",
             "dependencies": [],
             "details": "In lodgify.ts, implement the getThread method that:\n1. Accepts threadGuid parameter\n2. Validates the GUID format using regex pattern /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i\n3. Throws descriptive errors for missing or invalid GUID\n4. Makes GET request to /v2/messaging/{threadGuid}\n5. Returns the thread data from the API response",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -453,7 +453,7 @@
               "8.1"
             ],
             "details": "In server.ts:\n1. Register lodgify.get_thread tool with Zod schema for threadGuid validation\n2. Implement resources/list handler to expose lodgify://health resource\n3. Implement resources/read handler that returns { ok: true, baseUrl: 'https://api.lodgify.com' } for health checks\n4. Ensure proper error handling for unknown resource URIs\n5. Add appropriate tool description for the messaging endpoint",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -468,7 +468,7 @@
         "dependencies": [
           8
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -476,7 +476,7 @@
             "description": "Configure Vitest testing framework, create test helpers for mocking HTTP responses, and establish test directory structure",
             "dependencies": [],
             "details": "Install Vitest and related dependencies (vitest, @vitest/ui). Create vitest.config.ts with proper TypeScript support and coverage settings targeting ≥90% for lodgify.ts. Set up test utilities in tests/utils.ts for creating mock fetch responses, mock Headers objects, and helper functions for creating test fixtures. Configure test environment variables including TEST_MODE and TEST_API_KEY. Ensure proper tsconfig.json settings for test files.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -487,7 +487,7 @@
               "9.1"
             ],
             "details": "Write test suite for 429 retry handling including: exponential backoff calculation verification (2^attempt seconds, max 30s), Retry-After header respect, maximum retry attempts (5), and proper delay timing. Test error formatting for various HTTP status codes (400, 401, 403, 404, 429, 500, 503). Mock fetch responses with different failure scenarios and verify retry behavior. Test successful requests after retries. Validate that non-429 errors don't trigger retries.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -498,7 +498,7 @@
               "9.1"
             ],
             "details": "In tests/lodgify.test.ts, add test cases for query flattening: roomTypes[0].Id format, nested objects like guest_breakdown[adults], array indices, mixed bracket and dot notation, edge cases with special characters, empty values and null handling. Verify URLSearchParams generation is correct for all bracket notation patterns. Test both simple key-value pairs and complex nested structures used by quote and availability endpoints.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -510,7 +510,7 @@
               "9.2"
             ],
             "details": "Write integration tests for each tool category: Properties (list_properties, get_property, list_property_rooms, list_deleted_properties), Bookings (list_bookings, get_booking, payment link operations, update_key_codes), Availability/Rates (availability checks, daily_rates, rate_settings), Quote/Messaging (get_quote with complex params, get_thread). Mock successful responses and verify tool output format. Test each tool with valid inputs and expected response shapes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -521,7 +521,7 @@
               "9.4"
             ],
             "details": "In tests/server.test.ts, add validation tests: Zod schema validation failures for each tool, missing required parameters (e.g., propertyId for rates), invalid parameter types, malformed request bodies for POST/PUT operations. Test error propagation from HTTP client to MCP response. Verify structured error format with status, path, and details. Test boundary conditions like empty arrays, very long strings, and invalid date formats.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -533,7 +533,7 @@
               "9.5"
             ],
             "details": "Create smoke test that sequentially executes all tools in logical order: list properties, get first property details, check availability, get rates, create quote, list bookings. Support TEST_MODE environment variable for switching between mocked and live API responses. When using TEST_API_KEY, validate against actual Lodgify API. Include health check resource test. Add timeout handling for long-running tests. Generate test report showing which tools passed/failed. Ensure tests can run in CI/CD pipeline.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -548,7 +548,7 @@
         "dependencies": [
           9
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -556,7 +556,7 @@
             "description": "Create the main README file with project overview, installation instructions, configuration guide, and complete tool catalog with usage examples",
             "dependencies": [],
             "details": "Create README.md with sections: 1) Project overview and features list, 2) Prerequisites and installation instructions for both npm and bun, 3) Environment configuration guide with .env setup, 4) Claude Desktop MCP configuration example JSON, 5) Complete tool catalog documenting all 15 Lodgify endpoints with descriptions and parameter details, 6) Usage examples for key workflows (list properties, create booking, check availability), 7) Error handling documentation explaining retry logic and error response format, 8) API key rotation procedures and security best practices, 9) Troubleshooting guide for common issues",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -565,7 +565,7 @@
             "description": "Develop example JavaScript files demonstrating key Lodgify MCP tool workflows for properties, bookings, quotes, and availability",
             "dependencies": [],
             "details": "Create examples/ directory with executable scripts: 1) examples/list-properties.js - demonstrate listing properties with pagination, 2) examples/create-quote.js - show quote generation with complex nested parameters including roomTypes and guest_breakdown, 3) examples/update-booking.js - demonstrate booking updates and payment link generation, 4) examples/check-availability.js - show availability checking for both rooms and properties with date ranges, 5) examples/handle-errors.js - demonstrate error handling and retry behavior. Each script should include comments explaining the workflow and expected outputs",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -576,7 +576,7 @@
               "10.1"
             ],
             "details": "Update package.json with: 1) Proper metadata including description, keywords (mcp, lodgify, api, modelcontextprotocol), author, repository URL, homepage, and bugs URL, 2) Set main entry point to dist/server.js, 3) Add files field specifying dist/, README.md, LICENSE, 4) Choose and add LICENSE file (MIT recommended for MCP servers), 5) Create .npmignore to exclude src/, tests/, .env, node_modules/, and development files, 6) Add publishConfig if needed for scoped packages, 7) Verify package structure with 'npm pack --dry-run' to ensure correct files are included",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -587,7 +587,7 @@
               "10.3"
             ],
             "details": "Create CHANGELOG.md with v0.1.0 release notes documenting: 1) Initial release features (15 Lodgify v2 API endpoints as MCP tools), 2) Key capabilities (429 retry logic, bracket notation support, Zod validation), 3) Known limitations if any. Setup .github/workflows/ci.yml with: 1) Test workflow triggered on push and PR, 2) Matrix testing across Node.js 18, 20, and Bun, 3) Steps for checkout, dependency installation, linting, type checking, and tests, 4) Optional publish workflow for npm releases on tag push, 5) Build verification to ensure dist/ is created correctly",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           }
         ]
@@ -595,7 +595,7 @@
     ],
     "metadata": {
       "created": "2025-08-13T22:02:17.495Z",
-      "updated": "2025-08-13T22:02:17.495Z",
+      "updated": "2025-08-14T01:19:12.212Z",
       "description": "Tasks for master context"
     }
   }
