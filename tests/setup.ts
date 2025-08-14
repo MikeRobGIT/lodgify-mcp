@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { mock, afterEach } from 'bun:test'
 import { config } from 'dotenv'
 
 // Load test environment variables
@@ -11,14 +11,19 @@ process.env.DEBUG_HTTP = '0'
 // Mock console methods to reduce test noise
 global.console = {
   ...console,
-  error: vi.fn(),
-  warn: vi.fn(),
-  log: vi.fn(),
-  info: vi.fn(),
-  debug: vi.fn(),
+  error: mock(() => {}),
+  warn: mock(() => {}),
+  log: mock(() => {}),
+  info: mock(() => {}),
+  debug: mock(() => {}),
 }
 
 // Reset mocks after each test
 afterEach(() => {
-  vi.clearAllMocks()
+  // Clear all mock calls
+  (global.console.error as any).mockClear();
+  (global.console.warn as any).mockClear();
+  (global.console.log as any).mockClear();
+  (global.console.info as any).mockClear();
+  (global.console.debug as any).mockClear();
 })

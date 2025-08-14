@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { mock } from 'bun:test'
 
 /**
  * Create a mock Response object
@@ -15,12 +15,12 @@ export function createMockResponse(
     status,
     statusText: getStatusText(status),
     headers: mockHeaders,
-    json: vi.fn().mockResolvedValue(data),
-    text: vi.fn().mockResolvedValue(JSON.stringify(data)),
-    blob: vi.fn(),
-    arrayBuffer: vi.fn(),
-    formData: vi.fn(),
-    clone: vi.fn(),
+    json: mock(() => Promise.resolve(data)),
+    text: mock(() => Promise.resolve(JSON.stringify(data))),
+    blob: mock(() => Promise.resolve(new Blob())),
+    arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(0))),
+    formData: mock(() => Promise.resolve(new FormData())),
+    clone: mock(() => createMockResponse(status, data, headers)),
     body: null,
     bodyUsed: false,
     redirected: false,
@@ -34,7 +34,7 @@ export function createMockResponse(
  */
 export function createMockFetch(responses: Response[]) {
   let callIndex = 0
-  return vi.fn().mockImplementation(async () => {
+  return mock(async () => {
     if (callIndex < responses.length) {
       const response = responses[callIndex]
       callIndex++
@@ -138,14 +138,42 @@ export function delay(ms: number): Promise<void> {
 
 /**
  * Mock timer utilities for testing retry delays
+ * Note: Bun doesn't have built-in fake timers like Vitest,
+ * so we'll use a different approach for timer-based tests
  */
 export const mockTimers = {
   setup() {
-    vi.useFakeTimers()
+    // Store original setTimeout
+    const originalSetTimeout = globalThis.setTimeout
+    const timers: Array<{ callback: Function; delay: number; time: number }> = []
+    let currentTime = 0
+
+    // Mock setTimeout
+    globalThis.setTimeout = ((callback: Function, delay: number = 0) => {
+      timers.push({ callback, delay, time: currentTime + delay })
+      return timers.length - 1
+    }) as any
+
     return {
-      advance: (ms: number) => vi.advanceTimersByTime(ms),
-      runAll: () => vi.runAllTimers(),
-      restore: () => vi.useRealTimers(),
+      advance: async (ms: number) => {
+        currentTime += ms
+        const toRun = timers.filter(t => t.time <= currentTime)
+        for (const timer of toRun) {
+          await timer.callback()
+          const index = timers.indexOf(timer)
+          if (index > -1) timers.splice(index, 1)
+        }
+      },
+      runAll: async () => {
+        while (timers.length > 0) {
+          const timer = timers.shift()!
+          currentTime = timer.time
+          await timer.callback()
+        }
+      },
+      restore: () => {
+        globalThis.setTimeout = originalSetTimeout
+      },
     }
   },
 }

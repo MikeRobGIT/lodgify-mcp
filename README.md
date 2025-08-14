@@ -338,18 +338,24 @@ The server implements comprehensive error handling:
 ## Development
 
 ### Running Tests
+
+Tests are written using Bun's built-in test runner.
+
 ```bash
 # Run all tests
-npm test
+bun test
 
 # Run with coverage
-npm run test:coverage
+bun test --coverage
 
 # Watch mode
-npm run test:watch
+bun test --watch
 
 # Run specific test file
-npm test lodgify.test.ts
+bun test lodgify.test.ts
+
+# Run tests matching a pattern
+bun test --test-name-pattern "429 retry"
 ```
 
 ### Linting and Formatting

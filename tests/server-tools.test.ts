@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { z } from 'zod'
 
 // Test Zod schemas used by the server
@@ -16,18 +16,18 @@ describe('MCP Tool Validation Schemas', () => {
       propertyId: z.string().min(1, 'Property ID is required'),
     })
 
-    it('should validate list_properties input', () => {
+    test('should validate list_properties input', () => {
       expect(ListPropertiesSchema.parse({})).toEqual({ params: undefined })
       expect(ListPropertiesSchema.parse({ params: { page: 1 } })).toEqual({ params: { page: 1 } })
     })
 
-    it('should validate get_property input', () => {
+    test('should validate get_property input', () => {
       expect(GetPropertySchema.parse({ id: 'prop-123' })).toEqual({ id: 'prop-123' })
       expect(() => GetPropertySchema.parse({ id: '' })).toThrow('Property ID is required')
       expect(() => GetPropertySchema.parse({})).toThrow()
     })
 
-    it('should validate list_property_rooms input', () => {
+    test('should validate list_property_rooms input', () => {
       expect(ListPropertyRoomsSchema.parse({ propertyId: 'prop-123' })).toEqual({ propertyId: 'prop-123' })
       expect(() => ListPropertyRoomsSchema.parse({ propertyId: '' })).toThrow('Property ID is required')
     })
@@ -48,12 +48,12 @@ describe('MCP Tool Validation Schemas', () => {
       payload: z.record(z.unknown()),
     })
 
-    it('should validate get_booking input', () => {
+    test('should validate get_booking input', () => {
       expect(GetBookingSchema.parse({ id: 'book-456' })).toEqual({ id: 'book-456' })
       expect(() => GetBookingSchema.parse({ id: '' })).toThrow('Booking ID is required')
     })
 
-    it('should validate create_booking_payment_link input', () => {
+    test('should validate create_booking_payment_link input', () => {
       const input = {
         id: 'book-456',
         payload: { amount: 1000, currency: 'USD' },
@@ -62,7 +62,7 @@ describe('MCP Tool Validation Schemas', () => {
       expect(() => CreateBookingPaymentLinkSchema.parse({ id: 'book-456' })).toThrow()
     })
 
-    it('should validate update_key_codes input', () => {
+    test('should validate update_key_codes input', () => {
       const input = {
         id: 'book-456',
         payload: { keyCodes: ['1234', '5678'] },
@@ -84,7 +84,7 @@ describe('MCP Tool Validation Schemas', () => {
       params: z.record(z.unknown()).optional(),
     })
 
-    it('should validate availability_room input', () => {
+    test('should validate availability_room input', () => {
       const input = {
         propertyId: 'prop-123',
         roomTypeId: 'room-456',
@@ -94,7 +94,7 @@ describe('MCP Tool Validation Schemas', () => {
       expect(() => AvailabilityRoomSchema.parse({ propertyId: 'prop-123' })).toThrow()
     })
 
-    it('should validate availability_property input', () => {
+    test('should validate availability_property input', () => {
       const input = {
         propertyId: 'prop-123',
         params: { from: '2025-11-20', to: '2025-11-25' },
@@ -114,7 +114,7 @@ describe('MCP Tool Validation Schemas', () => {
       threadGuid: z.string().min(1, 'Thread GUID is required'),
     })
 
-    it('should validate get_quote input', () => {
+    test('should validate get_quote input', () => {
       const input = {
         propertyId: 'prop-123',
         params: {
@@ -128,7 +128,7 @@ describe('MCP Tool Validation Schemas', () => {
       expect(() => GetQuoteSchema.parse({ propertyId: 'prop-123' })).toThrow()
     })
 
-    it('should validate get_thread input', () => {
+    test('should validate get_thread input', () => {
       const input = {
         threadGuid: '550e8400-e29b-41d4-a716-446655440000',
       }
@@ -146,7 +146,7 @@ describe('MCP Tool Validation Schemas', () => {
       params: z.record(z.unknown()),
     })
 
-    it('should validate daily_rates input', () => {
+    test('should validate daily_rates input', () => {
       const input = {
         params: {
           propertyId: 'prop-123',
@@ -158,7 +158,7 @@ describe('MCP Tool Validation Schemas', () => {
       expect(() => DailyRatesSchema.parse({})).toThrow()
     })
 
-    it('should validate rate_settings input', () => {
+    test('should validate rate_settings input', () => {
       const input = {
         params: {
           propertyId: 'prop-123',
@@ -172,7 +172,7 @@ describe('MCP Tool Validation Schemas', () => {
 })
 
 describe('Tool Response Format', () => {
-  it('should format successful response correctly', () => {
+  test('should format successful response correctly', () => {
     const result = { id: 'prop-123', name: 'Test Property' }
     const response = {
       content: [
@@ -187,7 +187,7 @@ describe('Tool Response Format', () => {
     expect(JSON.parse(response.content[0].text)).toEqual(result)
   })
 
-  it('should format validation error response correctly', () => {
+  test('should format validation error response correctly', () => {
     const zodError = new z.ZodError([
       {
         code: 'invalid_type',
@@ -223,7 +223,7 @@ describe('Tool Response Format', () => {
     expect(parsed.details).toHaveLength(1)
   })
 
-  it('should format API error response correctly', () => {
+  test('should format API error response correctly', () => {
     const apiError = {
       error: true,
       message: 'Lodgify 404: Not Found',

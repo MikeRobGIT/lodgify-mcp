@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, test, expect, beforeAll, afterAll } from 'bun:test'
 import { LodgifyClient } from '../src/lodgify.js'
 import { createMockFetch, createMockResponse, fixtures } from './utils.js'
 
@@ -65,7 +65,7 @@ describe('End-to-End Smoke Tests', () => {
     let propertyId: string
     let bookingId: string
 
-    it('1. Should list properties', async () => {
+    test('1. Should list properties', async () => {
       const result = await client.listProperties({ page: 1, limit: 10 })
       expect(result).toBeDefined()
       
@@ -78,7 +78,7 @@ describe('End-to-End Smoke Tests', () => {
       console.log(`✓ Listed properties, using property ID: ${propertyId}`)
     }, 30000)
 
-    it('2. Should get property details', async () => {
+    test('2. Should get property details', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
@@ -91,7 +91,7 @@ describe('End-to-End Smoke Tests', () => {
       console.log(`✓ Retrieved property details for ${propertyId}`)
     }, 30000)
 
-    it('3. Should list property rooms', async () => {
+    test('3. Should list property rooms', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
@@ -103,14 +103,14 @@ describe('End-to-End Smoke Tests', () => {
       console.log(`✓ Listed rooms for property ${propertyId}`)
     }, 30000)
 
-    it('4. Should check deleted properties', async () => {
+    test('4. Should check deleted properties', async () => {
       const result = await client.listDeletedProperties()
       expect(result).toBeDefined()
       
       console.log('✓ Checked deleted properties')
     }, 30000)
 
-    it('5. Should check property availability', async () => {
+    test('5. Should check property availability', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
@@ -127,7 +127,7 @@ describe('End-to-End Smoke Tests', () => {
       console.log(`✓ Checked availability for property ${propertyId}`)
     }, 30000)
 
-    it('6. Should check room availability', async () => {
+    test('6. Should check room availability', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
@@ -153,7 +153,7 @@ describe('End-to-End Smoke Tests', () => {
       }
     }, 30000)
 
-    it('7. Should get daily rates', async () => {
+    test('7. Should get daily rates', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
@@ -171,7 +171,7 @@ describe('End-to-End Smoke Tests', () => {
       console.log(`✓ Retrieved daily rates for property ${propertyId}`)
     }, 30000)
 
-    it('8. Should get rate settings', async () => {
+    test('8. Should get rate settings', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
@@ -187,7 +187,7 @@ describe('End-to-End Smoke Tests', () => {
       console.log(`✓ Retrieved rate settings for property ${propertyId}`)
     }, 30000)
 
-    it('9. Should get a quote', async () => {
+    test('9. Should get a quote', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
@@ -213,7 +213,7 @@ describe('End-to-End Smoke Tests', () => {
       }
     }, 30000)
 
-    it('10. Should list bookings', async () => {
+    test('10. Should list bookings', async () => {
       const params = {
         from: '2025-11-01',
         to: '2025-11-30',
@@ -231,7 +231,7 @@ describe('End-to-End Smoke Tests', () => {
       console.log(`✓ Listed bookings, using booking ID: ${bookingId}`)
     }, 30000)
 
-    it('11. Should get booking details', async () => {
+    test('11. Should get booking details', async () => {
       if (!bookingId) {
         console.log('⚠ Skipping: No booking ID available')
         return
@@ -250,7 +250,7 @@ describe('End-to-End Smoke Tests', () => {
       }
     }, 30000)
 
-    it('12. Should get booking payment link', async () => {
+    test('12. Should get booking payment link', async () => {
       if (!bookingId) {
         console.log('⚠ Skipping: No booking ID available')
         return
@@ -271,7 +271,7 @@ describe('End-to-End Smoke Tests', () => {
   })
 
   describe('Test Summary', () => {
-    it('should complete smoke test suite', () => {
+    test('should complete smoke test suite', () => {
       console.log('\n========================================')
       console.log('Smoke Test Suite Completed Successfully')
       console.log(`Mode: ${testMode}`)
