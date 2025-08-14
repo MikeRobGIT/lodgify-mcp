@@ -345,4 +345,133 @@ describe('LodgifyClient', () => {
       )
     })
   })
+
+  describe('New Booking Management Methods', () => {
+    test('should make POST request for createBooking', async () => {
+      const mockResponse = { id: 'book-new', status: 'created' }
+      global.fetch = createMockFetch([createMockResponse(201, mockResponse)])
+
+      const payload = {
+        propertyId: 'prop-123',
+        from: '2025-12-01',
+        to: '2025-12-07',
+        guestBreakdown: { adults: 2 },
+        roomTypes: [{ id: 'room-456' }],
+      }
+
+      const result = await client.createBooking(payload)
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should make PUT request for updateBooking', async () => {
+      const mockResponse = { id: 'book-123', status: 'updated' }
+      global.fetch = createMockFetch([createMockResponse(200, mockResponse)])
+
+      const payload = { status: 'confirmed', guestBreakdown: { adults: 3 } }
+      const result = await client.updateBooking('book-123', payload)
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should make DELETE request for deleteBooking', async () => {
+      const mockResponse = { id: 'book-123', status: 'deleted' }
+      global.fetch = createMockFetch([createMockResponse(200, mockResponse)])
+
+      const result = await client.deleteBooking('book-123')
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should throw error for missing booking payload', async () => {
+      await expect(client.createBooking(null as any)).rejects.toThrow('Payload is required')
+      await expect(client.updateBooking('book-123', null as any)).rejects.toThrow('Payload is required')
+    })
+  })
+
+  describe('Property Availability Update Method', () => {
+    test('should make PUT request for updatePropertyAvailability', async () => {
+      const mockResponse = { success: true, message: 'Availability updated' }
+      global.fetch = createMockFetch([createMockResponse(200, mockResponse)])
+
+      const payload = {
+        from: '2025-12-20',
+        to: '2025-12-31',
+        available: false,
+        minStay: 3,
+      }
+
+      const result = await client.updatePropertyAvailability('prop-123', payload)
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should throw error for missing availability payload', async () => {
+      await expect(client.updatePropertyAvailability('prop-123', null as any)).rejects.toThrow('Payload is required')
+    })
+  })
+
+  describe('Webhook Management Methods', () => {
+    test('should make POST request for subscribeWebhook', async () => {
+      const mockResponse = { id: 'webhook-123', status: 'subscribed' }
+      global.fetch = createMockFetch([createMockResponse(201, mockResponse)])
+
+      const payload = {
+        event: 'booking.created',
+        targetUrl: 'https://your-app.com/webhooks/lodgify',
+      }
+
+      const result = await client.subscribeWebhook(payload)
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should make GET request for listWebhooks', async () => {
+      const mockResponse = { webhooks: [{ id: 'webhook-123', event: 'booking.created' }] }
+      global.fetch = createMockFetch([createMockResponse(200, mockResponse)])
+
+      const result = await client.listWebhooks({ page: 1 })
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should make DELETE request for deleteWebhook', async () => {
+      const mockResponse = { id: 'webhook-123', status: 'deleted' }
+      global.fetch = createMockFetch([createMockResponse(200, mockResponse)])
+
+      const result = await client.deleteWebhook('webhook-123')
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should throw error for missing webhook payload', async () => {
+      await expect(client.subscribeWebhook(null as any)).rejects.toThrow('Payload is required')
+    })
+  })
+
+  describe('Rate Management Methods', () => {
+    test('should make POST request for createRate', async () => {
+      const mockResponse = { id: 'rate-new', status: 'created' }
+      global.fetch = createMockFetch([createMockResponse(201, mockResponse)])
+
+      const payload = {
+        propertyId: 'prop-123',
+        roomTypeId: 'room-456',
+        from: '2025-12-01',
+        to: '2025-12-31',
+        rate: 150.00,
+        currency: 'USD',
+      }
+
+      const result = await client.createRate(payload)
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should make PUT request for updateRate', async () => {
+      const mockResponse = { id: 'rate-789', status: 'updated' }
+      global.fetch = createMockFetch([createMockResponse(200, mockResponse)])
+
+      const payload = { rate: 175.00, currency: 'EUR' }
+      const result = await client.updateRate('rate-789', payload)
+      expect(result).toEqual(mockResponse)
+    })
+
+    test('should throw error for missing rate payload', async () => {
+      await expect(client.createRate(null as any)).rejects.toThrow('Payload is required')
+      await expect(client.updateRate('rate-789', null as any)).rejects.toThrow('Payload is required')
+    })
+  })
 })

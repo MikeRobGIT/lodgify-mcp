@@ -1,0 +1,30 @@
+# Docker Compose override for local development
+# This file is automatically loaded by docker-compose and overrides the main configuration
+# Use this for local development settings that shouldn't be committed
+
+version: '3.8'
+
+services:
+  lodgify-mcp-dev:
+    # Override for local development with file watching
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./bun.lockb:/app/bun.lockb
+      # Mount .env for hot reload of environment variables
+      - ./.env:/app/.env:ro
+      # Prevent node_modules from being overwritten
+      - /app/node_modules
+    
+    # Additional development environment variables
+    environment:
+      - DEBUG_HTTP=1
+      - LOG_LEVEL=debug
+      
+    # Remove resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M

@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"generatedAt": "2025-08-14T02:09:11.958Z",
+		"generatedAt": "2025-08-14T03:26:06.465Z",
 		"tasksAnalyzed": 1,
-		"totalTasks": 11,
+		"totalTasks": 12,
 		"analysisCount": 1,
 		"thresholdScore": 5,
 		"projectName": "Lodgify MCP",
@@ -10,12 +10,12 @@
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 11,
-			"taskTitle": "Migrate Test Suite from Vitest to Bun Test",
+			"taskId": 12,
+			"taskTitle": "Add Docker and Docker Compose Support for Lodgify MCP Server",
 			"complexityScore": 6,
 			"recommendedSubtasks": 8,
-			"expansionPrompt": "Break down the test migration into subtasks covering: 1) Backup and dependency removal (remove Vitest from package.json and vitest.config.ts), 2) Convert test setup file to use Bun test globals, 3) Refactor mock utilities to use Bun's mocking API, 4) Update individual test files to use Bun test imports and APIs, 5) Replace Vitest-specific mocking patterns (vi.mock, vi.fn, vi.spyOn), 6) Migrate timer mocking to Bun equivalents, 7) Update test scripts and verify all tests pass, 8) Update documentation and CI/CD configuration",
-			"reasoning": "Based on codebase analysis: Project has 7 test files all using Vitest imports and vi.* mocking utilities. The vitest.config.ts file needs removal. Tests use vi.fn() extensively (37+ occurrences) across utilities and test files. Package.json already has Bun test scripts but dependencies still include Vitest-related packages. Moderate complexity due to extensive mocking usage that needs API translation, but straightforward since test structure remains similar between frameworks."
+			"expansionPrompt": "Create 8 subtasks for Docker containerization: 1) Create multi-stage Dockerfile with Bun/Node base image, non-root user setup, and minimal production build, 2) Implement docker-compose.yml with development and production profiles, volume mounts, and environment variable handling, 3) Set up environment variable management with .env files and Docker secrets support, 4) Configure health checks using the MCP health endpoint with proper startup/interval timing, 5) Create Docker-specific entry point script for signal handling and graceful shutdown, 6) Write comprehensive Docker documentation including build commands, compose profiles, and MCP client connection instructions, 7) Set up GitHub Actions workflow for automated Docker image building and publishing to registry, 8) Create docker-ignore file and optimize build context for faster builds",
+			"reasoning": "This task requires moderate complexity (6/10) as it involves containerization of an existing TypeScript/Bun application. The project already has a working MCP server (tasks 1, 7 done), established test suite (task 9 done), and documentation (task 10 done). The main complexity comes from: 1) Creating efficient multi-stage builds for Bun runtime, 2) Managing environment variables securely across dev/prod environments, 3) Implementing proper health checks that integrate with the existing MCP health resource, 4) Ensuring compatibility with MCP client connections through Docker networking, 5) Writing comprehensive documentation for Docker usage. The 8 subtasks cover distinct areas: Dockerfile creation, compose configuration, environment management, health checks, entry point handling, documentation, CI/CD integration, and build optimization."
 		}
 	]
 }

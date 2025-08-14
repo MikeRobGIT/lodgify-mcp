@@ -65,6 +65,71 @@ const KeyCodesPayloadSchema = z.object({
   // Add other expected fields as needed
 }).strict()
 
+// New booking creation and update schemas
+const CreateBookingPayloadSchema = z.object({
+  propertyId: z.string().min(1),
+  from: z.string().min(1),
+  to: z.string().min(1),
+  guestBreakdown: z.object({
+    adults: z.number().min(1),
+    children: z.number().min(0).optional(),
+    infants: z.number().min(0).optional(),
+  }),
+  roomTypes: z.array(z.object({
+    id: z.string().min(1),
+    quantity: z.number().min(1).optional(),
+  })),
+  // Add other expected fields as needed
+}).strict()
+
+const UpdateBookingPayloadSchema = z.object({
+  status: z.string().optional(),
+  guestBreakdown: z.object({
+    adults: z.number().min(1).optional(),
+    children: z.number().min(0).optional(),
+    infants: z.number().min(0).optional(),
+  }).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  // Add other expected fields as needed
+}).strict()
+
+// Availability update schema
+const AvailabilityUpdatePayloadSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  available: z.boolean(),
+  minStay: z.number().min(0).optional(),
+  maxStay: z.number().min(0).optional(),
+  // Add other expected fields as needed
+}).strict()
+
+// Webhook schemas
+const WebhookSubscribePayloadSchema = z.object({
+  event: z.string().min(1),
+  targetUrl: z.string().url(),
+  // Add other expected fields as needed
+}).strict()
+
+// Rate management schemas
+const CreateRatePayloadSchema = z.object({
+  propertyId: z.string().min(1),
+  roomTypeId: z.string().min(1),
+  from: z.string().min(1),
+  to: z.string().min(1),
+  rate: z.number().positive(),
+  currency: z.string().length(3).optional(),
+  // Add other expected fields as needed
+}).strict()
+
+const UpdateRatePayloadSchema = z.object({
+  rate: z.number().positive().optional(),
+  currency: z.string().length(3).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  // Add other expected fields as needed
+}).strict()
+
 // Property Management Schemas
 const ListPropertiesSchema = z.object({
   params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
@@ -134,6 +199,46 @@ const GetQuoteSchema = z.object({
 
 const GetThreadSchema = z.object({
   threadGuid: GuidSchema,
+})
+
+// New endpoint schemas
+const CreateBookingSchema = z.object({
+  payload: CreateBookingPayloadSchema,
+})
+
+const UpdateBookingSchema = z.object({
+  id: IdSchema,
+  payload: UpdateBookingPayloadSchema,
+})
+
+const DeleteBookingSchema = z.object({
+  id: IdSchema,
+})
+
+const UpdatePropertyAvailabilitySchema = z.object({
+  propertyId: IdSchema,
+  payload: AvailabilityUpdatePayloadSchema,
+})
+
+const WebhookSubscribeSchema = z.object({
+  payload: WebhookSubscribePayloadSchema,
+})
+
+const ListWebhooksSchema = z.object({
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+
+const DeleteWebhookSchema = z.object({
+  id: IdSchema,
+})
+
+const CreateRateSchema = z.object({
+  payload: CreateRatePayloadSchema,
+})
+
+const UpdateRateSchema = z.object({
+  id: IdSchema,
+  payload: UpdateRatePayloadSchema,
 })
 
 // ============================================================================
@@ -384,6 +489,151 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['threadGuid'],
       },
     },
+
+    // New Booking Management Tools
+    {
+      name: 'lodgify.create_booking',
+      description: 'Create a new booking (POST /v2/bookings)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          payload: {
+            type: 'object',
+            description: 'Booking details including property, dates, guest breakdown, and room types',
+          },
+        },
+        required: ['payload'],
+      },
+    },
+    {
+      name: 'lodgify.update_booking',
+      description: 'Update an existing booking (PUT /v2/reservations/bookings/{id})',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Booking ID',
+          },
+          payload: {
+            type: 'object',
+            description: 'Updated booking details',
+          },
+        },
+        required: ['id', 'payload'],
+      },
+    },
+    {
+      name: 'lodgify.delete_booking',
+      description: 'Delete/cancel a booking (DELETE /v2/reservations/bookings/{id})',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Booking ID',
+          },
+        },
+        required: ['id'],
+      },
+    },
+
+    // Property Management Tools
+    {
+      name: 'lodgify.update_property_availability',
+      description: 'Update availability for a property (PUT /v2/properties/{propertyId}/availability)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          propertyId: {
+            type: 'string',
+            description: 'Property ID',
+          },
+          payload: {
+            type: 'object',
+            description: 'Availability update details including dates and availability status',
+          },
+        },
+        required: ['propertyId', 'payload'],
+      },
+    },
+
+    // Webhook Management Tools
+    {
+      name: 'lodgify.subscribe_webhook',
+      description: 'Subscribe to a webhook event (POST /v2/webhooks/subscribe)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          payload: {
+            type: 'object',
+            description: 'Webhook subscription details including event and target URL',
+          },
+        },
+        required: ['payload'],
+      },
+    },
+    {
+      name: 'lodgify.list_webhooks',
+      description: 'List all webhooks (GET /v2/webhooks)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          params: {
+            type: 'object',
+            description: 'Optional query parameters for filtering',
+          },
+        },
+      },
+    },
+    {
+      name: 'lodgify.delete_webhook',
+      description: 'Unsubscribe/delete a webhook (DELETE /v2/webhooks/{id})',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Webhook ID',
+          },
+        },
+        required: ['id'],
+      },
+    },
+
+    // Rate Management Tools
+    {
+      name: 'lodgify.create_rate',
+      description: 'Create/update rates (POST /v2/rates)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          payload: {
+            type: 'object',
+            description: 'Rate details including property, room type, dates, and rate amount',
+          },
+        },
+        required: ['payload'],
+      },
+    },
+    {
+      name: 'lodgify.update_rate',
+      description: 'Update a specific rate (PUT /v2/rates/{id})',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Rate ID',
+          },
+          payload: {
+            type: 'object',
+            description: 'Updated rate details',
+          },
+        },
+        required: ['id', 'payload'],
+      },
+    },
   ],
 }))
 
@@ -490,6 +740,64 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'lodgify.get_thread': {
         const input = GetThreadSchema.parse(args)
         result = await client.getThread(input.threadGuid)
+        break
+      }
+
+      // New Booking Management Tools
+      case 'lodgify.create_booking': {
+        const input = CreateBookingSchema.parse(args)
+        result = await client.createBooking(input.payload)
+        break
+      }
+
+      case 'lodgify.update_booking': {
+        const input = UpdateBookingSchema.parse(args)
+        result = await client.updateBooking(input.id, input.payload)
+        break
+      }
+
+      case 'lodgify.delete_booking': {
+        const input = DeleteBookingSchema.parse(args)
+        result = await client.deleteBooking(input.id)
+        break
+      }
+
+      // Property Management Tools
+      case 'lodgify.update_property_availability': {
+        const input = UpdatePropertyAvailabilitySchema.parse(args)
+        result = await client.updatePropertyAvailability(input.propertyId, input.payload)
+        break
+      }
+
+      // Webhook Management Tools
+      case 'lodgify.subscribe_webhook': {
+        const input = WebhookSubscribeSchema.parse(args)
+        result = await client.subscribeWebhook(input.payload)
+        break
+      }
+
+      case 'lodgify.list_webhooks': {
+        const input = ListWebhooksSchema.parse(args)
+        result = await client.listWebhooks(input.params)
+        break
+      }
+
+      case 'lodgify.delete_webhook': {
+        const input = DeleteWebhookSchema.parse(args)
+        result = await client.deleteWebhook(input.id)
+        break
+      }
+
+      // Rate Management Tools
+      case 'lodgify.create_rate': {
+        const input = CreateRateSchema.parse(args)
+        result = await client.createRate(input.payload)
+        break
+      }
+
+      case 'lodgify.update_rate': {
+        const input = UpdateRateSchema.parse(args)
+        result = await client.updateRate(input.id, input.payload)
         break
       }
 

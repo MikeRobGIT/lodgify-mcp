@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  lodgify-mcp:
+    # Use image for production, build for development (see profiles below)
+    image: lodgify-mcp:latest
+    container_name: lodgify-mcp-server
+    
+    # Environment variables from .env file
+    env_file:
+      - .env
+    
+    # Additional environment variables
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=${DOCKER_PORT:-3000}
+    
+    # Port mapping
+    ports:
+      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${DOCKER_PORT:-3000}/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Network for MCP client connectivity
+    networks:
+      - mcp-network
+    
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Default profile (production)
+    profiles:
+      - production
+
+  # Development configuration
+  lodgify-mcp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - PORT=${DOCKER_PORT:-3000}
+    
+    container_name: lodgify-mcp-dev
+    
+    # Mount source code for hot reload
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      # Prevent node_modules from being overwritten
+      - /app/node_modules
+    
+    # Development environment
+    env_file:
+      - .env
+      - .env.docker
+    
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - PORT=${DOCKER_PORT:-3000}
+      - DEBUG_HTTP=${DEBUG_HTTP:-1}
+    
+    # Port mapping for development
+    ports:
+      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
+    
+    # Development command (uses bun dev for hot reload)
+    command: ["bun", "run", "dev"]
+    
+    # Always restart in development
+    restart: always
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${DOCKER_PORT:-3000}/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    
+    # Logging for development
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    
+    # Network
+    networks:
+      - mcp-network
+    
+    # Development profile
+    profiles:
+      - development
+      - dev
+
+networks:
+  mcp-network:
+    driver: bridge
+    name: lodgify-mcp-network

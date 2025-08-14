@@ -605,11 +605,129 @@
         ],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Add Docker and Docker Compose Support for Lodgify MCP Server",
+        "description": "Containerize the Lodgify MCP server using Docker, provide a docker-compose.yml for local development and production, implement environment variable management, health checks, and document usage.",
+        "details": "1. Create a Dockerfile in the project root to build a minimal, secure container image for the Lodgify MCP server. Use a multi-stage build for production images to minimize size and include only necessary dependencies. Ensure the image exposes the correct port and sets up a non-root user for security.\n2. Implement a docker-compose.yml file supporting both development and production configurations. Use build-time and runtime environment variables, mounting local source code for development and using built images for production. Include service definitions for the MCP server and any required dependencies (e.g., database, if applicable).\n3. Integrate environment variable handling: ensure the MCP server loads configuration from environment variables (e.g., API keys, ports) and document required variables in .env.example. Support overrides via docker-compose.\n4. Add a healthcheck to the Dockerfile and docker-compose.yml, using the MCP server's health resource endpoint (e.g., curl http://localhost:<port>/health) to verify container readiness.\n5. Write comprehensive documentation in the README covering Docker usage: building images, running containers, using docker-compose for local development and production, environment variable setup, health checks, and troubleshooting. Include example commands and configuration snippets.\n6. Ensure compatibility with MCP client tools (e.g., Claude Desktop) by documenting how to connect to the Dockerized MCP server and referencing the relevant config.json setup.",
+        "testStrategy": "1. Build the Docker image and verify the MCP server starts successfully in both development and production modes.\n2. Run docker-compose up and confirm the server is accessible, tools are registered, and environment variables are loaded correctly.\n3. Validate healthcheck functionality: container should report healthy only when the MCP health resource responds as expected.\n4. Test environment variable overrides via docker-compose and .env files.\n5. Follow documentation steps to run the server in Docker and connect with an MCP client (e.g., Claude Desktop), confirming end-to-end functionality.\n6. Check for security best practices: non-root user, minimal image size, no sensitive data in image layers.",
+        "status": "done",
+        "dependencies": [
+          1,
+          7
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create multi-stage Dockerfile with Bun base image and security hardening",
+            "description": "Implement a production-ready Dockerfile using multi-stage build pattern with Bun as the base runtime, configure non-root user for security, and optimize for minimal image size",
+            "dependencies": [],
+            "details": "Create Dockerfile in project root with: 1) First stage using oven/bun:1-alpine for building with all dev dependencies, 2) Second stage using oven/bun:1-alpine-slim for production runtime, 3) Copy only dist/ and necessary files to production stage, 4) Create non-root user 'mcpuser' with UID 1001, 5) Set working directory to /app with proper ownership, 6) Expose port 3000 (or configurable via ARG), 7) Use ENTRYPOINT ['bun', 'run', 'start'] for proper signal handling, 8) Include LABEL metadata for version and maintainer information",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement docker-compose.yml with development and production profiles",
+            "description": "Create docker-compose configuration supporting both local development with hot reload and production deployment with optimized settings",
+            "dependencies": [
+              "12.1"
+            ],
+            "details": "Create docker-compose.yml with: 1) Version 3.8 specification for modern features, 2) Development profile with volume mount for src/ directory enabling hot reload, 3) Production profile using pre-built image from registry, 4) Service named 'lodgify-mcp' with restart policy, 5) Environment variable injection from .env file, 6) Network configuration for MCP client connectivity, 7) Logging configuration with json-file driver and rotation, 8) Resource limits (memory: 256M, cpus: '0.5') for production profile",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Set up comprehensive environment variable management system",
+            "description": "Implement secure environment variable handling for Docker deployments with support for development, production, and Docker secrets",
+            "dependencies": [],
+            "details": "Environment setup: 1) Update .env.example with Docker-specific variables (DOCKER_PORT, NODE_ENV, LOG_LEVEL), 2) Create .env.docker for Docker-specific defaults, 3) Modify src/server.ts to prioritize env vars over .env file, 4) Add docker-compose.override.yml for local development overrides, 5) Document Docker secrets support for production API keys, 6) Implement validation for required environment variables at startup, 7) Create env-check.sh script for pre-flight validation, 8) Add support for environment variable interpolation in compose files",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Configure health checks with MCP health endpoint integration",
+            "description": "Implement container health monitoring using the existing MCP health resource endpoint with appropriate timing and retry configurations",
+            "dependencies": [
+              "12.1",
+              "12.2"
+            ],
+            "details": "Health check implementation: 1) Add HEALTHCHECK instruction to Dockerfile using curl or wget, 2) Configure check interval of 30s with timeout of 10s, 3) Set start period of 60s for initial startup, 4) Use endpoint 'http://localhost:${PORT}/health' or MCP health resource, 5) Add health check to docker-compose.yml with same parameters, 6) Implement graceful degradation if health endpoint fails, 7) Configure container restart policy based on health status, 8) Add health status logging for monitoring integration",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Create Docker entry point script with signal handling",
+            "description": "Develop a robust entry point script that handles process signals correctly for graceful shutdown and proper stdio communication",
+            "dependencies": [
+              "12.1"
+            ],
+            "details": "Create docker-entrypoint.sh: 1) Implement signal trapping for SIGTERM and SIGINT, 2) Forward signals to the Bun process for graceful shutdown, 3) Handle stdio streams properly for MCP communication, 4) Validate environment variables before starting server, 5) Set up proper file permissions for non-root user, 6) Implement retry logic for initial startup, 7) Add pre-start hooks for migrations or setup if needed, 8) Ensure proper exit codes are propagated to Docker",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Write comprehensive Docker documentation and MCP client connection guide",
+            "description": "Create detailed documentation covering all aspects of Docker usage, from building images to connecting MCP clients through Docker",
+            "dependencies": [
+              "12.1",
+              "12.2",
+              "12.3",
+              "12.4",
+              "12.5"
+            ],
+            "details": "Documentation tasks: 1) Add Docker section to README.md with quickstart commands, 2) Document building: 'docker build -t lodgify-mcp:latest .', 3) Document running: 'docker run -p 3000:3000 --env-file .env lodgify-mcp', 4) Explain docker-compose usage for dev vs prod profiles, 5) Create MCP client configuration examples for Docker connection, 6) Document port mapping and network considerations, 7) Add troubleshooting section for common Docker issues, 8) Include Docker commands cheatsheet and debugging tips",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Set up GitHub Actions workflow for Docker image CI/CD",
+            "description": "Create automated workflow for building, testing, and publishing Docker images to GitHub Container Registry on releases",
+            "dependencies": [
+              "12.1",
+              "12.4"
+            ],
+            "details": "Create .github/workflows/docker-publish.yml: 1) Trigger on push to main and version tags (v*), 2) Use docker/setup-buildx-action for multi-platform builds, 3) Implement docker/login-action for ghcr.io authentication, 4) Build images for linux/amd64 and linux/arm64 platforms, 5) Run container tests before pushing to registry, 6) Tag images with version, latest, and commit SHA, 7) Generate and publish SBOM and security scan results, 8) Cache Docker layers for faster subsequent builds",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Optimize Docker build context and create .dockerignore",
+            "description": "Minimize build context size and optimize build performance by excluding unnecessary files and implementing build caching strategies",
+            "dependencies": [
+              "12.1"
+            ],
+            "details": "Optimization tasks: 1) Create .dockerignore excluding node_modules, .git, tests, docs, .env files, 2) Exclude development-only files and build artifacts, 3) Implement Docker BuildKit features for better caching, 4) Use --mount=type=cache for Bun package cache, 5) Optimize layer ordering for maximum cache reuse, 6) Minimize final image size using alpine variants, 7) Document build performance metrics and optimization tips, 8) Set up Docker build arguments for customizable optimization",
+            "status": "done",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Audit Lodgify MCP Server for Complete v2 Endpoint Coverage",
+        "description": "Cross-reference the Lodgify MCP server implementation against the official Lodgify API v2 documentation to verify all endpoints are present and identify any missing endpoints.",
+        "details": "1. Obtain the latest official Lodgify API v2 documentation, ensuring access to the full list of endpoints, their methods, parameters, and expected responses.\n2. Catalog all v2 endpoints from the documentation, including details such as HTTP method, path, required parameters, and response schema.\n3. Review the MCP server codebase and tool registration (especially in src/server.ts and lodgify.ts) to enumerate all currently implemented endpoints and their mappings.\n4. For each documented endpoint, verify its presence and correct implementation in the MCP server. Pay special attention to authentication, parameter handling (including query/path/body), response formatting, and error handling.\n5. Identify any endpoints that are missing, partially implemented, or have discrepancies in method, parameters, or response structure.\n6. Document findings in a structured report (e.g., Markdown table) listing each endpoint, its status (implemented, missing, incomplete), and notes on any gaps or issues.\n7. Recommend next steps for missing or incomplete endpoints, referencing best practices such as strict schema validation, comprehensive error handling, and support for pagination and rate limits where applicable[2][5].\n\nBest practices:\n- Use automated tools or scripts to parse and compare endpoint lists if feasible.\n- Ensure endpoint coverage includes authentication, rate limiting, and error handling as described in the official docs[2][5].\n- Version control all audit artifacts and findings for traceability.",
+        "testStrategy": "1. Manually cross-reference each endpoint in the Lodgify API v2 documentation with the MCP server implementation and tool registration.\n2. For each endpoint, verify:\n   - Correct HTTP method and path\n   - Required and optional parameters are handled\n   - Response schema matches documentation\n   - Error handling and authentication are present\n3. Document all findings in a Markdown table with endpoint, status, and notes.\n4. Peer review the audit report for completeness and accuracy.\n5. Optionally, use automated endpoint comparison tools to validate coverage and highlight discrepancies.",
+        "status": "done",
+        "dependencies": [
+          7
+        ],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-08-13T22:02:17.495Z",
-      "updated": "2025-08-14T03:06:11.336Z",
+      "updated": "2025-08-14T19:12:05.081Z",
       "description": "Tasks for master context"
     }
   }

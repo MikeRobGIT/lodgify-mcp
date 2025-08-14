@@ -1,16 +1,9 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js'
-import { createMockResponse, createMockFetch, fixtures } from './utils.js'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createTestServer } from './test-server.js'
+import { fixtures } from './utils.js'
 
-describe.skip('MCP Server Integration Tests', () => {
-  let server: Server
+describe('MCP Server Integration Tests', () => {
+  let testServer: any
   let mockClient: any
 
   beforeEach(async () => {
@@ -32,9 +25,9 @@ describe.skip('MCP Server Integration Tests', () => {
       getQuote: mock(() => Promise.resolve()),
       getThread: mock(() => Promise.resolve()),
     }
-    
+
     // Create test server with mock client
-    server = createTestServer(mockClient)
+    testServer = createTestServer(mockClient)
   })
 
   afterEach(() => {
@@ -48,13 +41,10 @@ describe.skip('MCP Server Integration Tests', () => {
 
   describe('Tool Registration', () => {
     test('should register all Lodgify tools', async () => {
-      const response = await server.request(
-        { method: 'tools/list' },
-        ListToolsRequestSchema,
-      )
+      const response = await testServer.listTools()
 
       expect(response.tools).toHaveLength(15)
-      
+
       const toolNames = response.tools.map((t: any) => t.name)
       expect(toolNames).toContain('lodgify.list_properties')
       expect(toolNames).toContain('lodgify.get_property')
@@ -74,10 +64,7 @@ describe.skip('MCP Server Integration Tests', () => {
     })
 
     test('should include proper descriptions for each tool', async () => {
-      const response = await server.request(
-        { method: 'tools/list' },
-        ListToolsRequestSchema,
-      )
+      const response = await testServer.listTools()
 
       const propertyTool = response.tools.find((t: any) => t.name === 'lodgify.list_properties')
       expect(propertyTool).toBeDefined()
@@ -89,19 +76,10 @@ describe.skip('MCP Server Integration Tests', () => {
   describe('Property Management Tools', () => {
     test('should handle list_properties tool', async () => {
       mockClient.listProperties.mockResolvedValue([fixtures.property])
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.list_properties',
-            arguments: {
-              params: { page: 1, limit: 10 },
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.list_properties', {
+        params: { page: 1, limit: 10 },
+      })
 
       expect(mockClient.listProperties).toHaveBeenCalledWith({ page: 1, limit: 10 })
       expect(response.content[0].text).toContain(fixtures.property.id)
@@ -109,19 +87,10 @@ describe.skip('MCP Server Integration Tests', () => {
 
     test('should handle get_property tool', async () => {
       mockClient.getProperty.mockResolvedValue(fixtures.property)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.get_property',
-            arguments: {
-              id: 'prop-123',
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.get_property', {
+        id: 'prop-123',
+      })
 
       expect(mockClient.getProperty).toHaveBeenCalledWith('prop-123')
       expect(response.content[0].text).toContain(fixtures.property.name)
@@ -130,19 +99,10 @@ describe.skip('MCP Server Integration Tests', () => {
     test('should handle list_property_rooms tool', async () => {
       const rooms = [{ id: 'room-1', name: 'Master Suite' }]
       mockClient.listPropertyRooms.mockResolvedValue(rooms)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.list_property_rooms',
-            arguments: {
-              propertyId: 'prop-123',
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.list_property_rooms', {
+        propertyId: 'prop-123',
+      })
 
       expect(mockClient.listPropertyRooms).toHaveBeenCalledWith('prop-123')
       expect(response.content[0].text).toContain('Master Suite')
@@ -152,19 +112,10 @@ describe.skip('MCP Server Integration Tests', () => {
   describe('Booking Management Tools', () => {
     test('should handle list_bookings tool', async () => {
       mockClient.listBookings.mockResolvedValue([fixtures.booking])
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.list_bookings',
-            arguments: {
-              params: { from: '2025-11-01', to: '2025-11-30' },
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.list_bookings', {
+        params: { from: '2025-11-01', to: '2025-11-30' },
+      })
 
       expect(mockClient.listBookings).toHaveBeenCalledWith({ from: '2025-11-01', to: '2025-11-30' })
       expect(response.content[0].text).toContain(fixtures.booking.id)
@@ -172,19 +123,10 @@ describe.skip('MCP Server Integration Tests', () => {
 
     test('should handle get_booking tool', async () => {
       mockClient.getBooking.mockResolvedValue(fixtures.booking)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.get_booking',
-            arguments: {
-              id: 'book-456',
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.get_booking', {
+        id: 'book-456',
+      })
 
       expect(mockClient.getBooking).toHaveBeenCalledWith('book-456')
       expect(response.content[0].text).toContain(fixtures.booking.guest.name)
@@ -193,20 +135,11 @@ describe.skip('MCP Server Integration Tests', () => {
     test('should handle create_booking_payment_link tool', async () => {
       const paymentLink = { url: 'https://pay.lodgify.com/xyz', amount: 1000 }
       mockClient.createBookingPaymentLink.mockResolvedValue(paymentLink)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.create_booking_payment_link',
-            arguments: {
-              id: 'book-456',
-              payload: { amount: 1000, currency: 'USD' },
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.create_booking_payment_link', {
+        id: 'book-456',
+        payload: { amount: 1000, currency: 'USD' },
+      })
 
       expect(mockClient.createBookingPaymentLink).toHaveBeenCalledWith(
         'book-456',
@@ -219,21 +152,12 @@ describe.skip('MCP Server Integration Tests', () => {
   describe('Availability Tools', () => {
     test('should handle availability_room tool', async () => {
       mockClient.getAvailabilityRoom.mockResolvedValue(fixtures.availability)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.availability_room',
-            arguments: {
-              propertyId: 'prop-123',
-              roomTypeId: 'room-456',
-              params: { from: '2025-11-20', to: '2025-11-25' },
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.availability_room', {
+        propertyId: 'prop-123',
+        roomTypeId: 'room-456',
+        params: { from: '2025-11-20', to: '2025-11-25' },
+      })
 
       expect(mockClient.getAvailabilityRoom).toHaveBeenCalledWith(
         'prop-123',
@@ -245,20 +169,11 @@ describe.skip('MCP Server Integration Tests', () => {
 
     test('should handle availability_property tool', async () => {
       mockClient.getAvailabilityProperty.mockResolvedValue(fixtures.availability)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.availability_property',
-            arguments: {
-              propertyId: 'prop-123',
-              params: { from: '2025-11-20', to: '2025-11-25' },
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.availability_property', {
+        propertyId: 'prop-123',
+        params: { from: '2025-11-20', to: '2025-11-25' },
+      })
 
       expect(mockClient.getAvailabilityProperty).toHaveBeenCalledWith(
         'prop-123',
@@ -271,25 +186,16 @@ describe.skip('MCP Server Integration Tests', () => {
   describe('Quote & Messaging Tools', () => {
     test('should handle get_quote tool with complex parameters', async () => {
       mockClient.getQuote.mockResolvedValue(fixtures.quote)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.get_quote',
-            arguments: {
-              propertyId: 'prop-123',
-              params: {
-                from: '2025-11-20',
-                to: '2025-11-25',
-                'roomTypes[0].Id': 999,
-                'guest_breakdown[adults]': 2,
-              },
-            },
-          },
+
+      const response = await testServer.callTool('lodgify.get_quote', {
+        propertyId: 'prop-123',
+        params: {
+          from: '2025-11-20',
+          to: '2025-11-25',
+          'roomTypes[0].Id': 999,
+          'guest_breakdown[adults]': 2,
         },
-        CallToolRequestSchema,
-      )
+      })
 
       expect(mockClient.getQuote).toHaveBeenCalledWith(
         'prop-123',
@@ -305,19 +211,10 @@ describe.skip('MCP Server Integration Tests', () => {
 
     test('should handle get_thread tool', async () => {
       mockClient.getThread.mockResolvedValue(fixtures.thread)
-      
-      const response = await server.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: 'lodgify.get_thread',
-            arguments: {
-              threadGuid: '550e8400-e29b-41d4-a716-446655440000',
-            },
-          },
-        },
-        CallToolRequestSchema,
-      )
+
+      const response = await testServer.callTool('lodgify.get_thread', {
+        threadGuid: '550e8400-e29b-41d4-a716-446655440000',
+      })
 
       expect(mockClient.getThread).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440000')
       expect(response.content[0].text).toContain('Is the property available?')
@@ -326,10 +223,7 @@ describe.skip('MCP Server Integration Tests', () => {
 
   describe('Resource Handlers', () => {
     test('should list health resource', async () => {
-      const response = await server.request(
-        { method: 'resources/list' },
-        ListResourcesRequestSchema,
-      )
+      const response = await testServer.listResources()
 
       expect(response.resources).toHaveLength(1)
       expect(response.resources[0]).toMatchObject({
@@ -341,13 +235,7 @@ describe.skip('MCP Server Integration Tests', () => {
     })
 
     test('should read health resource', async () => {
-      const response = await server.request(
-        {
-          method: 'resources/read',
-          params: { uri: 'lodgify://health' },
-        },
-        ReadResourceRequestSchema,
-      )
+      const response = await testServer.readResource('lodgify://health')
 
       expect(response.contents).toHaveLength(1)
       const healthData = JSON.parse(response.contents[0].text)
@@ -361,15 +249,7 @@ describe.skip('MCP Server Integration Tests', () => {
     })
 
     test('should return error for unknown resource', async () => {
-      await expect(
-        server.request(
-          {
-            method: 'resources/read',
-            params: { uri: 'lodgify://unknown' },
-          },
-          ReadResourceRequestSchema,
-        )
-      ).rejects.toThrow('Unknown resource')
+      await expect(testServer.readResource('lodgify://unknown')).rejects.toThrow('Unknown resource')
     })
   })
 })

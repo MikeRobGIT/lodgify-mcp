@@ -637,4 +637,162 @@ export class LodgifyClient {
     this.log('debug', 'getThread called', { threadGuid: sanitized })
     return this.request<T>('GET', `/v2/messaging/${encodeURIComponent(sanitized)}`)
   }
+
+  // ============================================================================
+  // New Booking Management Methods
+  // ============================================================================
+
+  /**
+   * Create a new booking
+   * POST /v2/bookings
+   */
+  public async createBooking<T = unknown>(payload: Record<string, unknown>): Promise<T> {
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Payload is required')
+    }
+    
+    this.log('debug', 'createBooking called', { payload })
+    return this.request<T>('POST', '/v2/bookings', { body: payload })
+  }
+
+  /**
+   * Update an existing booking
+   * PUT /v2/reservations/bookings/{id}
+   */
+  public async updateBooking<T = unknown>(
+    id: string,
+    payload: Record<string, unknown>,
+  ): Promise<T> {
+    const validation = this.validatePathParam(id, 'Booking ID')
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Payload is required')
+    }
+    
+    this.log('debug', 'updateBooking called', { id: validation.sanitized, payload })
+    return this.request<T>('PUT', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`, {
+      body: payload,
+    })
+  }
+
+  /**
+   * Delete/cancel a booking
+   * DELETE /v2/reservations/bookings/{id}
+   */
+  public async deleteBooking<T = unknown>(id: string): Promise<T> {
+    const validation = this.validatePathParam(id, 'Booking ID')
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+    
+    this.log('debug', 'deleteBooking called', { id: validation.sanitized })
+    return this.request<T>('DELETE', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`)
+  }
+
+  // ============================================================================
+  // Property Availability Methods
+  // ============================================================================
+
+  /**
+   * Update availability for a property
+   * PUT /v2/properties/{propertyId}/availability
+   */
+  public async updatePropertyAvailability<T = unknown>(
+    propertyId: string,
+    payload: Record<string, unknown>,
+  ): Promise<T> {
+    const validation = this.validatePathParam(propertyId, 'Property ID')
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Payload is required')
+    }
+    
+    this.log('debug', 'updatePropertyAvailability called', { propertyId: validation.sanitized, payload })
+    return this.request<T>('PUT', `/v2/properties/${encodeURIComponent(validation.sanitized!)}/availability`, {
+      body: payload,
+    })
+  }
+
+  // ============================================================================
+  // Webhook Management Methods
+  // ============================================================================
+
+  /**
+   * Subscribe to a webhook event
+   * POST /v2/webhooks/subscribe
+   */
+  public async subscribeWebhook<T = unknown>(payload: Record<string, unknown>): Promise<T> {
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Payload is required')
+    }
+    
+    this.log('debug', 'subscribeWebhook called', { payload })
+    return this.request<T>('POST', '/v2/webhooks/subscribe', { body: payload })
+  }
+
+  /**
+   * List all webhooks
+   * GET /v2/webhooks
+   */
+  public async listWebhooks<T = unknown>(params?: Record<string, unknown>): Promise<T> {
+    this.log('debug', 'listWebhooks called', { params })
+    return this.request<T>('GET', '/v2/webhooks', { params })
+  }
+
+  /**
+   * Unsubscribe/delete a webhook
+   * DELETE /v2/webhooks/{id}
+   */
+  public async deleteWebhook<T = unknown>(id: string): Promise<T> {
+    const validation = this.validatePathParam(id, 'Webhook ID')
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+    
+    this.log('debug', 'deleteWebhook called', { id: validation.sanitized })
+    return this.request<T>('DELETE', `/v2/webhooks/${encodeURIComponent(validation.sanitized!)}`)
+  }
+
+  // ============================================================================
+  // Rate Management Methods
+  // ============================================================================
+
+  /**
+   * Create/update rates
+   * POST /v2/rates
+   */
+  public async createRate<T = unknown>(payload: Record<string, unknown>): Promise<T> {
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Payload is required')
+    }
+    
+    this.log('debug', 'createRate called', { payload })
+    return this.request<T>('POST', '/v2/rates', { body: payload })
+  }
+
+  /**
+   * Update a specific rate
+   * PUT /v2/rates/{id}
+   */
+  public async updateRate<T = unknown>(
+    id: string,
+    payload: Record<string, unknown>,
+  ): Promise<T> {
+    const validation = this.validatePathParam(id, 'Rate ID')
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Payload is required')
+    }
+    
+    this.log('debug', 'updateRate called', { id: validation.sanitized, payload })
+    return this.request<T>('PUT', `/v2/rates/${encodeURIComponent(validation.sanitized!)}`, {
+      body: payload,
+    })
+  }
 }

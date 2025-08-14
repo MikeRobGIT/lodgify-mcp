@@ -4,7 +4,7 @@ A Model Context Protocol (MCP) server that exposes Lodgify Public API v2 endpoin
 
 ## Features
 
-- 🔧 **15+ Lodgify API endpoints** exposed as MCP tools
+- 🔧 **25+ Lodgify API endpoints** exposed as MCP tools
 - 🔄 **Automatic retry logic** with exponential backoff for rate limiting (429 responses)
 - 📝 **Complex parameter support** including bracket notation for nested objects
 - ✅ **Type-safe validation** using Zod schemas
@@ -19,6 +19,40 @@ A Model Context Protocol (MCP) server that exposes Lodgify Public API v2 endpoin
 - MCP-compatible client (e.g., Claude Desktop)
 
 ## Installation
+
+### Using Docker (Recommended)
+
+The easiest way to run the Lodgify MCP Server is using Docker:
+
+```bash
+# Quick start with Docker
+docker run -p 3000:3000 \
+  -e LODGIFY_API_KEY="your_api_key_here" \
+  ghcr.io/yourusername/lodgify-mcp:latest
+```
+
+### Using Docker Compose
+
+For development and production deployments:
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/lodgify-mcp
+cd lodgify-mcp
+
+# Setup environment
+cp .env.example .env
+# Edit .env and add your LODGIFY_API_KEY
+
+# Development mode (with hot reload)
+docker-compose --profile dev up
+
+# Production mode
+docker-compose --profile production up -d
+
+# View logs
+docker-compose logs -f lodgify-mcp
+```
 
 ### Using npm
 ```bash
@@ -86,6 +120,47 @@ For Bun users:
 }
 ```
 
+### Docker MCP Configuration
+
+To connect Claude Desktop to the Dockerized MCP server:
+
+```json
+{
+  "mcpServers": {
+    "lodgify-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e", "LODGIFY_API_KEY=your_api_key_here",
+        "-e", "LOG_LEVEL=info",
+        "ghcr.io/yourusername/lodgify-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+Or with a locally built image:
+
+```json
+{
+  "mcpServers": {
+    "lodgify-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env-file", "/absolute/path/to/.env",
+        "lodgify-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
 ## Tool Catalog
 
 ### Property Management
@@ -141,6 +216,31 @@ List properties that have been deleted.
 
 **Parameters:**
 - `params` (optional): Query parameters for filtering
+
+#### `lodgify.update_property_availability`
+Update availability settings for a property.
+
+**Parameters:**
+- `propertyId` (required): Property ID
+- `payload` (required): Availability update details
+  - `from`: Start date (YYYY-MM-DD)
+  - `to`: End date (YYYY-MM-DD)
+  - `available`: Availability status (boolean)
+  - `minStay`: Minimum stay requirement (optional)
+  - `maxStay`: Maximum stay limit (optional)
+
+**Example:**
+```javascript
+{
+  "propertyId": "prop-123",
+  "payload": {
+    "from": "2025-12-20",
+    "to": "2025-12-31",
+    "available": false,
+    "minStay": 3
+  }
+}
+```
 
 ### Booking Management
 
@@ -203,6 +303,81 @@ Update key codes for a booking (for smart locks).
 - `id` (required): Booking ID
 - `payload` (required): Key codes data
 
+#### `lodgify.create_booking`
+Create a new booking in the system.
+
+**Parameters:**
+- `payload` (required): Booking details
+  - `propertyId`: Property ID
+  - `from`: Start date (YYYY-MM-DD)
+  - `to`: End date (YYYY-MM-DD)
+  - `guestBreakdown`: Guest breakdown object
+    - `adults`: Number of adults (required)
+    - `children`: Number of children (optional)
+    - `infants`: Number of infants (optional)
+  - `roomTypes`: Array of room type objects
+    - `id`: Room type ID
+    - `quantity`: Number of rooms (optional)
+
+**Example:**
+```javascript
+{
+  "payload": {
+    "propertyId": "prop-123",
+    "from": "2025-12-01",
+    "to": "2025-12-07",
+    "guestBreakdown": {
+      "adults": 2,
+      "children": 1
+    },
+    "roomTypes": [
+      {
+        "id": "room-456",
+        "quantity": 1
+      }
+    ]
+  }
+}
+```
+
+#### `lodgify.update_booking`
+Update an existing booking.
+
+**Parameters:**
+- `id` (required): Booking ID
+- `payload` (required): Updated booking details
+  - `status`: Booking status (optional)
+  - `from`: New start date (optional)
+  - `to`: New end date (optional)
+  - `guestBreakdown`: Updated guest breakdown (optional)
+
+**Example:**
+```javascript
+{
+  "id": "book-789",
+  "payload": {
+    "status": "confirmed",
+    "guestBreakdown": {
+      "adults": 3,
+      "children": 0
+    }
+  }
+}
+```
+
+#### `lodgify.delete_booking`
+Delete or cancel a booking.
+
+**Parameters:**
+- `id` (required): Booking ID
+
+**Example:**
+```javascript
+{
+  "id": "book-789"
+}
+```
+
 ### Availability & Rates
 
 #### `lodgify.availability_property`
@@ -238,6 +413,54 @@ Get rate configuration settings.
 - `params` (required): Query parameters
   - `propertyId`: Property ID
 
+#### `lodgify.create_rate`
+Create or update rates for a property.
+
+**Parameters:**
+- `payload` (required): Rate details
+  - `propertyId`: Property ID
+  - `roomTypeId`: Room type ID
+  - `from`: Start date (YYYY-MM-DD)
+  - `to`: End date (YYYY-MM-DD)
+  - `rate`: Rate amount (positive number)
+  - `currency`: Currency code (optional, 3 characters)
+
+**Example:**
+```javascript
+{
+  "payload": {
+    "propertyId": "prop-123",
+    "roomTypeId": "room-456",
+    "from": "2025-12-01",
+    "to": "2025-12-31",
+    "rate": 150.00,
+    "currency": "USD"
+  }
+}
+```
+
+#### `lodgify.update_rate`
+Update a specific rate.
+
+**Parameters:**
+- `id` (required): Rate ID
+- `payload` (required): Updated rate details
+  - `rate`: New rate amount (optional)
+  - `currency`: Currency code (optional)
+  - `from`: New start date (optional)
+  - `to`: New end date (optional)
+
+**Example:**
+```javascript
+{
+  "id": "rate-789",
+  "payload": {
+    "rate": 175.00,
+    "currency": "EUR"
+  }
+}
+```
+
 ### Quotes & Messaging
 
 #### `lodgify.get_quote`
@@ -268,6 +491,57 @@ Retrieve a messaging thread.
 
 **Parameters:**
 - `threadGuid` (required): Thread GUID
+
+### Webhook Management
+
+#### `lodgify.subscribe_webhook`
+Subscribe to a webhook event to receive notifications.
+
+**Parameters:**
+- `payload` (required): Webhook subscription details
+  - `event`: Event name to subscribe to
+  - `targetUrl`: URL where webhook notifications will be sent
+
+**Example:**
+```javascript
+{
+  "payload": {
+    "event": "booking.created",
+    "targetUrl": "https://your-app.com/webhooks/lodgify"
+  }
+}
+```
+
+#### `lodgify.list_webhooks`
+List all active webhook subscriptions.
+
+**Parameters:**
+- `params` (optional): Query parameters for filtering
+  - `page`: Page number
+  - `limit`: Results per page
+
+**Example:**
+```javascript
+{
+  "params": {
+    "page": 1,
+    "limit": 10
+  }
+}
+```
+
+#### `lodgify.delete_webhook`
+Unsubscribe from a webhook event.
+
+**Parameters:**
+- `id` (required): Webhook ID
+
+**Example:**
+```javascript
+{
+  "id": "webhook-123"
+}
+```
 
 ### Health Check
 
@@ -336,6 +610,96 @@ The server implements comprehensive error handling:
 - `500`: Internal Server Error
 
 ## Development
+
+### Docker Development
+
+#### Building the Image
+
+```bash
+# Build for local development
+docker build -t lodgify-mcp:latest .
+
+# Build with specific port
+docker build --build-arg PORT=8080 -t lodgify-mcp:latest .
+
+# Multi-platform build (for M1 Macs and Linux)
+docker buildx build --platform linux/amd64,linux/arm64 -t lodgify-mcp:latest .
+```
+
+#### Running Containers
+
+```bash
+# Run with environment file
+docker run -p 3000:3000 --env-file .env lodgify-mcp:latest
+
+# Run with individual environment variables
+docker run -p 3000:3000 \
+  -e LODGIFY_API_KEY="your_api_key" \
+  -e LOG_LEVEL=debug \
+  -e DEBUG_HTTP=1 \
+  lodgify-mcp:latest
+
+# Run in detached mode with auto-restart
+docker run -d \
+  --name lodgify-mcp \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  --env-file .env \
+  lodgify-mcp:latest
+
+# Check container health
+docker inspect --format='{{.State.Health.Status}}' lodgify-mcp
+
+# View container logs
+docker logs -f lodgify-mcp
+```
+
+#### Docker Compose Commands
+
+```bash
+# Start development environment
+docker-compose --profile dev up
+
+# Start production environment
+docker-compose --profile production up -d
+
+# Rebuild and start
+docker-compose --profile dev up --build
+
+# Stop all services
+docker-compose down
+
+# Remove volumes and networks
+docker-compose down -v
+
+# View service logs
+docker-compose logs -f lodgify-mcp-dev
+
+# Execute commands in running container
+docker-compose exec lodgify-mcp-dev sh
+
+# Check service health
+docker-compose ps
+```
+
+#### Debugging Docker Issues
+
+```bash
+# Check environment variables
+docker run --rm lodgify-mcp:latest env
+
+# Run with shell for debugging
+docker run -it --entrypoint sh lodgify-mcp:latest
+
+# Validate environment before starting
+docker run --rm --env-file .env lodgify-mcp:latest /app/scripts/env-check.sh
+
+# Check container resource usage
+docker stats lodgify-mcp
+
+# Inspect image layers
+docker history lodgify-mcp:latest
+```
 
 ### Running Tests
 
