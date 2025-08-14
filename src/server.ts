@@ -132,7 +132,7 @@ const UpdateRatePayloadSchema = z.object({
 
 // Property Management Schemas
 const ListPropertiesSchema = z.object({
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 const GetPropertySchema = z.object({
@@ -144,21 +144,21 @@ const ListPropertyRoomsSchema = z.object({
 })
 
 const ListDeletedPropertiesSchema = z.object({
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 // Rates Management Schemas
 const DailyRatesSchema = z.object({
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
 })
 
 const RateSettingsSchema = z.object({
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
 })
 
 // Booking Management Schemas
 const ListBookingsSchema = z.object({
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 const GetBookingSchema = z.object({
@@ -183,18 +183,18 @@ const UpdateKeyCodesSchema = z.object({
 const AvailabilityRoomSchema = z.object({
   propertyId: IdSchema,
   roomTypeId: IdSchema,
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 const AvailabilityPropertySchema = z.object({
   propertyId: IdSchema,
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 // Quote & Messaging Schemas
 const GetQuoteSchema = z.object({
   propertyId: IdSchema,
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
 })
 
 const GetThreadSchema = z.object({
@@ -225,7 +225,7 @@ const WebhookSubscribeSchema = z.object({
 })
 
 const ListWebhooksSchema = z.object({
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 const DeleteWebhookSchema = z.object({
@@ -249,7 +249,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     // Property Management Tools
     {
-      name: 'lodgify.list_properties',
+      name: 'lodgify_list_properties',
       description: 'List all properties with optional filtering and pagination (GET /v2/properties)',
       inputSchema: {
         type: 'object',
@@ -262,7 +262,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.get_property',
+      name: 'lodgify_get_property',
       description: 'Get a single property by ID (GET /v2/properties/{id})',
       inputSchema: {
         type: 'object',
@@ -276,7 +276,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.list_property_rooms',
+      name: 'lodgify_list_property_rooms',
       description: 'List all rooms for a specific property (GET /v2/properties/{propertyId}/rooms)',
       inputSchema: {
         type: 'object',
@@ -290,7 +290,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.list_deleted_properties',
+      name: 'lodgify_list_deleted_properties',
       description: 'List deleted properties (GET /v2/deletedProperties)',
       inputSchema: {
         type: 'object',
@@ -305,7 +305,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // Rates Management Tools
     {
-      name: 'lodgify.daily_rates',
+      name: 'lodgify_daily_rates',
       description: 'Get daily rates calendar (GET /v2/rates/calendar)',
       inputSchema: {
         type: 'object',
@@ -319,7 +319,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.rate_settings',
+      name: 'lodgify_rate_settings',
       description: 'Get rate settings (GET /v2/rates/settings)',
       inputSchema: {
         type: 'object',
@@ -335,7 +335,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // Booking Management Tools
     {
-      name: 'lodgify.list_bookings',
+      name: 'lodgify_list_bookings',
       description: 'List bookings with optional filtering (GET /v2/reservations/bookings)',
       inputSchema: {
         type: 'object',
@@ -348,7 +348,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.get_booking',
+      name: 'lodgify_get_booking',
       description: 'Get a single booking by ID (GET /v2/reservations/bookings/{id})',
       inputSchema: {
         type: 'object',
@@ -362,7 +362,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.get_booking_payment_link',
+      name: 'lodgify_get_booking_payment_link',
       description: 'Get payment link for a booking (GET /v2/reservations/bookings/{id}/quote/paymentLink)',
       inputSchema: {
         type: 'object',
@@ -376,7 +376,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.create_booking_payment_link',
+      name: 'lodgify_create_booking_payment_link',
       description: 'Create payment link for a booking (POST /v2/reservations/bookings/{id}/quote/paymentLink)',
       inputSchema: {
         type: 'object',
@@ -394,7 +394,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.update_key_codes',
+      name: 'lodgify_update_key_codes',
       description: 'Update key codes for a booking (PUT /v2/reservations/bookings/{id}/keyCodes)',
       inputSchema: {
         type: 'object',
@@ -414,7 +414,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // Availability Tools
     {
-      name: 'lodgify.availability_room',
+      name: 'lodgify_availability_room',
       description: 'Get availability for a specific room type (GET /v2/availability/{propertyId}/{roomTypeId})',
       inputSchema: {
         type: 'object',
@@ -436,7 +436,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.availability_property',
+      name: 'lodgify_availability_property',
       description: 'Get availability for a property (GET /v2/availability/{propertyId})',
       inputSchema: {
         type: 'object',
@@ -456,7 +456,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // Quote & Messaging Tools
     {
-      name: 'lodgify.get_quote',
+      name: 'lodgify_get_quote',
       description:
         'Get a quote for a property with complex parameters (GET /v2/quote/{propertyId}). Supports bracket notation like roomTypes[0].Id',
       inputSchema: {
@@ -476,7 +476,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.get_thread',
+      name: 'lodgify_get_thread',
       description: 'Get a messaging thread (GET /v2/messaging/{threadGuid})',
       inputSchema: {
         type: 'object',
@@ -492,7 +492,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // New Booking Management Tools
     {
-      name: 'lodgify.create_booking',
+      name: 'lodgify_create_booking',
       description: 'Create a new booking (POST /v2/bookings)',
       inputSchema: {
         type: 'object',
@@ -506,7 +506,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.update_booking',
+      name: 'lodgify_update_booking',
       description: 'Update an existing booking (PUT /v2/reservations/bookings/{id})',
       inputSchema: {
         type: 'object',
@@ -524,7 +524,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.delete_booking',
+      name: 'lodgify_delete_booking',
       description: 'Delete/cancel a booking (DELETE /v2/reservations/bookings/{id})',
       inputSchema: {
         type: 'object',
@@ -540,7 +540,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // Property Management Tools
     {
-      name: 'lodgify.update_property_availability',
+      name: 'lodgify_update_property_availability',
       description: 'Update availability for a property (PUT /v2/properties/{propertyId}/availability)',
       inputSchema: {
         type: 'object',
@@ -560,7 +560,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // Webhook Management Tools
     {
-      name: 'lodgify.subscribe_webhook',
+      name: 'lodgify_subscribe_webhook',
       description: 'Subscribe to a webhook event (POST /v2/webhooks/subscribe)',
       inputSchema: {
         type: 'object',
@@ -574,7 +574,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.list_webhooks',
+      name: 'lodgify_list_webhooks',
       description: 'List all webhooks (GET /v2/webhooks)',
       inputSchema: {
         type: 'object',
@@ -587,7 +587,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.delete_webhook',
+      name: 'lodgify_delete_webhook',
       description: 'Unsubscribe/delete a webhook (DELETE /v2/webhooks/{id})',
       inputSchema: {
         type: 'object',
@@ -603,7 +603,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
     // Rate Management Tools
     {
-      name: 'lodgify.create_rate',
+      name: 'lodgify_create_rate',
       description: 'Create/update rates (POST /v2/rates)',
       inputSchema: {
         type: 'object',
@@ -617,7 +617,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: 'lodgify.update_rate',
+      name: 'lodgify_update_rate',
       description: 'Update a specific rate (PUT /v2/rates/{id})',
       inputSchema: {
         type: 'object',
@@ -649,153 +649,153 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     switch (name) {
       // Property Management Tools
-      case 'lodgify.list_properties': {
+      case 'lodgify_list_properties': {
         const input = ListPropertiesSchema.parse(args)
         result = await client.listProperties(input.params)
         break
       }
 
-      case 'lodgify.get_property': {
+      case 'lodgify_get_property': {
         const input = GetPropertySchema.parse(args)
         result = await client.getProperty(input.id)
         break
       }
 
-      case 'lodgify.list_property_rooms': {
+      case 'lodgify_list_property_rooms': {
         const input = ListPropertyRoomsSchema.parse(args)
         result = await client.listPropertyRooms(input.propertyId)
         break
       }
 
-      case 'lodgify.list_deleted_properties': {
+      case 'lodgify_list_deleted_properties': {
         const input = ListDeletedPropertiesSchema.parse(args)
         result = await client.listDeletedProperties(input.params)
         break
       }
 
       // Rates Management Tools
-      case 'lodgify.daily_rates': {
+      case 'lodgify_daily_rates': {
         const input = DailyRatesSchema.parse(args)
         result = await client.getDailyRates(input.params)
         break
       }
 
-      case 'lodgify.rate_settings': {
+      case 'lodgify_rate_settings': {
         const input = RateSettingsSchema.parse(args)
         result = await client.getRateSettings(input.params)
         break
       }
 
       // Booking Management Tools
-      case 'lodgify.list_bookings': {
+      case 'lodgify_list_bookings': {
         const input = ListBookingsSchema.parse(args)
         result = await client.listBookings(input.params)
         break
       }
 
-      case 'lodgify.get_booking': {
+      case 'lodgify_get_booking': {
         const input = GetBookingSchema.parse(args)
         result = await client.getBooking(input.id)
         break
       }
 
-      case 'lodgify.get_booking_payment_link': {
+      case 'lodgify_get_booking_payment_link': {
         const input = GetBookingPaymentLinkSchema.parse(args)
         result = await client.getBookingPaymentLink(input.id)
         break
       }
 
-      case 'lodgify.create_booking_payment_link': {
+      case 'lodgify_create_booking_payment_link': {
         const input = CreateBookingPaymentLinkSchema.parse(args)
         result = await client.createBookingPaymentLink(input.id, input.payload)
         break
       }
 
-      case 'lodgify.update_key_codes': {
+      case 'lodgify_update_key_codes': {
         const input = UpdateKeyCodesSchema.parse(args)
         result = await client.updateKeyCodes(input.id, input.payload)
         break
       }
 
       // Availability Tools
-      case 'lodgify.availability_room': {
+      case 'lodgify_availability_room': {
         const input = AvailabilityRoomSchema.parse(args)
         result = await client.getAvailabilityRoom(input.propertyId, input.roomTypeId, input.params)
         break
       }
 
-      case 'lodgify.availability_property': {
+      case 'lodgify_availability_property': {
         const input = AvailabilityPropertySchema.parse(args)
         result = await client.getAvailabilityProperty(input.propertyId, input.params)
         break
       }
 
       // Quote & Messaging Tools
-      case 'lodgify.get_quote': {
+      case 'lodgify_get_quote': {
         const input = GetQuoteSchema.parse(args)
         result = await client.getQuote(input.propertyId, input.params)
         break
       }
 
-      case 'lodgify.get_thread': {
+      case 'lodgify_get_thread': {
         const input = GetThreadSchema.parse(args)
         result = await client.getThread(input.threadGuid)
         break
       }
 
       // New Booking Management Tools
-      case 'lodgify.create_booking': {
+      case 'lodgify_create_booking': {
         const input = CreateBookingSchema.parse(args)
         result = await client.createBooking(input.payload)
         break
       }
 
-      case 'lodgify.update_booking': {
+      case 'lodgify_update_booking': {
         const input = UpdateBookingSchema.parse(args)
         result = await client.updateBooking(input.id, input.payload)
         break
       }
 
-      case 'lodgify.delete_booking': {
+      case 'lodgify_delete_booking': {
         const input = DeleteBookingSchema.parse(args)
         result = await client.deleteBooking(input.id)
         break
       }
 
       // Property Management Tools
-      case 'lodgify.update_property_availability': {
+      case 'lodgify_update_property_availability': {
         const input = UpdatePropertyAvailabilitySchema.parse(args)
         result = await client.updatePropertyAvailability(input.propertyId, input.payload)
         break
       }
 
       // Webhook Management Tools
-      case 'lodgify.subscribe_webhook': {
+      case 'lodgify_subscribe_webhook': {
         const input = WebhookSubscribeSchema.parse(args)
         result = await client.subscribeWebhook(input.payload)
         break
       }
 
-      case 'lodgify.list_webhooks': {
+      case 'lodgify_list_webhooks': {
         const input = ListWebhooksSchema.parse(args)
         result = await client.listWebhooks(input.params)
         break
       }
 
-      case 'lodgify.delete_webhook': {
+      case 'lodgify_delete_webhook': {
         const input = DeleteWebhookSchema.parse(args)
         result = await client.deleteWebhook(input.id)
         break
       }
 
       // Rate Management Tools
-      case 'lodgify.create_rate': {
+      case 'lodgify_create_rate': {
         const input = CreateRateSchema.parse(args)
         result = await client.createRate(input.payload)
         break
       }
 
-      case 'lodgify.update_rate': {
+      case 'lodgify_update_rate': {
         const input = UpdateRateSchema.parse(args)
         result = await client.updateRate(input.id, input.payload)
         break
@@ -825,7 +825,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               {
                 error: true,
                 message: 'Validation error',
-                details: error.errors,
+                details: error.issues,
               },
               null,
               2,
@@ -868,7 +868,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
   resources: [
     {
       uri: 'lodgify://health',
-      name: 'Health Check',
+      name: 'health_check',
       description: 'Check the health status of the Lodgify MCP server',
       mimeType: 'application/json',
     },

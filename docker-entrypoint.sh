@@ -11,44 +11,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# PID of the main process
-MAIN_PID=""
 
 # Function to log messages
 log() {
     echo "${BLUE}[entrypoint]${NC} $1"
 }
 
-# Function to handle signals and forward to the main process
-handle_signal() {
-    SIGNAL=$1
-    log "${YELLOW}Received $SIGNAL signal, forwarding to MCP server...${NC}"
-    
-    if [ -n "$MAIN_PID" ] && kill -0 "$MAIN_PID" 2>/dev/null; then
-        kill -s "$SIGNAL" "$MAIN_PID"
-        
-        # Wait for graceful shutdown (max 30 seconds)
-        WAIT_TIME=0
-        while kill -0 "$MAIN_PID" 2>/dev/null && [ $WAIT_TIME -lt 30 ]; do
-            sleep 1
-            WAIT_TIME=$((WAIT_TIME + 1))
-        done
-        
-        if kill -0 "$MAIN_PID" 2>/dev/null; then
-            log "${RED}Process did not stop gracefully, forcing termination...${NC}"
-            kill -9 "$MAIN_PID"
-        else
-            log "${GREEN}MCP server stopped gracefully${NC}"
-        fi
-    fi
-    
-    exit 0
-}
-
-# Trap signals for graceful shutdown
-trap 'handle_signal TERM' TERM
-trap 'handle_signal INT' INT
-trap 'handle_signal QUIT' QUIT
+# Signal handling will be done by the MCP server process directly
 
 log "${GREEN}Starting Lodgify MCP Server entrypoint...${NC}"
 
@@ -104,43 +73,9 @@ log "  PORT: ${PORT:-3000}"
 log "  LOG_LEVEL: ${LOG_LEVEL:-info}"
 log "  DEBUG_HTTP: ${DEBUG_HTTP:-0}"
 
-# Retry logic for startup (useful for dependent services)
-MAX_RETRIES=3
-RETRY_COUNT=0
-START_SUCCESS=0
+# Start MCP server directly in foreground
+log "${GREEN}Starting MCP server...${NC}"
 
-while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ $START_SUCCESS -eq 0 ]; do
-    if [ $RETRY_COUNT -gt 0 ]; then
-        log "Retry attempt $RETRY_COUNT of $MAX_RETRIES..."
-        sleep 2
-    fi
-    
-    log "${GREEN}Starting MCP server...${NC}"
-    
-    # Execute the main command in background to capture PID
-    "$@" &
-    MAIN_PID=$!
-    
-    # Wait a moment to check if process started successfully
-    sleep 2
-    
-    if kill -0 "$MAIN_PID" 2>/dev/null; then
-        START_SUCCESS=1
-        log "${GREEN}MCP server started successfully (PID: $MAIN_PID)${NC}"
-    else
-        log "${RED}Failed to start MCP server${NC}"
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-    fi
-done
-
-if [ $START_SUCCESS -eq 0 ]; then
-    log "${RED}Failed to start MCP server after $MAX_RETRIES attempts${NC}"
-    exit 1
-fi
-
-# Wait for the main process to complete
-wait "$MAIN_PID"
-EXIT_CODE=$?
-
-log "MCP server exited with code $EXIT_CODE"
-exit $EXIT_CODE
+# Execute the main command directly (not in background)
+# This allows proper stdio handling for MCP protocol
+exec "$@"

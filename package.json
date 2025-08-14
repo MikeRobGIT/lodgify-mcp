@@ -51,14 +51,14 @@
     "bun": ">=1.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
-    "zod": "^3.24.1",
-    "dotenv": "^16.4.7"
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "zod": "^4.0.17",
+    "dotenv": "^17.2.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@types/bun": "latest",
-    "@types/node": "^20.17.10",
+    "@biomejs/biome": "^2.2.0",
+    "@types/bun": "^1.2.20",
+    "@types/node": "^24.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

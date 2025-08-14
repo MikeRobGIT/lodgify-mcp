@@ -5,7 +5,7 @@ import { z } from 'zod'
 describe('MCP Tool Validation Schemas', () => {
   describe('Property Management Schemas', () => {
     const ListPropertiesSchema = z.object({
-      params: z.record(z.unknown()).optional(),
+      params: z.record(z.string(), z.unknown()).optional(),
     })
 
     const GetPropertySchema = z.object({
@@ -40,12 +40,12 @@ describe('MCP Tool Validation Schemas', () => {
 
     const CreateBookingPaymentLinkSchema = z.object({
       id: z.string().min(1, 'Booking ID is required'),
-      payload: z.record(z.unknown()),
+      payload: z.record(z.string(), z.unknown()),
     })
 
     const UpdateKeyCodesSchema = z.object({
       id: z.string().min(1, 'Booking ID is required'),
-      payload: z.record(z.unknown()),
+      payload: z.record(z.string(), z.unknown()),
     })
 
     test('should validate get_booking input', () => {
@@ -76,12 +76,12 @@ describe('MCP Tool Validation Schemas', () => {
     const AvailabilityRoomSchema = z.object({
       propertyId: z.string().min(1, 'Property ID is required'),
       roomTypeId: z.string().min(1, 'Room Type ID is required'),
-      params: z.record(z.unknown()).optional(),
+      params: z.record(z.string(), z.unknown()).optional(),
     })
 
     const AvailabilityPropertySchema = z.object({
       propertyId: z.string().min(1, 'Property ID is required'),
-      params: z.record(z.unknown()).optional(),
+      params: z.record(z.string(), z.unknown()).optional(),
     })
 
     test('should validate availability_room input', () => {
@@ -107,7 +107,7 @@ describe('MCP Tool Validation Schemas', () => {
   describe('Quote & Messaging Schemas', () => {
     const GetQuoteSchema = z.object({
       propertyId: z.string().min(1, 'Property ID is required'),
-      params: z.record(z.unknown()),
+      params: z.record(z.string(), z.unknown()),
     })
 
     const GetThreadSchema = z.object({
@@ -139,11 +139,11 @@ describe('MCP Tool Validation Schemas', () => {
 
   describe('Rates Management Schemas', () => {
     const DailyRatesSchema = z.object({
-      params: z.record(z.unknown()),
+      params: z.record(z.string(), z.unknown()),
     })
 
     const RateSettingsSchema = z.object({
-      params: z.record(z.unknown()),
+      params: z.record(z.string(), z.unknown()),
     })
 
     test('should validate daily_rates input', () => {
@@ -278,7 +278,7 @@ describe('MCP Tool Validation Schemas', () => {
     })
 
     const ListWebhooksSchema = z.object({
-      params: z.record(z.unknown()).optional(),
+      params: z.record(z.string(), z.unknown()).optional(),
     })
 
     const DeleteWebhookSchema = z.object({
@@ -394,7 +394,7 @@ describe('Tool Response Format', () => {
             {
               error: true,
               message: 'Validation error',
-              details: zodError.errors,
+              details: zodError.issues,
             },
             null,
             2,

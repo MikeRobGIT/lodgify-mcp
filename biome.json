@@ -1,8 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
+  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
   "linter": {
     "enabled": true,
     "rules": {
@@ -46,7 +43,10 @@
       "bracketSameLine": false
     }
   },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "files": {
-    "ignore": ["node_modules", "dist", ".env", "*.log", "coverage", ".git"]
+    "ignoreUnknown": false,
+    "includes": ["src/**/*", "tests/**/*", "*.ts", "*.js", "*.json"],
+    "experimentalScannerIgnores": ["node_modules", "dist", ".env", "*.log", "coverage", ".git"]
   }
 }
