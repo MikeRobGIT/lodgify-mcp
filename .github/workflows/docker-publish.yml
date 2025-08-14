@@ -133,16 +133,25 @@ jobs:
             VCS_REF=${{ github.sha }}
             VERSION=${{ steps.meta.outputs.version }}
       
+      - name: Normalize image name for SBOM
+        if: github.event_name != 'pull_request'
+        id: normalize
+        run: |
+          # Convert repository name to lowercase for registry compatibility
+          NORMALIZED_IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" | tr '[:upper:]' '[:lower:]')
+          echo "image=$NORMALIZED_IMAGE" >> $GITHUB_OUTPUT
+      
       - name: Generate SBOM
         if: github.event_name != 'pull_request'
+        continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          image: ${{ steps.normalize.outputs.image }}
           format: spdx-json
           output-file: sbom.spdx.json
       
       - name: Upload SBOM
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && hashFiles('sbom.spdx.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: sbom
