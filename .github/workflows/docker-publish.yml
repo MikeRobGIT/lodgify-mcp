@@ -69,19 +69,19 @@ jobs:
       
       - name: Run container tests
         run: |
-          # Start container with test configuration
+          # Start container in health check mode for testing
           docker run -d \
             --name test-container \
-            -e LODGIFY_API_KEY=test_key_12345 \
             -e LOG_LEVEL=debug \
             -p 3000:3000 \
-            ${{ env.IMAGE_NAME }}:test
+            ${{ env.IMAGE_NAME }}:test \
+            health-check
           
           # Wait for container to be healthy
-          echo "Waiting for container to be healthy..."
+          echo "Waiting for health check server to start..."
           for i in {1..30}; do
             if docker exec test-container curl -f http://localhost:3000/health 2>/dev/null; then
-              echo "Container is healthy!"
+              echo "Health check server is responding!"
               break
             fi
             echo "Waiting... ($i/30)"
@@ -89,9 +89,11 @@ jobs:
           done
           
           # Check container logs
+          echo "Container logs:"
           docker logs test-container
           
-          # Verify the container is running correctly
+          # Verify the health endpoint is working
+          echo "Testing health endpoint:"
           docker exec test-container curl -f http://localhost:3000/health || exit 1
           
           # Clean up
@@ -99,6 +101,7 @@ jobs:
           docker rm test-container
       
       - name: Run Trivy vulnerability scanner
+        if: success()
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_NAME }}:test

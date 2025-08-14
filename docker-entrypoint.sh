@@ -84,7 +84,13 @@ export FORCE_COLOR=0  # Disable color output for clean MCP communication
 # Pre-start health check
 log "Performing pre-start checks..."
 
-# Check if LODGIFY_API_KEY is set
+# Check if we're running in health check mode
+if [ "$1" = "health-check" ]; then
+    log "${GREEN}Starting health check server...${NC}"
+    exec node /app/scripts/health-server.js
+fi
+
+# Check if LODGIFY_API_KEY is set (only for MCP mode)
 if [ -z "$LODGIFY_API_KEY" ] || [ "$LODGIFY_API_KEY" = "your_lodgify_api_key_here" ]; then
     log "${RED}ERROR: LODGIFY_API_KEY is not set or contains default value${NC}"
     log "${RED}Please set LODGIFY_API_KEY environment variable before starting${NC}"

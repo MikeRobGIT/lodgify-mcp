@@ -44,7 +44,8 @@ COPY --chown=mcpuser:mcpuser package.json ./
 # Copy scripts
 COPY --chown=mcpuser:mcpuser docker-entrypoint.sh /app/
 COPY --chown=mcpuser:mcpuser scripts/env-check.sh /app/scripts/
-RUN chmod +x /app/docker-entrypoint.sh /app/scripts/env-check.sh
+COPY --chown=mcpuser:mcpuser scripts/health-server.js /app/scripts/
+RUN chmod +x /app/docker-entrypoint.sh /app/scripts/env-check.sh /app/scripts/health-server.js
 
 # Create directory for environment files (optional mounting point)
 RUN mkdir -p /app/config && chown -R mcpuser:mcpuser /app/config
