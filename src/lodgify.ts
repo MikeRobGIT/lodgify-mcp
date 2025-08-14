@@ -44,6 +44,9 @@ export class LodgifyClient {
   private readonly rateLimiter: RateLimiter
   private requestCount = 0
   private windowStart = Date.now()
+  
+  // Allow injection of sleep function for testing
+  public _sleepFn?: (ms: number) => Promise<void>
 
   constructor(private readonly apiKey: string) {
     if (!apiKey) {
@@ -79,6 +82,10 @@ export class LodgifyClient {
    * Sleep utility for retry delays
    */
   private sleep(ms: number): Promise<void> {
+    // Use injected sleep function for testing, otherwise use real setTimeout
+    if (this._sleepFn) {
+      return this._sleepFn(ms)
+    }
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 

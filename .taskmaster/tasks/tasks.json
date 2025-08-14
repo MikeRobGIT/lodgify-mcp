@@ -598,7 +598,7 @@
         "description": "Migrate all test files and configurations from Vitest to Bun's built-in test runner, update dependencies, scripts, and documentation, and ensure all tests pass with Bun.",
         "details": "1. Remove all Vitest dependencies from package.json and uninstall them from the project.\n2. Update test scripts in package.json to use 'bun test' instead of 'vitest'.\n3. Refactor all test files to replace Vitest-specific APIs (e.g., vi.mock, vi.fn, vi.useFakeTimers) with Bun test equivalents. For mocking, use Bun's built-in mocking utilities or compatible libraries. Update imports to use Bun's test API (e.g., import { test, expect } from 'bun:test').\n4. Update or remove Vitest-specific configuration files (e.g., vitest.config.ts) and ensure Bun test configuration is set up as needed (typically minimal, but add TypeScript global directive if required).\n5. Verify that all test files are discovered and executed by Bun (matching *.test.{js,ts}, etc.).\n6. Ensure all tests pass with Bun test runner, addressing any compatibility issues or API differences.\n7. Update documentation (README, contributing guide) to reflect the use of Bun test runner, including instructions for running and writing tests.\n8. If using testing libraries (e.g., @testing-library/react), follow Bun's migration guides for compatibility adjustments.",
         "testStrategy": "1. Confirm Vitest is fully removed from package.json and node_modules.\n2. Run 'bun test' and verify all test files are executed and pass.\n3. Check for any test failures due to API differences and refactor as needed.\n4. Validate that mocking, timers, and other test utilities work as expected with Bun.\n5. Review updated documentation to ensure instructions reference Bun test runner and are accurate.\n6. Confirm that CI/CD pipelines (if present) use Bun for testing.\n7. Ensure code coverage and test reliability are maintained or improved after migration.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           9,
           10
@@ -609,7 +609,7 @@
     ],
     "metadata": {
       "created": "2025-08-13T22:02:17.495Z",
-      "updated": "2025-08-14T01:58:42.606Z",
+      "updated": "2025-08-14T03:06:11.336Z",
       "description": "Tasks for master context"
     }
   }

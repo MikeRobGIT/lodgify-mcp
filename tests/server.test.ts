@@ -7,66 +7,39 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { createMockResponse, createMockFetch, fixtures } from './utils.js'
-
-// Create a mock LodgifyClient
-const mockLodgifyClient = {
-  listProperties: mock(() => Promise.resolve()),
-  getProperty: mock(() => Promise.resolve()),
-  listPropertyRooms: mock(() => Promise.resolve()),
-  listDeletedProperties: mock(() => Promise.resolve()),
-  getDailyRates: mock(() => Promise.resolve()),
-  getRateSettings: mock(() => Promise.resolve()),
-  listBookings: mock(() => Promise.resolve()),
-  getBooking: mock(() => Promise.resolve()),
-  getBookingPaymentLink: mock(() => Promise.resolve()),
-  createBookingPaymentLink: mock(() => Promise.resolve()),
-  updateKeyCodes: mock(() => Promise.resolve()),
-  getAvailabilityRoom: mock(() => Promise.resolve()),
-  getAvailabilityProperty: mock(() => Promise.resolve()),
-  getQuote: mock(() => Promise.resolve()),
-  getThread: mock(() => Promise.resolve()),
-}
-
-// Mock the module
-require.cache[require.resolve('../src/lodgify.js')] = {
-  exports: {
-    LodgifyClient: mock(() => mockLodgifyClient)
-  }
-}
+import { createTestServer } from './test-server.js'
 
 describe.skip('MCP Server Integration Tests', () => {
   let server: Server
   let mockClient: any
 
   beforeEach(async () => {
-    // Set up environment
-    process.env.LODGIFY_API_KEY = 'test-api-key'
+    // Create a mock LodgifyClient
+    mockClient = {
+      listProperties: mock(() => Promise.resolve()),
+      getProperty: mock(() => Promise.resolve()),
+      listPropertyRooms: mock(() => Promise.resolve()),
+      listDeletedProperties: mock(() => Promise.resolve()),
+      getDailyRates: mock(() => Promise.resolve()),
+      getRateSettings: mock(() => Promise.resolve()),
+      listBookings: mock(() => Promise.resolve()),
+      getBooking: mock(() => Promise.resolve()),
+      getBookingPaymentLink: mock(() => Promise.resolve()),
+      createBookingPaymentLink: mock(() => Promise.resolve()),
+      updateKeyCodes: mock(() => Promise.resolve()),
+      getAvailabilityRoom: mock(() => Promise.resolve()),
+      getAvailabilityProperty: mock(() => Promise.resolve()),
+      getQuote: mock(() => Promise.resolve()),
+      getThread: mock(() => Promise.resolve()),
+    }
     
-    // Import fresh instances
-    const { LodgifyClient } = await import('../src/lodgify.js')
-    mockClient = new LodgifyClient('test-api-key')
-    
-    // Create server instance
-    server = new Server(
-      {
-        name: 'lodgify-mcp',
-        version: '0.1.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-          resources: {},
-        },
-      },
-    )
-    
-    // Import and run server setup
-    const serverModule = await import('../src/server.js')
+    // Create test server with mock client
+    server = createTestServer(mockClient)
   })
 
   afterEach(() => {
     // Clear all mocks
-    Object.values(mockLodgifyClient).forEach(mockFn => {
+    Object.values(mockClient).forEach(mockFn => {
       if (typeof mockFn === 'function' && 'mockClear' in mockFn) {
         (mockFn as any).mockClear()
       }

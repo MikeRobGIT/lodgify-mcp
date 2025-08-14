@@ -25,9 +25,16 @@ describe('LodgifyClient', () => {
     })
   })
 
-  describe.skip('429 retry handling', () => {
+  describe('429 retry handling', () => {
     test('should retry on 429 with exponential backoff', async () => {
       let callCount = 0
+      const sleepCalls: number[] = []
+      
+      // Inject a mock sleep function that tracks delays
+      client._sleepFn = mock(async (ms: number) => {
+        sleepCalls.push(ms)
+      })
+      
       const mockFetch = mock(async () => {
         callCount++
         if (callCount === 1) {
@@ -40,11 +47,18 @@ describe('LodgifyClient', () => {
       const result = await client.listProperties()
       
       expect(callCount).toBe(2)
+      expect(sleepCalls).toEqual([1000]) // 2^0 * 1000 = 1000ms for first retry
       expect(result).toEqual(fixtures.property)
     })
 
     test('should respect Retry-After header', async () => {
       let callCount = 0
+      const sleepCalls: number[] = []
+      
+      client._sleepFn = mock(async (ms: number) => {
+        sleepCalls.push(ms)
+      })
+      
       const mockFetch = mock(async () => {
         callCount++
         if (callCount === 1) {
@@ -57,11 +71,18 @@ describe('LodgifyClient', () => {
       const result = await client.listProperties()
       
       expect(callCount).toBe(2)
+      expect(sleepCalls).toEqual([3000]) // Retry-After header says 3 seconds
       expect(result).toEqual(fixtures.property)
     })
 
     test('should use exponential backoff when no Retry-After header', async () => {
       let callCount = 0
+      const sleepCalls: number[] = []
+      
+      client._sleepFn = mock(async (ms: number) => {
+        sleepCalls.push(ms)
+      })
+      
       const mockFetch = mock(async () => {
         callCount++
         if (callCount <= 3) {
@@ -74,11 +95,19 @@ describe('LodgifyClient', () => {
       const result = await client.listProperties()
       
       expect(callCount).toBe(4)
+      // Exponential backoff: 2^0=1s, 2^1=2s, 2^2=4s
+      expect(sleepCalls).toEqual([1000, 2000, 4000])
       expect(result).toEqual(fixtures.property)
     })
 
     test('should fail after max retries', async () => {
       let callCount = 0
+      const sleepCalls: number[] = []
+      
+      client._sleepFn = mock(async (ms: number) => {
+        sleepCalls.push(ms)
+      })
+      
       const mockFetch = mock(async () => {
         callCount++
         return createMockResponse(429, { error: 'Rate limited' })
@@ -92,10 +121,18 @@ describe('LodgifyClient', () => {
       })
       
       expect(callCount).toBe(5)
+      // Exponential backoff: 2^0=1s, 2^1=2s, 2^2=4s, 2^3=8s, 2^4=16s
+      expect(sleepCalls).toEqual([1000, 2000, 4000, 8000, 16000])
     })
 
     test('should cap retry delay at 30 seconds', async () => {
       let callCount = 0
+      const sleepCalls: number[] = []
+      
+      client._sleepFn = mock(async (ms: number) => {
+        sleepCalls.push(ms)
+      })
+      
       const mockFetch = mock(async () => {
         callCount++
         if (callCount === 1) {
@@ -108,6 +145,7 @@ describe('LodgifyClient', () => {
       const result = await client.listProperties()
       
       expect(callCount).toBe(2)
+      expect(sleepCalls).toEqual([30000]) // Should cap at 30s even though Retry-After says 60s
       expect(result).toEqual(fixtures.property)
     })
   })

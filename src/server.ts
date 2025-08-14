@@ -14,29 +14,35 @@ import { LodgifyClient } from './lodgify.js'
 // Load environment variables
 config()
 
-// Validate API key
-const apiKey = process.env.LODGIFY_API_KEY
-if (!apiKey) {
-  console.error('Error: LODGIFY_API_KEY environment variable is required')
-  process.exit(1)
+// Function to set up server with client injection for testing
+export function setupServer(injectedClient?: LodgifyClient) {
+  const server = new Server(
+    {
+      name: 'lodgify-mcp',
+      version: '0.1.0',
+    },
+    {
+      capabilities: {
+        tools: {},
+        resources: {},
+      },
+    },
+  )
+  
+  const client = injectedClient || (() => {
+    const apiKey = process.env.LODGIFY_API_KEY
+    if (!apiKey) {
+      throw new Error('LODGIFY_API_KEY environment variable is required')
+    }
+    return new LodgifyClient(apiKey)
+  })()
+
+  // Return both server and client for testing
+  return { server, client }
 }
 
-// Initialize Lodgify client
-const client = new LodgifyClient(apiKey)
-
-// Initialize MCP server
-const server = new Server(
-  {
-    name: 'lodgify-mcp',
-    version: '0.1.0',
-  },
-  {
-    capabilities: {
-      tools: {},
-      resources: {},
-    },
-  },
-)
+// Initialize server for production
+const { server, client } = setupServer()
 
 // ============================================================================
 // Zod Validation Schemas
@@ -616,8 +622,10 @@ async function main() {
   console.error('Lodgify MCP server started successfully')
 }
 
-// Run the server
-main().catch((error) => {
-  console.error('Fatal error:', error)
-  process.exit(1)
-})
+// Only run main if this is the entry point (not imported for testing)
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('/server.js')) {
+  main().catch((error) => {
+    console.error('Fatal error:', error)
+    process.exit(1)
+  })
+}
