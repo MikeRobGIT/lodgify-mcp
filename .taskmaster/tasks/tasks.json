@@ -682,7 +682,7 @@
               "12.4",
               "12.5"
             ],
-            "details": "Documentation tasks: 1) Add Docker section to README.md with quickstart commands, 2) Document building: 'docker build -t lodgify-mcp:latest .', 3) Document running: 'docker run -p 3000:3000 --env-file .env lodgify-mcp', 4) Explain docker-compose usage for dev vs prod profiles, 5) Create MCP client configuration examples for Docker connection, 6) Document port mapping and network considerations, 7) Add troubleshooting section for common Docker issues, 8) Include Docker commands cheatsheet and debugging tips",
+            "details": "Documentation tasks: 1) Add Docker section to README.md with quickstart commands, 2) Document building: 'docker build -t ghcr.io/mikerobgit/lodgify-mcp:latest .', 3) Document running: 'docker run -p 3000:3000 --env-file .env ghcr.io/mikerobgit/lodgify-mcp:latest', 4) Explain docker-compose usage for dev vs prod profiles, 5) Create MCP client configuration examples for Docker connection, 6) Document port mapping and network considerations, 7) Add troubleshooting section for common Docker issues, 8) Include Docker commands cheatsheet and debugging tips",
             "status": "done",
             "testStrategy": ""
           },

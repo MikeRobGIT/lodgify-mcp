@@ -28,7 +28,7 @@ The easiest way to run the Lodgify MCP Server is using Docker:
 # Quick start with Docker
 docker run -p 3000:3000 \
   -e LODGIFY_API_KEY="your_api_key_here" \
-  ghcr.io/yourusername/lodgify-mcp:latest
+  ghcr.io/mikerobgit/lodgify-mcp:latest
 ```
 
 ### Using Docker Compose
@@ -37,7 +37,7 @@ For development and production deployments:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/lodgify-mcp
+git clone https://github.com/mikerobgit/lodgify-mcp
 cd lodgify-mcp
 
 # Setup environment
@@ -135,7 +135,7 @@ To connect Claude Desktop to the Dockerized MCP server:
         "-i",
         "-e", "LODGIFY_API_KEY=your_api_key_here",
         "-e", "LOG_LEVEL=info",
-        "ghcr.io/yourusername/lodgify-mcp:latest"
+        "ghcr.io/mikerobgit/lodgify-mcp:latest"
       ]
     }
   }
@@ -789,7 +789,7 @@ MIT License - see LICENSE file for details
 ## Support
 
 For issues and questions:
-- GitHub Issues: [Report bugs or request features](https://github.com/yourusername/lodgify-mcp/issues)
+- GitHub Issues: [Report bugs or request features](https://github.com/mikerobgit/lodgify-mcp/issues)
 - Lodgify API Documentation: [https://docs.lodgify.com](https://docs.lodgify.com)
 - MCP Documentation: [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
 

@@ -3,7 +3,7 @@ version: '3.8'
 services:
   lodgify-mcp:
     # Use image for production, build for development (see profiles below)
-    image: lodgify-mcp:latest
+    image: ghcr.io/mikerobgit/lodgify-mcp:latest
     container_name: lodgify-mcp-server
     
     # Environment variables from .env file

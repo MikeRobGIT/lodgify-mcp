@@ -40,12 +40,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/lodgify-mcp.git"
+    "url": "git+https://github.com/mikerobgit/lodgify-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/lodgify-mcp/issues"
+    "url": "https://github.com/mikerobgit/lodgify-mcp/issues"
   },
-  "homepage": "https://github.com/yourusername/lodgify-mcp#readme",
+  "homepage": "https://github.com/mikerobgit/lodgify-mcp#readme",
   "engines": {
     "node": ">=18",
     "bun": ">=1.0"
