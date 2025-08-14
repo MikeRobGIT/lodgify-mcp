@@ -91,7 +91,7 @@ describe('MCP Tool Validation Schemas', () => {
         params: { from: '2025-11-20', to: '2025-11-25' },
       }
       expect(AvailabilityRoomSchema.parse(input)).toEqual(input)
-      expect(() => AvailabilityRoomSchema.parse({ propertyId: 'prop-123' })).toThrow('Room Type ID is required')
+      expect(() => AvailabilityRoomSchema.parse({ propertyId: 'prop-123' })).toThrow()
     })
 
     it('should validate availability_property input', () => {

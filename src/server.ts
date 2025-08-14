@@ -42,75 +42,92 @@ const server = new Server(
 // Zod Validation Schemas
 // ============================================================================
 
+// Common validation schemas
+const IdSchema = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/, 'ID contains invalid characters')
+const GuidSchema = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/, 'GUID contains invalid characters')
+
+// Specific payload schemas
+const PaymentLinkPayloadSchema = z.object({
+  amount: z.number().positive().optional(),
+  currency: z.string().length(3).optional(),
+  description: z.string().max(500).optional(),
+  // Add other expected fields as needed
+}).strict()
+
+const KeyCodesPayloadSchema = z.object({
+  keyCodes: z.array(z.string()).optional(),
+  // Add other expected fields as needed
+}).strict()
+
 // Property Management Schemas
 const ListPropertiesSchema = z.object({
-  params: z.record(z.unknown()).optional(),
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 const GetPropertySchema = z.object({
-  id: z.string().min(1, 'Property ID is required'),
+  id: IdSchema,
 })
 
 const ListPropertyRoomsSchema = z.object({
-  propertyId: z.string().min(1, 'Property ID is required'),
+  propertyId: IdSchema,
 })
 
 const ListDeletedPropertiesSchema = z.object({
-  params: z.record(z.unknown()).optional(),
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 // Rates Management Schemas
 const DailyRatesSchema = z.object({
-  params: z.record(z.unknown()),
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])),
 })
 
 const RateSettingsSchema = z.object({
-  params: z.record(z.unknown()),
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])),
 })
 
 // Booking Management Schemas
 const ListBookingsSchema = z.object({
-  params: z.record(z.unknown()).optional(),
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 const GetBookingSchema = z.object({
-  id: z.string().min(1, 'Booking ID is required'),
+  id: IdSchema,
 })
 
 const GetBookingPaymentLinkSchema = z.object({
-  id: z.string().min(1, 'Booking ID is required'),
+  id: IdSchema,
 })
 
 const CreateBookingPaymentLinkSchema = z.object({
-  id: z.string().min(1, 'Booking ID is required'),
-  payload: z.record(z.unknown()),
+  id: IdSchema,
+  payload: PaymentLinkPayloadSchema,
 })
 
 const UpdateKeyCodesSchema = z.object({
-  id: z.string().min(1, 'Booking ID is required'),
-  payload: z.record(z.unknown()),
+  id: IdSchema,
+  payload: KeyCodesPayloadSchema,
 })
 
 // Availability Schemas
 const AvailabilityRoomSchema = z.object({
-  propertyId: z.string().min(1, 'Property ID is required'),
-  roomTypeId: z.string().min(1, 'Room Type ID is required'),
-  params: z.record(z.unknown()).optional(),
+  propertyId: IdSchema,
+  roomTypeId: IdSchema,
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 const AvailabilityPropertySchema = z.object({
-  propertyId: z.string().min(1, 'Property ID is required'),
-  params: z.record(z.unknown()).optional(),
+  propertyId: IdSchema,
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
 })
 
 // Quote & Messaging Schemas
 const GetQuoteSchema = z.object({
-  propertyId: z.string().min(1, 'Property ID is required'),
-  params: z.record(z.unknown()),
+  propertyId: IdSchema,
+  params: z.record(z.union([z.string(), z.number(), z.boolean()])),
 })
 
 const GetThreadSchema = z.object({
-  threadGuid: z.string().min(1, 'Thread GUID is required'),
+  threadGuid: GuidSchema,
 })
 
 // ============================================================================
@@ -549,11 +566,10 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
   if (uri === 'lodgify://health') {
     const health = {
-      ok: true,
-      baseUrl: 'https://api.lodgify.com',
+      status: 'healthy',
+      service: 'lodgify-mcp',
       version: '0.1.0',
       timestamp: new Date().toISOString(),
-      apiKeyConfigured: !!apiKey,
     }
 
     return {

@@ -17,10 +17,9 @@
     "dev": "tsx src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "vitest",
-    "test:watch": "vitest --watch",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit"
@@ -58,11 +57,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
     "@types/node": "^20.17.10",
-    "@vitest/ui": "^3.2.4",
-    "happy-dom": "^18.0.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^3.2.4"
+    "typescript": "^5.7.2"
   }
 }
