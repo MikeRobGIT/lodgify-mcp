@@ -1,16 +1,44 @@
 # Lodgify MCP Server
 
-A Model Context Protocol (MCP) server that exposes Lodgify Public API v2 endpoints as tools for AI assistants like Claude.
+A Model Context Protocol (MCP) server that exposes Lodgify Public API v2 endpoints as tools for AI assistants like Claude. Built using the high-level McpServer SDK with enhanced metadata, capabilities declaration, and robust error handling.
 
 ## Features
 
-- 🔧 **25+ Lodgify API endpoints** exposed as MCP tools
+- 🔧 **28+ Lodgify API endpoints** exposed as MCP tools with enhanced metadata
+- 🚀 **High-level McpServer SDK** with automatic schema validation and JSON-RPC compliance
+- 🎯 **Enhanced tool metadata** with clear titles, descriptions, and input schema annotations
+- 📡 **Explicit capability declaration** for MCP handshake and discovery
 - 🔄 **Automatic retry logic** with exponential backoff for rate limiting (429 responses)
 - 📝 **Complex parameter support** including bracket notation for nested objects
-- ✅ **Type-safe validation** using Zod schemas
-- 🛡️ **Comprehensive error handling** with structured error responses
+- ✅ **Type-safe validation** using Zod schemas with automatic input validation
+- 🛡️ **Robust JSON-RPC error handling** with structured error codes and messages
+- 🔕 **Notification debouncing** to reduce client noise from rapid events
 - 🏥 **Health check resource** for connectivity verification
-- 📊 **Detailed logging** with configurable log levels
+- 📂 **File-based logging** that doesn't interfere with STDIO transport
+- 🔒 **Security-focused** with automatic credential sanitization in logs
+
+## Architecture
+
+This server is built using the **high-level McpServer SDK** which provides:
+
+### ✨ Enhanced MCP Features
+- **Automatic Schema Validation**: Input parameters are validated against Zod schemas before reaching tool handlers
+- **JSON-RPC Compliance**: All errors are properly formatted with standard JSON-RPC error codes
+- **Enhanced Metadata**: Tools include comprehensive metadata (titles, descriptions, input annotations) for better LLM integration
+- **Capability Declaration**: Server explicitly advertises supported features during MCP handshake
+- **Notification Management**: Built-in debouncing reduces noise from rapid notification events
+
+### 🔧 Tool Enhancement Features
+- **Helper Tools**: Smart availability checkers that analyze bookings for more accurate results
+- **Input Validation**: Comprehensive parameter validation with descriptive error messages
+- **Error Context**: Structured error responses preserve full context for debugging
+- **Safety Annotations**: Destructive operations are clearly marked with appropriate warnings
+
+### 📂 Logging Architecture
+- **File-Based Logging**: All logs written to `logs/lodgify-mcp-YYYY-MM-DD.log` to prevent STDIO interference
+- **Security-First**: API keys and sensitive headers automatically redacted from all log outputs
+- **Structured Format**: JSON-formatted logs with timestamps, levels, and contextual data
+- **Debug Support**: Optional HTTP request/response debugging with `DEBUG_HTTP=1`
 
 ## Prerequisites
 
@@ -699,34 +727,77 @@ The server supports Lodgify's bracket notation for complex nested parameters:
 
 ## Error Handling
 
-The server implements comprehensive error handling:
+The server implements **JSON-RPC compliant error handling** with the high-level McpServer SDK:
 
-### Rate Limiting (429)
-- Automatic retry with exponential backoff
-- Respects `Retry-After` header if present
-- Maximum 5 retry attempts
-- Maximum delay of 30 seconds
-
-### Error Response Format
+### JSON-RPC Error Structure
+All errors follow the standard JSON-RPC 2.0 error format:
 ```json
 {
-  "error": true,
-  "message": "Lodgify 404: Not Found",
-  "status": 404,
-  "path": "/v2/properties/invalid-id",
-  "detail": {
-    "code": "PROPERTY_NOT_FOUND"
+  "code": -32602,
+  "message": "Invalid parameters: Missing required field 'id'",
+  "data": {
+    "originalError": "ValidationError",
+    "details": "Property ID is required for this operation"
   }
 }
 ```
 
-### Common Error Codes
-- `400`: Bad Request - Invalid parameters
-- `401`: Unauthorized - Check your API key
-- `403`: Forbidden - Insufficient permissions
-- `404`: Not Found - Resource doesn't exist
-- `429`: Too Many Requests - Rate limited (auto-retry)
-- `500`: Internal Server Error
+### Error Code Mapping
+- **-32700**: Parse Error (malformed JSON)
+- **-32600**: Invalid Request (missing required fields)
+- **-32601**: Method Not Found (unknown tool)
+- **-32602**: Invalid Params (validation failures, missing required parameters)
+- **-32603**: Internal Error (API failures, server errors, network issues)
+
+### Lodgify API Error Handling
+The server automatically maps Lodgify API errors to appropriate JSON-RPC codes:
+
+#### Rate Limiting (429)
+- **Behavior**: Automatic retry with exponential backoff
+- **Respects**: `Retry-After` header if present
+- **Limits**: Maximum 5 retry attempts, 30-second max delay
+- **Error Code**: `-32603` (Internal Error) if max retries exceeded
+
+#### Common Lodgify API Responses
+- **400 Bad Request** → `-32602` Invalid Params
+- **401 Unauthorized** → `-32603` Internal Error (check API key)
+- **403 Forbidden** → `-32603` Internal Error (insufficient permissions)
+- **404 Not Found** → `-32603` Internal Error (resource doesn't exist)
+- **500 Internal Server Error** → `-32603` Internal Error
+
+### Enhanced Error Context
+Errors include full context for debugging:
+```json
+{
+  "code": -32603,
+  "message": "API Error: Lodgify 404: Property not found",
+  "data": {
+    "status": 404,
+    "path": "/v2/properties/invalid-id",
+    "method": "GET",
+    "lodgifyError": {
+      "code": "PROPERTY_NOT_FOUND",
+      "message": "The specified property does not exist"
+    }
+  }
+}
+```
+
+### Validation Error Examples
+Input validation provides clear, actionable error messages:
+```json
+{
+  "code": -32602,
+  "message": "Invalid parameters",
+  "data": {
+    "validationErrors": [
+      "Property ID must be a non-empty string",
+      "Check-in date must be in YYYY-MM-DD format",
+      "Check-out date must be after check-in date"
+    ]
+  }
+}
+```
 
 ## Development
 
@@ -873,29 +944,76 @@ npm run dev
 
 ## Troubleshooting
 
+### Logging and Debugging
+
+#### Log File Location
+- **File**: `logs/lodgify-mcp-YYYY-MM-DD.log` (created automatically)
+- **Format**: Structured JSON with timestamps, levels, and context
+- **Security**: API keys and sensitive data automatically redacted
+
+#### Log Levels
+Set `LOG_LEVEL` environment variable:
+- `error`: Only critical errors
+- `warn`: Warnings and errors
+- `info`: General operational messages (default)
+- `debug`: Detailed debugging information
+
+#### HTTP Debugging
+Enable detailed request/response logging:
+```bash
+export DEBUG_HTTP=1
+```
+This logs full HTTP requests and responses (with sensitive data redacted).
+
+#### Example Log Analysis
+```bash
+# View recent errors
+tail -f logs/lodgify-mcp-$(date +%Y-%m-%d).log | grep '"level":"error"'
+
+# Monitor API calls
+tail -f logs/lodgify-mcp-$(date +%Y-%m-%d).log | grep '"http"'
+
+# Check server startup
+head -20 logs/lodgify-mcp-$(date +%Y-%m-%d).log
+```
+
 ### Common Issues
 
 #### "LODGIFY_API_KEY environment variable is required"
-- Ensure your `.env` file exists and contains a valid API key
-- Check that the API key is not wrapped in extra quotes
+- **Check**: Ensure your `.env` file exists and contains a valid API key
+- **Verify**: API key is not wrapped in extra quotes
+- **Debug**: Check log file for specific validation errors
+
+#### JSON-RPC Error Responses
+All errors now follow JSON-RPC 2.0 format. Check the `code` field:
+- **-32602**: Invalid parameters (check your input data)
+- **-32603**: Internal/API error (check API key, connectivity, Lodgify service status)
 
 #### 401 Unauthorized Errors
-- Verify your API key is correct and active
-- Check API key permissions in your Lodgify account
+- **Verify**: API key is correct and active in your Lodgify account
+- **Check**: API key permissions in your Lodgify account settings
+- **Debug**: Look for "401" errors in log files with full context
 
 #### 429 Rate Limiting
-- The server automatically retries with exponential backoff
-- Consider reducing request frequency if consistently hitting limits
+- **Automatic**: Server automatically retries with exponential backoff
+- **Monitor**: Check logs for "Max retries exceeded" messages
+- **Action**: Consider reducing request frequency if consistently hitting limits
 
 #### Connection Errors
-- Verify internet connectivity
-- Check if Lodgify API is accessible: `https://api.lodgify.com`
-- Review firewall/proxy settings
+- **Verify**: Internet connectivity to `https://api.lodgify.com`
+- **Check**: Firewall/proxy settings
+- **Debug**: Look for "Request failed" messages in logs with network details
 
 #### MCP Client Not Finding Tools
-- Ensure the server is running: Check process logs
-- Verify MCP configuration path is absolute
-- Restart your MCP client after configuration changes
+- **Verify**: Server is running (check for "started successfully" in logs)
+- **Check**: MCP configuration path is absolute
+- **Action**: Restart your MCP client after configuration changes
+- **Debug**: Look for startup errors or tool registration failures in logs
+
+#### STDIO Transport Issues
+- **File Logging**: All output goes to log files, not console, preventing STDIO interference
+- **No Console Output**: This is expected - all logging is file-based for MCP compatibility
+- **Monitor**: Use `tail -f logs/lodgify-mcp-$(date +%Y-%m-%d).log` to monitor in real-time
 
 #### Availability Queries Issues
 - **Raw availability returns "0001-01-01" dates**: This is expected. Use the new helper tools instead:

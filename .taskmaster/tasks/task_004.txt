@@ -1,0 +1,62 @@
+# Task ID: 4
+# Title: Implement Property Management Tools
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Create MCP tool implementations for all property-related endpoints: list_properties, get_property, list_property_rooms, and list_deleted_properties
+# Details:
+In lodgify.ts, add methods:
+1. listProperties(params?: Record<string, any>):
+   - GET /v2/properties
+   - Optional query params for filtering/pagination
+2. getProperty(id: string):
+   - GET /v2/properties/{id}
+   - Path parameter substitution
+3. listPropertyRooms(propertyId: string):
+   - GET /v2/properties/{propertyId}/rooms
+4. listDeletedProperties(params?: Record<string, any>):
+   - GET /v2/deletedProperties
+
+Implementation pattern:
+```typescript
+public async listProperties(params?: Record<string, any>) {
+  const queryString = params ? '?' + this.flattenParams(params).toString() : '';
+  return this.request('GET', `/v2/properties${queryString}`);
+}
+
+public async getProperty(id: string) {
+  if (!id) throw new Error('Property ID is required');
+  return this.request('GET', `/v2/properties/${encodeURIComponent(id)}`);
+}
+```
+
+Ensure proper error handling and logging for each method.
+
+# Test Strategy:
+Integration tests with mocked API responses: 1) List properties with pagination params, 2) Get single property by ID, 3) List rooms for a property, 4) Handle invalid property IDs, 5) Verify query parameter encoding
+
+# Subtasks:
+## 1. Implement listProperties and getProperty Methods [done]
+### Dependencies: None
+### Description: Create the first two property management methods in lodgify.ts: listProperties with optional query parameters and getProperty with ID validation
+### Details:
+Implement listProperties method that accepts optional params, builds query string using flattenParams, and makes GET request to /v2/properties. Implement getProperty method that validates ID parameter is provided, encodes it properly, and makes GET request to /v2/properties/{id}. Both methods should use the request method from the base client and handle errors appropriately.
+
+## 2. Implement listPropertyRooms and listDeletedProperties Methods [done]
+### Dependencies: 4.1
+### Description: Create the remaining two property management methods: listPropertyRooms with proper path construction and listDeletedProperties with filtering support
+### Details:
+Implement listPropertyRooms method that takes propertyId parameter, validates it exists, constructs path /v2/properties/{propertyId}/rooms with proper encoding. Implement listDeletedProperties method that accepts optional params for filtering/pagination, builds query string similar to listProperties, and makes GET request to /v2/deletedProperties. Follow the same error handling pattern established in the first two methods.
+
+## 3. Register Property Tools in MCP Server [done]
+### Dependencies: 4.1, 4.2
+### Description: Add all four property management tools to server.ts with proper Zod schemas and tool registrations
+### Details:
+In server.ts, define Zod schemas for each tool's input validation (optional params for list operations, required id for get operations). Register tools: lodgify.list_properties, lodgify.get_property, lodgify.list_property_rooms, and lodgify.list_deleted_properties with descriptive names and descriptions. Map each tool to the corresponding client method with proper parameter passing and error handling.
+
+## 4. Create Integration Tests for Property Tools [done]
+### Dependencies: 4.3
+### Description: Write comprehensive integration tests for all property management tools with mocked API responses
+### Details:
+Create test file tests/properties.test.ts with integration tests covering: 1) List properties with various pagination params, 2) Get single property by valid ID, 3) List rooms for existing property, 4) List deleted properties with date filters, 5) Handle invalid/missing property IDs with proper error responses, 6) Verify query parameter encoding works correctly, 7) Test empty results scenarios. Use mocked HTTP responses to avoid API calls during testing.
+

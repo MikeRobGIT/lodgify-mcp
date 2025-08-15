@@ -5,45 +5,8 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import { config } from 'dotenv'
 import { LodgifyClient } from './lodgify.js'
-import { safeLogger } from './logger.js'
-import { loadEnvironment, type EnvConfig, isProduction } from './env.js'
 
-/**
- * Helper function to find properties when exact property ID is unknown.
- * 
- * This utility function helps users discover property IDs by searching through
- * property names and extracting IDs from recent bookings. It provides a unified
- * interface for property discovery when users don't know the exact property
- * identifiers required by other API endpoints.
- * 
- * @param client - The LodgifyClient instance for making API calls
- * @param searchTerm - Optional search term to filter properties by name (case-insensitive)
- * @param includePropertyIds - Whether to include property IDs found in recent bookings (default: true)
- * @param limit - Maximum number of properties to return (default: 10, max: 50)
- * 
- * @returns Promise resolving to object containing:
- *   - properties: Array of property objects with id, name, and source
- *   - message: Descriptive message about the search results
- *   - suggestions: Array of helpful suggestions for improving search results
- * 
- * @example
- * ```typescript
- * // Find all properties
- * const result = await findProperties(client);
- * 
- * // Search by name
- * const result = await findProperties(client, "beach house");
- * 
- * // Limit results
- * const result = await findProperties(client, undefined, true, 5);
- * ```
- * 
- * @remarks
- * This function combines multiple data sources:
- * 1. Direct property listing from the properties API
- * 2. Property IDs extracted from recent bookings
- * 3. Name-based filtering with case-insensitive matching
- */
+// Helper function to find properties when ID is unknown
 async function findProperties(
   client: LodgifyClient,
   searchTerm?: string,
@@ -152,72 +115,10 @@ async function findProperties(
   }
 }
 
-// Load environment variables with dotenv first
+// Load environment variables
 config()
 
-// Load and validate environment configuration (only for production execution)
-let envConfig: EnvConfig | undefined
-
-function getEnvConfig(): EnvConfig {
-  if (!envConfig) {
-    try {
-      envConfig = loadEnvironment({ 
-        allowTestKeys: process.env.NODE_ENV === 'test', // Allow test keys in test environment
-        strictValidation: process.env.NODE_ENV !== 'test',
-        logWarnings: process.env.NODE_ENV !== 'test'
-      })
-    } catch (error) {
-      // In test environments, provide a minimal config
-      if (process.env.NODE_ENV === 'test') {
-        envConfig = {
-          LODGIFY_API_KEY: 'test-api-key-for-testing-purposes-only',
-          LOG_LEVEL: 'error' as const,
-          DEBUG_HTTP: false,
-          NODE_ENV: 'test' as const,
-        }
-      } else {
-        // Log the error and exit if environment validation fails in production
-        console.error('Environment validation failed:', error instanceof Error ? error.message : error)
-        process.exit(1)
-      }
-    }
-  }
-  return envConfig
-}
-
-/**
- * Registers all Lodgify API tools with the McpServer instance.
- * 
- * This function registers 28+ tools covering the complete Lodgify API v2 surface,
- * including property management, booking operations, availability checking, rate
- * management, webhook handling, and utility functions. Each tool is registered
- * with comprehensive metadata, input schema validation, and error handling.
- * 
- * Tools are organized into categories:
- * - Property Management: CRUD operations for properties and rooms
- * - Booking Management: Complete booking lifecycle including payments
- * - Availability & Rates: Smart availability checking and rate management  
- * - Helper Tools: Enhanced functions for common use cases
- * - Webhook Management: Event subscription and management
- * - Resources: Health checks and server status
- * 
- * @param server - The McpServer instance to register tools with
- * @param client - The configured LodgifyClient for making API calls
- * 
- * @remarks
- * All tools include:
- * - Enhanced metadata with clear titles and descriptions
- * - Zod schema validation for type safety
- * - Structured error handling with JSON-RPC compliance
- * - Automatic parameter transformation for complex Lodgify API requirements
- * 
- * @example
- * ```typescript
- * const server = new McpServer(config);
- * const client = new LodgifyClient(apiKey);
- * registerTools(server, client);
- * ```
- */
+// Function to register all tools with the McpServer
 function registerTools(server: McpServer, client: LodgifyClient): void {
   // Property Management Tools
   server.registerTool(
@@ -1042,87 +943,11 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 }
 
-/**
- * Sanitizes error messages to prevent sensitive information leakage
- * @param message - The error message to sanitize
- * @returns Sanitized error message safe for client consumption
- */
-function sanitizeErrorMessage(message: string): string {
-  // Remove API keys - handle various patterns
-  let sanitized = message
-    .replace(/api[_-]?key[=:\s]+[\w-]+/gi, 'api_key=***')
-    .replace(/authorization[=:\s]+bearer\s+[\w-]+/gi, 'authorization=Bearer ***')
-    .replace(/x-api-key[=:\s]+[\w-]+/gi, 'x-api-key=***')
-  
-  // Remove URLs with credentials
-  sanitized = sanitized.replace(/https?:\/\/[^:]+:[^@]+@[^\s]+/g, 'https://***:***@hostname')
-  
-  // Remove tokens and secrets
-  sanitized = sanitized
-    .replace(/token[=:\s]+[\w.-]+/gi, 'token=***')
-    .replace(/secret[=:\s]+[\w.-]+/gi, 'secret=***')
-    .replace(/password[=:\s]+[\w.-]+/gi, 'password=***')
-  
-  return sanitized
-}
-
-/**
- * Extracts safe error details while removing sensitive information
- * @param errorDetails - Raw error details object
- * @returns Sanitized error details safe for client consumption
- */
-function sanitizeErrorDetails(errorDetails: any): any {
-  if (!errorDetails || typeof errorDetails !== 'object') {
-    return errorDetails
-  }
-
-  const sanitized = { ...errorDetails }
-  
-  // Remove sensitive fields
-  const sensitiveFields = ['apiKey', 'api_key', 'authorization', 'x-api-key', 'token', 'secret', 'password']
-  sensitiveFields.forEach(field => {
-    if (field in sanitized) {
-      sanitized[field] = '***'
-    }
-  })
-  
-  // Sanitize nested objects
-  Object.keys(sanitized).forEach(key => {
-    if (typeof sanitized[key] === 'string') {
-      sanitized[key] = sanitizeErrorMessage(sanitized[key])
-    } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
-      sanitized[key] = sanitizeErrorDetails(sanitized[key])
-    }
-  })
-  
-  return sanitized
-}
-
-/**
- * Helper function to handle tool errors with proper JSON-RPC error codes and security-focused sanitization.
- * 
- * This function processes errors from tool handlers and converts them into appropriate
- * McpError instances with proper JSON-RPC error codes. It includes security measures
- * to prevent sensitive information (API keys, tokens, credentials) from leaking to clients.
- * 
- * @param error - The error to handle (can be any type)
- * @throws {McpError} Always throws an appropriately formatted McpError
- * 
- * @remarks
- * Security features:
- * - Sanitizes error messages to remove API keys, tokens, and credentials
- * - Prevents sensitive environment information from leaking
- * - Provides appropriate error codes for different error types
- * - Maintains detailed logging while protecting client-facing messages
- */
+// Helper function to handle tool errors with proper JSON-RPC error codes
 function handleToolError(error: unknown): never {
   // Handle MCP errors (already properly formatted)
   if (error instanceof McpError) {
-    // Sanitize existing MCP errors to ensure no sensitive data leaks
-    const sanitizedMessage = sanitizeErrorMessage(error.message)
-    const sanitizedData = error.data ? sanitizeErrorDetails(error.data) : undefined
-    
-    throw new McpError(error.code, sanitizedMessage, sanitizedData)
+    throw error
   }
 
   // Handle Zod validation errors
@@ -1133,7 +958,7 @@ function handleToolError(error: unknown): never {
       {
         validationErrors: error.issues.map(issue => ({
           path: issue.path.join('.'),
-          message: sanitizeErrorMessage(issue.message),
+          message: issue.message,
           code: issue.code,
         }))
       }
@@ -1142,8 +967,8 @@ function handleToolError(error: unknown): never {
 
   // Handle Lodgify API errors
   if (error instanceof Error) {
+    // Check for specific error patterns
     const message = error.message.toLowerCase()
-    const sanitizedMessage = sanitizeErrorMessage(error.message)
     
     // Rate limiting errors
     if (message.includes('429') || message.includes('rate limit')) {
@@ -1151,27 +976,18 @@ function handleToolError(error: unknown): never {
         ErrorCode.RequestTimeout,
         'Rate limit exceeded. Please try again later.',
         { 
-          originalError: sanitizedMessage,
+          originalError: error.message,
           retryAfter: (error as any).retryAfter 
         }
       )
     }
     
-    // Authentication errors - be extra careful not to leak API key info
+    // Authentication errors
     if (message.includes('401') || message.includes('unauthorized') || message.includes('api key')) {
-      // Production vs development error messages
-      const config = getEnvConfig()
-      const errorMessage = isProduction(config) 
-        ? 'Authentication failed. Please verify your API credentials.'
-        : 'Authentication failed. Please check your API key configuration.'
-      
       throw new McpError(
         ErrorCode.InvalidRequest,
-        errorMessage,
-        { 
-          originalError: sanitizedMessage,
-          hint: 'Check API key validity and permissions in your Lodgify account'
-        }
+        'Authentication failed. Please check your API key.',
+        { originalError: error.message }
       )
     }
     
@@ -1179,8 +995,8 @@ function handleToolError(error: unknown): never {
     if (message.includes('404') || message.includes('not found')) {
       throw new McpError(
         ErrorCode.InvalidParams,
-        'Resource not found. Please verify the ID and your access permissions.',
-        { originalError: sanitizedMessage }
+        'Resource not found. Please check the ID and try again.',
+        { originalError: error.message }
       )
     }
     
@@ -1188,11 +1004,8 @@ function handleToolError(error: unknown): never {
     if (message.includes('econnrefused') || message.includes('network') || message.includes('fetch')) {
       throw new McpError(
         ErrorCode.InternalError,
-        'Network error occurred while connecting to Lodgify API. Please check your connection.',
-        { 
-          originalError: sanitizedMessage,
-          hint: 'Verify internet connectivity and Lodgify service status'
-        }
+        'Network error occurred while connecting to Lodgify API',
+        { originalError: error.message }
       )
     }
     
@@ -1201,28 +1014,27 @@ function handleToolError(error: unknown): never {
     if (errorDetails) {
       throw new McpError(
         ErrorCode.InternalError,
-        sanitizedMessage,
-        sanitizeErrorDetails(errorDetails)
+        error.message,
+        errorDetails
       )
     }
     
     // Default error handling
     throw new McpError(
       ErrorCode.InternalError,
-      sanitizedMessage,
+      error.message,
       { type: 'LodgifyAPIError' }
     )
   }
 
-  // Unknown error type - be very careful about what we expose
-  const errorString = String(error)
-  const sanitizedError = sanitizeErrorMessage(errorString)
-  
+  // Unknown error type
   throw new McpError(
     ErrorCode.InternalError,
-    'An unexpected error occurred while processing your request',
-    { error: sanitizedError }
+    'An unexpected error occurred',
+    { error: String(error) }
   )
+  
+  // Store tool handle for dynamic management (example for last tool)
 }
 
 // Function to register resources with the McpServer
@@ -1257,29 +1069,7 @@ function registerResources(server: McpServer) {
   )
 }
 
-/**
- * Sets up and configures the Lodgify MCP server with all tools and resources.
- * 
- * This function creates a high-level McpServer instance using the latest SDK patterns,
- * registers all Lodgify API tools with enhanced metadata, declares server capabilities,
- * and configures robust error handling and notification management.
- * 
- * @param injectedClient - Optional pre-configured LodgifyClient for testing purposes.
- *                        If not provided, creates a new client using environment variables.
- * @returns Object containing the configured McpServer instance and LodgifyClient
- * 
- * @example
- * ```typescript
- * // Production usage
- * const { server, client } = setupServer();
- * 
- * // Testing usage with mock client
- * const mockClient = new MockLodgifyClient();
- * const { server, client } = setupServer(mockClient);
- * ```
- * 
- * @throws {Error} When LODGIFY_API_KEY environment variable is missing
- */
+// Function to set up server with client injection for testing
 export function setupServer(injectedClient?: LodgifyClient) {
   const server = new McpServer(
     {
@@ -1309,9 +1099,11 @@ export function setupServer(injectedClient?: LodgifyClient) {
   )
   
   const client = injectedClient || (() => {
-    // Use validated environment configuration instead of direct process.env access
-    const config = getEnvConfig()
-    return new LodgifyClient(config.LODGIFY_API_KEY)
+    const apiKey = process.env.LODGIFY_API_KEY
+    if (!apiKey) {
+      throw new Error('LODGIFY_API_KEY environment variable is required')
+    }
+    return new LodgifyClient(apiKey)
   })()
 
   // Register tools and resources
@@ -1325,6 +1117,231 @@ export function setupServer(injectedClient?: LodgifyClient) {
 // Initialize server for production
 const { server } = setupServer()
 
+// ============================================================================
+// Zod Validation Schemas
+// ============================================================================
+
+// Common validation schemas
+const IdSchema = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/, 'ID contains invalid characters')
+const GuidSchema = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/, 'GUID contains invalid characters')
+
+// Specific payload schemas
+const PaymentLinkPayloadSchema = z.object({
+  amount: z.number().positive().optional(),
+  currency: z.string().length(3).optional(),
+  description: z.string().max(500).optional(),
+  // Add other expected fields as needed
+}).strict()
+
+const KeyCodesPayloadSchema = z.object({
+  keyCodes: z.array(z.string()).optional(),
+  // Add other expected fields as needed
+}).strict()
+
+// New booking creation and update schemas
+const CreateBookingPayloadSchema = z.object({
+  propertyId: z.string().min(1),
+  from: z.string().min(1),
+  to: z.string().min(1),
+  guestBreakdown: z.object({
+    adults: z.number().min(1),
+    children: z.number().min(0).optional(),
+    infants: z.number().min(0).optional(),
+  }),
+  roomTypes: z.array(z.object({
+    id: z.string().min(1),
+    quantity: z.number().min(1).optional(),
+  })),
+  // Add other expected fields as needed
+}).strict()
+
+const UpdateBookingPayloadSchema = z.object({
+  status: z.string().optional(),
+  guestBreakdown: z.object({
+    adults: z.number().min(1).optional(),
+    children: z.number().min(0).optional(),
+    infants: z.number().min(0).optional(),
+  }).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  // Add other expected fields as needed
+}).strict()
+
+// Availability update schema
+const AvailabilityUpdatePayloadSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  available: z.boolean(),
+  minStay: z.number().min(0).optional(),
+  maxStay: z.number().min(0).optional(),
+  // Add other expected fields as needed
+}).strict()
+
+// Webhook schemas
+const WebhookSubscribePayloadSchema = z.object({
+  event: z.string().min(1),
+  targetUrl: z.string().url(),
+  // Add other expected fields as needed
+}).strict()
+
+// Rate management schemas
+const CreateRatePayloadSchema = z.object({
+  propertyId: z.string().min(1),
+  roomTypeId: z.string().min(1),
+  from: z.string().min(1),
+  to: z.string().min(1),
+  rate: z.number().positive(),
+  currency: z.string().length(3).optional(),
+  // Add other expected fields as needed
+}).strict()
+
+const UpdateRatePayloadSchema = z.object({
+  rate: z.number().positive().optional(),
+  currency: z.string().length(3).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  // Add other expected fields as needed
+}).strict()
+
+// Property Management Schemas
+const ListPropertiesSchema = z.object({
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+
+const GetPropertySchema = z.object({
+  id: IdSchema,
+})
+
+const ListPropertyRoomsSchema = z.object({
+  propertyId: IdSchema,
+})
+
+const ListDeletedPropertiesSchema = z.object({
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+
+// Rates Management Schemas
+const DailyRatesSchema = z.object({
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+})
+
+const RateSettingsSchema = z.object({
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+})
+
+// Booking Management Schemas
+const ListBookingsSchema = z.object({
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+
+const GetBookingSchema = z.object({
+  id: IdSchema,
+})
+
+const GetBookingPaymentLinkSchema = z.object({
+  id: IdSchema,
+})
+
+const CreateBookingPaymentLinkSchema = z.object({
+  id: IdSchema,
+  payload: PaymentLinkPayloadSchema,
+})
+
+const UpdateKeyCodesSchema = z.object({
+  id: IdSchema,
+  payload: KeyCodesPayloadSchema,
+})
+
+// Availability Schemas
+const AvailabilityRoomSchema = z.object({
+  propertyId: IdSchema,
+  roomTypeId: IdSchema,
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+
+const AvailabilityPropertySchema = z.object({
+  propertyId: IdSchema,
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+
+// Quote & Messaging Schemas
+const GetQuoteSchema = z.object({
+  propertyId: IdSchema,
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+})
+
+const GetThreadSchema = z.object({
+  threadGuid: GuidSchema,
+})
+
+// New endpoint schemas
+const CreateBookingSchema = z.object({
+  payload: CreateBookingPayloadSchema,
+})
+
+const UpdateBookingSchema = z.object({
+  id: IdSchema,
+  payload: UpdateBookingPayloadSchema,
+})
+
+const DeleteBookingSchema = z.object({
+  id: IdSchema,
+})
+
+const UpdatePropertyAvailabilitySchema = z.object({
+  propertyId: IdSchema,
+  payload: AvailabilityUpdatePayloadSchema,
+})
+
+const WebhookSubscribeSchema = z.object({
+  payload: WebhookSubscribePayloadSchema,
+})
+
+const ListWebhooksSchema = z.object({
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+
+const DeleteWebhookSchema = z.object({
+  id: IdSchema,
+})
+
+const CreateRateSchema = z.object({
+  payload: CreateRatePayloadSchema,
+})
+
+const UpdateRateSchema = z.object({
+  id: IdSchema,
+  payload: UpdateRatePayloadSchema,
+})
+
+// New Availability Helper Schemas
+const FindPropertiesSchema = z.object({
+  searchTerm: z.string().optional(),
+  includePropertyIds: z.boolean().default(true).optional(),
+  limit: z.number().min(1).max(50).default(10).optional(),
+})
+
+const CheckNextAvailabilitySchema = z.object({
+  propertyId: IdSchema,
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
+  daysToCheck: z.number().min(1).max(365).optional(),
+})
+
+const CheckDateRangeAvailabilitySchema = z.object({
+  propertyId: IdSchema,
+  checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+})
+
+const GetAvailabilityCalendarSchema = z.object({
+  propertyId: IdSchema,
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
+  daysToShow: z.number().min(1).max(90).optional(),
+})
+
+// ============================================================================
+// Tools are now registered in the registerTools function above
+// ============================================================================
 
 // ============================================================================
 // Tool handlers are now implemented via registerTool calls above
@@ -1338,53 +1355,36 @@ const { server } = setupServer()
 // Start Server
 // ============================================================================
 
-/**
- * Main entry point for the Lodgify MCP server.
- * 
- * Initializes the STDIO transport, configures error handling and graceful shutdown,
- * then connects the server and starts accepting MCP protocol messages.
- * Uses file-based logging to prevent interference with STDIO communication.
- * 
- * @remarks
- * This function:
- * 1. Creates a StdioServerTransport for MCP protocol communication
- * 2. Sets up error handling for transport issues (logged to file)
- * 3. Configures graceful shutdown on SIGINT/SIGTERM signals
- * 4. Connects the server to the transport and starts message processing
- * 5. Logs all events to files to maintain STDIO protocol compatibility
- * 
- * @throws {Error} If server connection fails or environment is misconfigured
- */
 async function main() {
   const transport = new StdioServerTransport()
 
   // Handle errors
   transport.onerror = (error) => {
-    safeLogger.error('Transport error:', error)
+    console.error('Transport error:', error)
   }
 
   // Handle shutdown gracefully
   process.on('SIGINT', async () => {
-    safeLogger.info('Shutting down...')
+    console.error('Shutting down...')
     await server.close()
     process.exit(0)
   })
 
   process.on('SIGTERM', async () => {
-    safeLogger.info('Shutting down...')
+    console.error('Shutting down...')
     await server.close()
     process.exit(0)
   })
 
   // Connect and start server
   await server.connect(transport)
-  safeLogger.info('Lodgify MCP server started successfully')
+  console.error('Lodgify MCP server started successfully')
 }
 
 // Only run main if this is the entry point (not imported for testing)
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('/server.js')) {
   main().catch((error) => {
-    safeLogger.error('Fatal error:', error)
+    console.error('Fatal error:', error)
     process.exit(1)
   })
 }

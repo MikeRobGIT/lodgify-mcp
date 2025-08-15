@@ -1,4 +1,5 @@
 import { config } from 'dotenv'
+import { safeLogger } from './logger.js'
 
 // Load environment variables
 config()
@@ -174,6 +175,7 @@ export class LodgifyClient {
 
   /**
    * Secure logging utility that never exposes credentials
+   * Uses file-based logging to prevent STDIO interference with MCP protocol
    */
   private log(level: LogLevel, message: string, data?: unknown): void {
     const levels: Record<LogLevel, number> = {
@@ -187,26 +189,27 @@ export class LodgifyClient {
     const messageLevel = levels[level]
 
     if (messageLevel <= currentLevel) {
-      const timestamp = new Date().toISOString()
-      let sanitizedData = ''
+      let sanitizedData = data
       
       if (data) {
         // Sanitize sensitive data before logging
-        const sanitized = this.sanitizeLogData(data)
-        sanitizedData = ` ${JSON.stringify(sanitized)}`
+        sanitizedData = this.sanitizeLogData(data)
       }
       
-      const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}${sanitizedData}`
-
+      // Use file-based logger with sanitized data to prevent STDIO interference
       switch (level) {
         case 'error':
-          console.error(logMessage)
+          safeLogger.error(message, sanitizedData)
           break
         case 'warn':
-          console.warn(logMessage)
+          safeLogger.warn(message, sanitizedData)
           break
-        default:
-          console.log(logMessage)
+        case 'info':
+          safeLogger.info(message, sanitizedData)
+          break
+        case 'debug':
+          safeLogger.debug(message, sanitizedData)
+          break
       }
     }
   }
