@@ -46,3 +46,4 @@ temp/
 .windsurf/mcp.json
 .cursor/mcp.json
 .mcp.json
+mcp_options.json
