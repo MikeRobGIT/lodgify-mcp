@@ -121,8 +121,6 @@ async function findProperties(
         'No properties found. Try using lodgify_list_properties to see all properties.',
       )
       suggestions.push('Check if your API key has proper permissions to access properties.')
-    } else if (searchTerm && properties.length === 0) {
-      suggestions.push(`No properties found matching "${searchTerm}". Try a broader search term.`)
     }
 
     if (properties.length > 0) {
