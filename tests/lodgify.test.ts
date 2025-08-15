@@ -1,6 +1,6 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { LodgifyClient } from '../src/lodgify.js'
-import { createMockResponse, createMockFetch, fixtures, mockTimers } from './utils.js'
+import { createMockFetch, createMockResponse, fixtures, mockTimers } from './utils.js'
 
 describe('LodgifyClient', () => {
   let client: LodgifyClient
@@ -29,12 +29,12 @@ describe('LodgifyClient', () => {
     test('should retry on 429 with exponential backoff', async () => {
       let callCount = 0
       const sleepCalls: number[] = []
-      
+
       // Inject a mock sleep function that tracks delays
       client._sleepFn = mock(async (ms: number) => {
         sleepCalls.push(ms)
       })
-      
+
       const mockFetch = mock(async () => {
         callCount++
         if (callCount === 1) {
@@ -45,7 +45,7 @@ describe('LodgifyClient', () => {
       global.fetch = mockFetch
 
       const result = await client.listProperties()
-      
+
       expect(callCount).toBe(2)
       expect(sleepCalls).toEqual([1000]) // 2^0 * 1000 = 1000ms for first retry
       expect(result).toEqual(fixtures.property)
@@ -54,11 +54,11 @@ describe('LodgifyClient', () => {
     test('should respect Retry-After header', async () => {
       let callCount = 0
       const sleepCalls: number[] = []
-      
+
       client._sleepFn = mock(async (ms: number) => {
         sleepCalls.push(ms)
       })
-      
+
       const mockFetch = mock(async () => {
         callCount++
         if (callCount === 1) {
@@ -69,7 +69,7 @@ describe('LodgifyClient', () => {
       global.fetch = mockFetch
 
       const result = await client.listProperties()
-      
+
       expect(callCount).toBe(2)
       expect(sleepCalls).toEqual([3000]) // Retry-After header says 3 seconds
       expect(result).toEqual(fixtures.property)
@@ -78,11 +78,11 @@ describe('LodgifyClient', () => {
     test('should use exponential backoff when no Retry-After header', async () => {
       let callCount = 0
       const sleepCalls: number[] = []
-      
+
       client._sleepFn = mock(async (ms: number) => {
         sleepCalls.push(ms)
       })
-      
+
       const mockFetch = mock(async () => {
         callCount++
         if (callCount <= 3) {
@@ -93,7 +93,7 @@ describe('LodgifyClient', () => {
       global.fetch = mockFetch
 
       const result = await client.listProperties()
-      
+
       expect(callCount).toBe(4)
       // Exponential backoff: 2^0=1s, 2^1=2s, 2^2=4s
       expect(sleepCalls).toEqual([1000, 2000, 4000])
@@ -103,11 +103,11 @@ describe('LodgifyClient', () => {
     test('should fail after max retries', async () => {
       let callCount = 0
       const sleepCalls: number[] = []
-      
+
       client._sleepFn = mock(async (ms: number) => {
         sleepCalls.push(ms)
       })
-      
+
       const mockFetch = mock(async () => {
         callCount++
         return createMockResponse(429, { error: 'Rate limited' })
@@ -119,7 +119,7 @@ describe('LodgifyClient', () => {
         message: expect.stringContaining('Max retries (5) exceeded'),
         status: 429,
       })
-      
+
       expect(callCount).toBe(5)
       // Exponential backoff: 2^0=1s, 2^1=2s, 2^2=4s, 2^3=8s, 2^4=16s
       expect(sleepCalls).toEqual([1000, 2000, 4000, 8000, 16000])
@@ -128,11 +128,11 @@ describe('LodgifyClient', () => {
     test('should cap retry delay at 30 seconds', async () => {
       let callCount = 0
       const sleepCalls: number[] = []
-      
+
       client._sleepFn = mock(async (ms: number) => {
         sleepCalls.push(ms)
       })
-      
+
       const mockFetch = mock(async () => {
         callCount++
         if (callCount === 1) {
@@ -143,7 +143,7 @@ describe('LodgifyClient', () => {
       global.fetch = mockFetch
 
       const result = await client.listProperties()
-      
+
       expect(callCount).toBe(2)
       expect(sleepCalls).toEqual([30000]) // Should cap at 30s even though Retry-After says 60s
       expect(result).toEqual(fixtures.property)
@@ -153,9 +153,7 @@ describe('LodgifyClient', () => {
   describe('Error formatting', () => {
     test('should format 400 Bad Request error correctly', async () => {
       const errorDetail = { message: 'Invalid parameters', code: 'BAD_REQUEST' }
-      global.fetch = createMockFetch([
-        createMockResponse(400, errorDetail),
-      ])
+      global.fetch = createMockFetch([createMockResponse(400, errorDetail)])
 
       await expect(client.listProperties()).rejects.toMatchObject({
         error: true,
@@ -167,9 +165,7 @@ describe('LodgifyClient', () => {
     })
 
     test('should format 401 Unauthorized error correctly', async () => {
-      global.fetch = createMockFetch([
-        createMockResponse(401, { message: 'Invalid API key' }),
-      ])
+      global.fetch = createMockFetch([createMockResponse(401, { message: 'Invalid API key' })])
 
       await expect(client.listProperties()).rejects.toMatchObject({
         error: true,
@@ -180,9 +176,7 @@ describe('LodgifyClient', () => {
     })
 
     test('should format 404 Not Found error correctly', async () => {
-      global.fetch = createMockFetch([
-        createMockResponse(404, {}),
-      ])
+      global.fetch = createMockFetch([createMockResponse(404, {})])
 
       await expect(client.getProperty('non-existent')).rejects.toMatchObject({
         error: true,
@@ -193,9 +187,7 @@ describe('LodgifyClient', () => {
     })
 
     test('should format 500 Internal Server Error correctly', async () => {
-      global.fetch = createMockFetch([
-        createMockResponse(500, { error: 'Server error' }),
-      ])
+      global.fetch = createMockFetch([createMockResponse(500, { error: 'Server error' })])
 
       await expect(client.listProperties()).rejects.toMatchObject({
         error: true,
@@ -240,9 +232,7 @@ describe('LodgifyClient', () => {
 
   describe('Request methods', () => {
     test('should make GET request with correct headers', async () => {
-      const mockFetch = createMockFetch([
-        createMockResponse(200, fixtures.property),
-      ])
+      const mockFetch = createMockFetch([createMockResponse(200, fixtures.property)])
       global.fetch = mockFetch
 
       await client.listProperties()
@@ -255,15 +245,13 @@ describe('LodgifyClient', () => {
             'X-ApiKey': 'test-api-key',
             'Content-Type': 'application/json',
           }),
-        })
+        }),
       )
     })
 
     test('should make POST request with body', async () => {
       const payload = { amount: 100, currency: 'USD' }
-      const mockFetch = createMockFetch([
-        createMockResponse(201, { success: true }),
-      ])
+      const mockFetch = createMockFetch([createMockResponse(201, { success: true })])
       global.fetch = mockFetch
 
       await client.createBookingPaymentLink('booking-123', payload)
@@ -277,15 +265,13 @@ describe('LodgifyClient', () => {
             'X-ApiKey': 'test-api-key',
             'Content-Type': 'application/json',
           }),
-        })
+        }),
       )
     })
 
     test('should make PUT request with body', async () => {
       const payload = { keyCodes: ['1234', '5678'] }
-      const mockFetch = createMockFetch([
-        createMockResponse(200, { success: true }),
-      ])
+      const mockFetch = createMockFetch([createMockResponse(200, { success: true })])
       global.fetch = mockFetch
 
       await client.updateKeyCodes('booking-123', payload)
@@ -295,21 +281,19 @@ describe('LodgifyClient', () => {
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify(payload),
-        })
+        }),
       )
     })
 
     test('should encode URI components in path', async () => {
-      const mockFetch = createMockFetch([
-        createMockResponse(200, fixtures.property),
-      ])
+      const mockFetch = createMockFetch([createMockResponse(200, fixtures.property)])
       global.fetch = mockFetch
 
       await client.getProperty('prop/with/slashes')
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/v2/properties/prop%2Fwith%2Fslashes'),
-        expect.anything()
+        expect.anything(),
       )
     })
   })
@@ -329,19 +313,19 @@ describe('LodgifyClient', () => {
 
     test('should throw error for missing room type ID', async () => {
       await expect(client.getAvailabilityRoom('prop-123', '')).rejects.toThrow(
-        'Room Type ID is required'
+        'Room Type ID is required',
       )
     })
 
     test('should throw error for missing payload in POST request', async () => {
       await expect(client.createBookingPaymentLink('booking-123', null as any)).rejects.toThrow(
-        'Payload is required'
+        'Payload is required',
       )
     })
 
     test('should throw error for missing parameters in rate methods', async () => {
       await expect(client.getDailyRates(null as any)).rejects.toThrow(
-        'Parameters are required for daily rates'
+        'Parameters are required for daily rates',
       )
     })
   })
@@ -382,7 +366,9 @@ describe('LodgifyClient', () => {
 
     test('should throw error for missing booking payload', async () => {
       await expect(client.createBooking(null as any)).rejects.toThrow('Payload is required')
-      await expect(client.updateBooking('book-123', null as any)).rejects.toThrow('Payload is required')
+      await expect(client.updateBooking('book-123', null as any)).rejects.toThrow(
+        'Payload is required',
+      )
     })
   })
 
@@ -403,7 +389,9 @@ describe('LodgifyClient', () => {
     })
 
     test('should throw error for missing availability payload', async () => {
-      await expect(client.updatePropertyAvailability('prop-123', null as any)).rejects.toThrow('Payload is required')
+      await expect(client.updatePropertyAvailability('prop-123', null as any)).rejects.toThrow(
+        'Payload is required',
+      )
     })
   })
 
@@ -452,7 +440,7 @@ describe('LodgifyClient', () => {
         roomTypeId: 'room-456',
         from: '2025-12-01',
         to: '2025-12-31',
-        rate: 150.00,
+        rate: 150.0,
         currency: 'USD',
       }
 
@@ -464,14 +452,16 @@ describe('LodgifyClient', () => {
       const mockResponse = { id: 'rate-789', status: 'updated' }
       global.fetch = createMockFetch([createMockResponse(200, mockResponse)])
 
-      const payload = { rate: 175.00, currency: 'EUR' }
+      const payload = { rate: 175.0, currency: 'EUR' }
       const result = await client.updateRate('rate-789', payload)
       expect(result).toEqual(mockResponse)
     })
 
     test('should throw error for missing rate payload', async () => {
       await expect(client.createRate(null as any)).rejects.toThrow('Payload is required')
-      await expect(client.updateRate('rate-789', null as any)).rejects.toThrow('Payload is required')
+      await expect(client.updateRate('rate-789', null as any)).rejects.toThrow(
+        'Payload is required',
+      )
     })
   })
 })

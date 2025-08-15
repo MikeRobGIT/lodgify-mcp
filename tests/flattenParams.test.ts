@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { LodgifyClient } from '../src/lodgify.js'
 import { createMockFetch, createMockResponse } from './utils.js'
 
@@ -8,9 +8,7 @@ describe('Query Parameter Flattening', () => {
 
   beforeEach(() => {
     client = new LodgifyClient('test-api-key')
-    mockFetch = createMockFetch([
-      createMockResponse(200, { success: true }),
-    ])
+    mockFetch = createMockFetch([createMockResponse(200, { success: true })])
     global.fetch = mockFetch
   })
 
@@ -97,7 +95,7 @@ describe('Query Parameter Flattening', () => {
             city: 'New York',
             coordinates: {
               lat: 40.7128,
-              lng: -74.0060,
+              lng: -74.006,
             },
           },
         },
@@ -141,7 +139,7 @@ describe('Query Parameter Flattening', () => {
       await client.listProperties({
         page: 1,
         limit: 50,
-        minPrice: 100.50,
+        minPrice: 100.5,
         maxPrice: 999.99,
       })
 
@@ -236,7 +234,7 @@ describe('Query Parameter Flattening', () => {
       })
 
       const calledUrl = mockFetch.mock.calls[0][0] as string
-      
+
       // Should have all parameters
       expect(calledUrl).toContain('from=2025-11-20')
       expect(calledUrl).toContain('to=2025-11-25')
@@ -246,7 +244,7 @@ describe('Query Parameter Flattening', () => {
       expect(calledUrl).toContain('guest_breakdown%5Bchildren%5D=0')
       expect(calledUrl).toContain('currency=USD')
       expect(calledUrl).toContain('includeExtras=true')
-      
+
       // Should be properly joined with &
       const params = calledUrl.split('?')[1]
       const paramCount = params.split('&').length

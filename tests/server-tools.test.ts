@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 
 // Test Zod schemas used by the server
@@ -28,8 +28,12 @@ describe('MCP Tool Validation Schemas', () => {
     })
 
     test('should validate list_property_rooms input', () => {
-      expect(ListPropertyRoomsSchema.parse({ propertyId: 'prop-123' })).toEqual({ propertyId: 'prop-123' })
-      expect(() => ListPropertyRoomsSchema.parse({ propertyId: '' })).toThrow('Property ID is required')
+      expect(ListPropertyRoomsSchema.parse({ propertyId: 'prop-123' })).toEqual({
+        propertyId: 'prop-123',
+      })
+      expect(() => ListPropertyRoomsSchema.parse({ propertyId: '' })).toThrow(
+        'Property ID is required',
+      )
     })
   })
 
@@ -100,7 +104,9 @@ describe('MCP Tool Validation Schemas', () => {
         params: { from: '2025-11-20', to: '2025-11-25' },
       }
       expect(AvailabilityPropertySchema.parse(input)).toEqual(input)
-      expect(() => AvailabilityPropertySchema.parse({ propertyId: '' })).toThrow('Property ID is required')
+      expect(() => AvailabilityPropertySchema.parse({ propertyId: '' })).toThrow(
+        'Property ID is required',
+      )
     })
   })
 
@@ -181,10 +187,12 @@ describe('MCP Tool Validation Schemas', () => {
           children: z.number().min(0).optional(),
           infants: z.number().min(0).optional(),
         }),
-        roomTypes: z.array(z.object({
-          id: z.string().min(1),
-          quantity: z.number().min(1).optional(),
-        })),
+        roomTypes: z.array(
+          z.object({
+            id: z.string().min(1),
+            quantity: z.number().min(1).optional(),
+          }),
+        ),
       }),
     })
 
@@ -194,11 +202,13 @@ describe('MCP Tool Validation Schemas', () => {
         status: z.string().optional(),
         from: z.string().optional(),
         to: z.string().optional(),
-        guestBreakdown: z.object({
-          adults: z.number().min(1).optional(),
-          children: z.number().min(0).optional(),
-          infants: z.number().min(0).optional(),
-        }).optional(),
+        guestBreakdown: z
+          .object({
+            adults: z.number().min(1).optional(),
+            children: z.number().min(0).optional(),
+            infants: z.number().min(0).optional(),
+          })
+          .optional(),
       }),
     })
 
@@ -337,7 +347,7 @@ describe('MCP Tool Validation Schemas', () => {
           roomTypeId: 'room-456',
           from: '2025-12-01',
           to: '2025-12-31',
-          rate: 150.00,
+          rate: 150.0,
           currency: 'USD',
         },
       }
@@ -349,7 +359,7 @@ describe('MCP Tool Validation Schemas', () => {
       const input = {
         id: 'rate-789',
         payload: {
-          rate: 175.00,
+          rate: 175.0,
           currency: 'EUR',
         },
       }
@@ -370,7 +380,7 @@ describe('Tool Response Format', () => {
         },
       ],
     }
-    
+
     expect(response.content[0].type).toBe('text')
     expect(JSON.parse(response.content[0].text)).toEqual(result)
   })
@@ -385,7 +395,7 @@ describe('Tool Response Format', () => {
         message: 'Required',
       },
     ])
-    
+
     const response = {
       content: [
         {
@@ -403,7 +413,7 @@ describe('Tool Response Format', () => {
       ],
       isError: true,
     }
-    
+
     expect(response.isError).toBe(true)
     const parsed = JSON.parse(response.content[0].text)
     expect(parsed.error).toBe(true)
@@ -419,7 +429,7 @@ describe('Tool Response Format', () => {
       path: '/v2/properties/non-existent',
       detail: { code: 'PROPERTY_NOT_FOUND' },
     }
-    
+
     const response = {
       content: [
         {
@@ -437,7 +447,7 @@ describe('Tool Response Format', () => {
       ],
       isError: true,
     }
-    
+
     expect(response.isError).toBe(true)
     const parsed = JSON.parse(response.content[0].text)
     expect(parsed.error).toBe(true)

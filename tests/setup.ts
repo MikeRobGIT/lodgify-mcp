@@ -1,4 +1,4 @@
-import { mock, afterEach } from 'bun:test'
+import { afterEach, mock } from 'bun:test'
 import { config } from 'dotenv'
 
 // Load test environment variables
@@ -21,9 +21,9 @@ global.console = {
 // Reset mocks after each test
 afterEach(() => {
   // Clear all mock calls
-  (global.console.error as any).mockClear();
-  (global.console.warn as any).mockClear();
-  (global.console.log as any).mockClear();
-  (global.console.info as any).mockClear();
-  (global.console.debug as any).mockClear();
+  ;(global.console.error as any).mockClear()
+  ;(global.console.warn as any).mockClear()
+  ;(global.console.log as any).mockClear()
+  ;(global.console.info as any).mockClear()
+  ;(global.console.debug as any).mockClear()
 })

@@ -1,0 +1,24 @@
+# Task ID: 11
+# Title: Migrate Test Suite from Vitest to Bun Test
+# Status: done
+# Dependencies: 9, 10
+# Priority: high
+# Description: Migrate all test files and configurations from Vitest to Bun's built-in test runner, update dependencies, scripts, and documentation, and ensure all tests pass with Bun.
+# Details:
+1. Remove all Vitest dependencies from package.json and uninstall them from the project.
+2. Update test scripts in package.json to use 'bun test' instead of 'vitest'.
+3. Refactor all test files to replace Vitest-specific APIs (e.g., vi.mock, vi.fn, vi.useFakeTimers) with Bun test equivalents. For mocking, use Bun's built-in mocking utilities or compatible libraries. Update imports to use Bun's test API (e.g., import { test, expect } from 'bun:test').
+4. Update or remove Vitest-specific configuration files (e.g., vitest.config.ts) and ensure Bun test configuration is set up as needed (typically minimal, but add TypeScript global directive if required).
+5. Verify that all test files are discovered and executed by Bun (matching *.test.{js,ts}, etc.).
+6. Ensure all tests pass with Bun test runner, addressing any compatibility issues or API differences.
+7. Update documentation (README, contributing guide) to reflect the use of Bun test runner, including instructions for running and writing tests.
+8. If using testing libraries (e.g., @testing-library/react), follow Bun's migration guides for compatibility adjustments.
+
+# Test Strategy:
+1. Confirm Vitest is fully removed from package.json and node_modules.
+2. Run 'bun test' and verify all test files are executed and pass.
+3. Check for any test failures due to API differences and refactor as needed.
+4. Validate that mocking, timers, and other test utilities work as expected with Bun.
+5. Review updated documentation to ensure instructions reference Bun test runner and are accurate.
+6. Confirm that CI/CD pipelines (if present) use Bun for testing.
+7. Ensure code coverage and test reliability are maintained or improved after migration.

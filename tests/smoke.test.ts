@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { LodgifyClient } from '../src/lodgify.js'
 import { createMockFetch, createMockResponse, fixtures } from './utils.js'
 
@@ -10,11 +10,11 @@ describe('End-to-End Smoke Tests', () => {
   let client: LodgifyClient
   const testMode = process.env.TEST_MODE || 'mock'
   const testApiKey = process.env.TEST_API_KEY || 'test-api-key'
-  
+
   beforeAll(() => {
     console.log(`Running smoke tests in ${testMode} mode`)
     client = new LodgifyClient(testApiKey)
-    
+
     if (testMode === 'mock') {
       // Set up mock responses for all endpoints
       const mockResponses = [
@@ -23,44 +23,44 @@ describe('End-to-End Smoke Tests', () => {
         createMockResponse(200, fixtures.property),
         createMockResponse(200, [{ id: 'room-1', name: 'Master Suite' }]),
         createMockResponse(200, []),
-        
+
         // Availability
         createMockResponse(200, fixtures.availability),
         createMockResponse(200, fixtures.availability),
-        
+
         // Rates
         createMockResponse(200, { rates: [{ date: '2025-11-20', rate: 200 }] }),
         createMockResponse(200, { settings: { minStay: 2, maxStay: 30 } }),
-        
+
         // Quote
         createMockResponse(200, fixtures.quote),
-        
+
         // Bookings
         createMockResponse(200, [fixtures.booking]),
         createMockResponse(200, fixtures.booking),
         createMockResponse(200, { url: 'https://pay.lodgify.com/xyz' }),
-        
+
         // New booking management endpoints
         createMockResponse(201, { id: 'book-new', status: 'created' }),
         createMockResponse(200, { id: 'book-123', status: 'updated' }),
         createMockResponse(200, { id: 'book-123', status: 'deleted' }),
-        
+
         // Property availability update
         createMockResponse(200, { success: true, message: 'Availability updated' }),
-        
+
         // Webhooks
         createMockResponse(201, { id: 'webhook-123', status: 'subscribed' }),
         createMockResponse(200, { webhooks: [{ id: 'webhook-123', event: 'booking.created' }] }),
         createMockResponse(200, { id: 'webhook-123', status: 'deleted' }),
-        
+
         // Rates
         createMockResponse(201, { id: 'rate-new', status: 'created' }),
         createMockResponse(200, { id: 'rate-789', status: 'updated' }),
-        
+
         // Health check
         createMockResponse(200, { ok: true }),
       ]
-      
+
       let callIndex = 0
       global.fetch = async () => {
         if (callIndex < mockResponses.length) {
@@ -73,7 +73,7 @@ describe('End-to-End Smoke Tests', () => {
 
   afterAll(() => {
     if (testMode === 'mock') {
-      // @ts-ignore - restore original fetch
+      // @ts-expect-error - restore original fetch
       global.fetch = undefined
     }
   })
@@ -85,13 +85,13 @@ describe('End-to-End Smoke Tests', () => {
     test('1. Should list properties', async () => {
       const result = await client.listProperties({ page: 1, limit: 10 })
       expect(result).toBeDefined()
-      
+
       if (Array.isArray(result) && result.length > 0) {
         propertyId = (result[0] as any).id || 'prop-123'
       } else {
         propertyId = 'prop-123' // fallback for testing
       }
-      
+
       console.log(`✓ Listed properties, using property ID: ${propertyId}`)
     }, 30000)
 
@@ -100,11 +100,11 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const result = await client.getProperty(propertyId)
       expect(result).toBeDefined()
       expect(result).toHaveProperty('id')
-      
+
       console.log(`✓ Retrieved property details for ${propertyId}`)
     }, 30000)
 
@@ -113,17 +113,17 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const result = await client.listPropertyRooms(propertyId)
       expect(result).toBeDefined()
-      
+
       console.log(`✓ Listed rooms for property ${propertyId}`)
     }, 30000)
 
     test('4. Should check deleted properties', async () => {
       const result = await client.listDeletedProperties()
       expect(result).toBeDefined()
-      
+
       console.log('✓ Checked deleted properties')
     }, 30000)
 
@@ -132,15 +132,15 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const params = {
         from: '2025-11-20',
         to: '2025-11-25',
       }
-      
+
       const result = await client.getAvailabilityProperty(propertyId, params)
       expect(result).toBeDefined()
-      
+
       console.log(`✓ Checked availability for property ${propertyId}`)
     }, 30000)
 
@@ -149,14 +149,14 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       // Use a dummy room ID for testing
       const roomTypeId = 'room-1'
       const params = {
         from: '2025-11-20',
         to: '2025-11-25',
       }
-      
+
       try {
         const result = await client.getAvailabilityRoom(propertyId, roomTypeId, params)
         expect(result).toBeDefined()
@@ -175,16 +175,16 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const params = {
         propertyId,
         from: '2025-11-20',
         to: '2025-11-25',
       }
-      
+
       const result = await client.getDailyRates(params)
       expect(result).toBeDefined()
-      
+
       console.log(`✓ Retrieved daily rates for property ${propertyId}`)
     }, 30000)
 
@@ -193,14 +193,14 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const params = {
         propertyId,
       }
-      
+
       const result = await client.getRateSettings(params)
       expect(result).toBeDefined()
-      
+
       console.log(`✓ Retrieved rate settings for property ${propertyId}`)
     }, 30000)
 
@@ -209,14 +209,14 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const params = {
         from: '2025-11-20',
         to: '2025-11-25',
         'guest_breakdown[adults]': 2,
         'guest_breakdown[children]': 0,
       }
-      
+
       try {
         const result = await client.getQuote(propertyId, params)
         expect(result).toBeDefined()
@@ -235,16 +235,16 @@ describe('End-to-End Smoke Tests', () => {
         from: '2025-11-01',
         to: '2025-11-30',
       }
-      
+
       const result = await client.listBookings(params)
       expect(result).toBeDefined()
-      
+
       if (Array.isArray(result) && result.length > 0) {
         bookingId = (result[0] as any).id || 'book-456'
       } else {
         bookingId = 'book-456' // fallback for testing
       }
-      
+
       console.log(`✓ Listed bookings, using booking ID: ${bookingId}`)
     }, 30000)
 
@@ -253,7 +253,7 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No booking ID available')
         return
       }
-      
+
       try {
         const result = await client.getBooking(bookingId)
         expect(result).toBeDefined()
@@ -272,7 +272,7 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No booking ID available')
         return
       }
-      
+
       try {
         const result = await client.getBookingPaymentLink(bookingId)
         expect(result).toBeDefined()
@@ -295,7 +295,7 @@ describe('End-to-End Smoke Tests', () => {
         guestBreakdown: { adults: 2 },
         roomTypes: [{ id: 'room-456' }],
       }
-      
+
       try {
         const result = await client.createBooking(payload)
         expect(result).toBeDefined()
@@ -315,9 +315,9 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No booking ID available')
         return
       }
-      
+
       const payload = { status: 'confirmed', guestBreakdown: { adults: 3 } }
-      
+
       try {
         const result = await client.updateBooking(bookingId, payload)
         expect(result).toBeDefined()
@@ -337,14 +337,14 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const payload = {
         from: '2025-12-20',
         to: '2025-12-31',
         available: false,
         minStay: 3,
       }
-      
+
       try {
         const result = await client.updatePropertyAvailability(propertyId, payload)
         expect(result).toBeDefined()
@@ -354,7 +354,9 @@ describe('End-to-End Smoke Tests', () => {
           console.log(`✓ Updated availability for property ${propertyId}`)
           expect(true).toBe(true)
         } else {
-          console.log(`⚠ Update availability failed for ${propertyId} (may require specific permissions)`)
+          console.log(
+            `⚠ Update availability failed for ${propertyId} (may require specific permissions)`,
+          )
         }
       }
     }, 30000)
@@ -364,7 +366,7 @@ describe('End-to-End Smoke Tests', () => {
         event: 'booking.created',
         targetUrl: 'https://your-app.com/webhooks/lodgify',
       }
-      
+
       try {
         const result = await client.subscribeWebhook(payload)
         expect(result).toBeDefined()
@@ -399,16 +401,16 @@ describe('End-to-End Smoke Tests', () => {
         console.log('⚠ Skipping: No property ID available')
         return
       }
-      
+
       const payload = {
         propertyId,
         roomTypeId: 'room-456',
         from: '2025-12-01',
         to: '2025-12-31',
-        rate: 150.00,
+        rate: 150.0,
         currency: 'USD',
       }
-      
+
       try {
         const result = await client.createRate(payload)
         expect(result).toBeDefined()
@@ -424,8 +426,8 @@ describe('End-to-End Smoke Tests', () => {
     }, 30000)
 
     test('19. Should update a rate', async () => {
-      const payload = { rate: 175.00, currency: 'EUR' }
-      
+      const payload = { rate: 175.0, currency: 'EUR' }
+
       try {
         const result = await client.updateRate('rate-789', payload)
         expect(result).toBeDefined()

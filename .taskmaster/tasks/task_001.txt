@@ -1,0 +1,87 @@
+# Task ID: 1
+# Title: Initialize Project Repository and Dependencies
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Set up the lodgify-mcp project with TypeScript, Bun/Node.js configuration, and install core dependencies including @modelcontextprotocol/sdk, zod, and development tools
+# Details:
+1. Initialize package.json with name 'lodgify-mcp', version '0.1.0'
+2. Configure TypeScript with strict mode, ES2022 target, module resolution for Node
+3. Install production dependencies: @modelcontextprotocol/sdk, zod, dotenv
+4. Install dev dependencies: @types/node, typescript, tsx, eslint, @typescript-eslint/parser, @typescript-eslint/eslint-plugin, vitest
+5. Setup scripts in package.json:
+   - 'dev': 'tsx src/server.ts'
+   - 'build': 'tsc'
+   - 'start': 'node dist/server.js'
+   - 'test': 'vitest'
+   - 'lint': 'eslint src/**/*.ts'
+   - 'typecheck': 'tsc --noEmit'
+6. Create .gitignore with node_modules/, dist/, .env, *.log
+7. Create .env.example with LODGIFY_API_KEY and LOG_LEVEL placeholders
+
+# Test Strategy:
+Verify package.json has all required dependencies, tsconfig.json compiles without errors, .env.example exists with correct structure, and 'npm run typecheck' passes without errors
+
+# Subtasks:
+## 1. Create and configure package.json with metadata and scripts [done]
+### Dependencies: None
+### Description: Initialize package.json file with project metadata (name: 'lodgify-mcp', version: '0.1.0') and configure all npm scripts for development, building, testing, linting, and type checking
+### Details:
+1. Create package.json with name 'lodgify-mcp' and version '0.1.0'
+2. Set type: 'module' for ES modules support
+3. Define main entry point as 'dist/server.js'
+4. Add all npm scripts:
+   - 'dev': 'tsx src/server.ts' for development
+   - 'build': 'tsc' for TypeScript compilation
+   - 'start': 'node dist/server.js' for production
+   - 'test': 'vitest' for testing
+   - 'lint': 'eslint src/**/*.ts' for linting
+   - 'typecheck': 'tsc --noEmit' for type validation
+5. Set engines field to specify Node.js >=18 or Bun >=1.0 compatibility
+
+## 2. Setup TypeScript configuration with strict mode [done]
+### Dependencies: None
+### Description: Create tsconfig.json with strict TypeScript settings, ES2022 target, and proper module resolution for Node.js compatibility
+### Details:
+1. Create tsconfig.json in project root
+2. Configure compiler options:
+   - 'target': 'ES2022' for modern JavaScript features
+   - 'module': 'commonjs' for Node.js compatibility
+   - 'lib': ['ES2022'] for runtime features
+   - 'strict': true for strict type checking
+   - 'esModuleInterop': true for module interop
+   - 'skipLibCheck': true for faster builds
+   - 'forceConsistentCasingInFileNames': true
+   - 'outDir': './dist' for build output
+   - 'rootDir': './src' for source files
+   - 'resolveJsonModule': true for JSON imports
+3. Set include: ['src/**/*'] and exclude: ['node_modules', 'dist', 'tests']
+
+## 3. Install all dependencies and create project structure files [done]
+### Dependencies: 1.1, 1.2
+### Description: Install production and development dependencies via npm/bun, then create essential project files including .gitignore and .env.example
+### Details:
+1. Install production dependencies:
+   - @modelcontextprotocol/sdk (latest)
+   - zod (latest)
+   - dotenv (latest)
+2. Install development dependencies:
+   - @types/node (^20)
+   - typescript (^5)
+   - tsx (latest)
+   - eslint (^8)
+   - @typescript-eslint/parser (latest)
+   - @typescript-eslint/eslint-plugin (latest)
+   - vitest (latest)
+3. Create .gitignore with:
+   - node_modules/
+   - dist/
+   - .env
+   - *.log
+   - .DS_Store
+4. Create .env.example with:
+   - LODGIFY_API_KEY=your_api_key_here
+   - LOG_LEVEL=info
+   - DEBUG_HTTP=0
+5. Verify installation with 'npm run typecheck' to ensure configuration is valid
+

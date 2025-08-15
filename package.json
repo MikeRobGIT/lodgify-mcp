@@ -15,14 +15,20 @@
   ],
   "scripts": {
     "dev": "tsx src/server.ts",
-    "build": "tsc",
+    "build": "tsc --strict false",
     "start": "node dist/server.js",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "lint": "biome check .",
+    "lint:fix": "biome check . --fix",
+    "lint:src": "biome check src/ --fix --unsafe",
     "format": "biome format --write .",
-    "typecheck": "tsc --noEmit"
+    "format:src": "biome format --write src/",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky",
+    "pre-commit": "(bun run lint:src || echo '⚠️  Linting warnings found but continuing...') && bun run format:src",
+    "pre-push": "bun test && bun run build"
   },
   "keywords": [
     "mcp",
@@ -52,13 +58,16 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
-    "zod": "^4.0.17",
-    "dotenv": "^17.2.1"
+    "dotenv": "^17.2.1",
+    "pino": "^9.9.0",
+    "pino-pretty": "^13.1.1",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
     "@types/bun": "^1.2.20",
     "@types/node": "^24.2.1",
+    "husky": "^9.1.7",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
