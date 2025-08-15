@@ -5,7 +5,7 @@ describe('Enhanced McpServer Features', () => {
   describe('Error Handling with JSON-RPC Compliance', () => {
     test('should create McpError for validation failures', () => {
       const validationError = new Error('Missing required field: id')
-      
+
       try {
         // Simulate validation error handling
         if (validationError.message.includes('Missing required')) {
@@ -21,7 +21,7 @@ describe('Enhanced McpServer Features', () => {
     test('should create McpError for API errors', () => {
       const apiError = new Error('Lodgify 404: Property not found')
       ;(apiError as any).status = 404
-      
+
       try {
         // Simulate API error handling
         if ((apiError as any).status === 404) {
@@ -37,7 +37,7 @@ describe('Enhanced McpServer Features', () => {
 
     test('should create McpError for internal errors', () => {
       const internalError = new Error('Unexpected database connection failure')
-      
+
       try {
         // Simulate internal error handling
         throw new McpError(ErrorCode.InternalError, `Internal error: ${internalError.message}`)
@@ -52,17 +52,13 @@ describe('Enhanced McpServer Features', () => {
       const detailedError = new Error('Rate limit exceeded')
       ;(detailedError as any).status = 429
       ;(detailedError as any).retryAfter = 60
-      
+
       try {
-        throw new McpError(
-          ErrorCode.InternalError,
-          'Rate limited by Lodgify API',
-          {
-            originalStatus: (detailedError as any).status,
-            retryAfter: (detailedError as any).retryAfter,
-            endpoint: '/v2/properties'
-          }
-        )
+        throw new McpError(ErrorCode.InternalError, 'Rate limited by Lodgify API', {
+          originalStatus: (detailedError as any).status,
+          retryAfter: (detailedError as any).retryAfter,
+          endpoint: '/v2/properties',
+        })
       } catch (error: any) {
         expect(error).toBeInstanceOf(McpError)
         expect(error.code).toBe(ErrorCode.InternalError)
@@ -80,10 +76,11 @@ describe('Enhanced McpServer Features', () => {
       const enhancedToolMetadata = {
         name: 'lodgify_list_properties',
         title: 'List Properties',
-        description: 'List all properties with optional filtering and pagination. Returns property details including names, IDs, locations, and basic configuration. Supports filtering by status, location, and other criteria.',
+        description:
+          'List all properties with optional filtering and pagination. Returns property details including names, IDs, locations, and basic configuration. Supports filtering by status, location, and other criteria.',
         inputSchema: {
-          params: expect.any(Object) // Should be Zod schema
-        }
+          params: expect.any(Object), // Should be Zod schema
+        },
       }
 
       // Validate metadata structure
@@ -92,7 +89,7 @@ describe('Enhanced McpServer Features', () => {
       expect(enhancedToolMetadata.description).toBeDefined()
       expect(enhancedToolMetadata.description.length).toBeGreaterThan(50) // Meaningful description
       expect(enhancedToolMetadata.inputSchema).toBeDefined()
-      
+
       // Tool names should follow lodgify_ convention
       expect(enhancedToolMetadata.name).toMatch(/^lodgify_/)
     })
@@ -101,10 +98,11 @@ describe('Enhanced McpServer Features', () => {
       const dangerousToolMetadata = {
         name: 'lodgify_delete_booking',
         title: 'Cancel/Delete Booking',
-        description: 'Permanently cancel and delete a booking from the system. This is a destructive operation that cannot be undone. Use with extreme caution and ensure proper authorization. Consider using booking modification instead of deletion when possible.',
+        description:
+          'Permanently cancel and delete a booking from the system. This is a destructive operation that cannot be undone. Use with extreme caution and ensure proper authorization. Consider using booking modification instead of deletion when possible.',
         inputSchema: {
-          id: expect.any(Object)
-        }
+          id: expect.any(Object),
+        },
       }
 
       // Dangerous tools should have clear warnings in description
@@ -117,16 +115,17 @@ describe('Enhanced McpServer Features', () => {
       const helperToolMetadata = {
         name: 'lodgify_find_properties',
         title: 'Find Properties',
-        description: 'Find properties in the system when you don\'t know the exact property ID. Searches properties by name, gets property IDs from bookings, or lists all properties.',
+        description:
+          "Find properties in the system when you don't know the exact property ID. Searches properties by name, gets property IDs from bookings, or lists all properties.",
         inputSchema: {
           searchTerm: expect.any(Object),
           includePropertyIds: expect.any(Object),
-          limit: expect.any(Object)
-        }
+          limit: expect.any(Object),
+        },
       }
 
       // Helper tools should explain their purpose clearly
-      expect(helperToolMetadata.description).toContain('when you don\'t know')
+      expect(helperToolMetadata.description).toContain("when you don't know")
       expect(helperToolMetadata.description).toContain('Find properties')
     })
   })
@@ -135,11 +134,11 @@ describe('Enhanced McpServer Features', () => {
     test('should have debouncing configuration for tools notifications', () => {
       const expectedDebouncedMethods = [
         'notifications/tools/list_changed',
-        'notifications/resources/list_changed'
+        'notifications/resources/list_changed',
       ]
 
       // Our server should be configured with these debounced notification methods
-      expectedDebouncedMethods.forEach(method => {
+      expectedDebouncedMethods.forEach((method) => {
         expect(method).toMatch(/^notifications\//)
         expect(method).toContain('list_changed')
       })
@@ -149,7 +148,7 @@ describe('Enhanced McpServer Features', () => {
       // Simulation of how debouncing would work
       const notifications: string[] = []
       let debounceTimer: any = null
-      
+
       const debouncedNotify = (method: string) => {
         if (debounceTimer) clearTimeout(debounceTimer)
         debounceTimer = setTimeout(() => {
@@ -177,21 +176,21 @@ describe('Enhanced McpServer Features', () => {
     test('should declare comprehensive server capabilities', () => {
       const expectedCapabilities = {
         tools: {
-          listChanged: true // Tool list can change
+          listChanged: true, // Tool list can change
         },
         resources: {
-          subscribe: true,  // Can subscribe to resource changes
-          listChanged: true // Resource list can change
+          subscribe: true, // Can subscribe to resource changes
+          listChanged: true, // Resource list can change
         },
         logging: {}, // Supports logging
-        completions: {} // May support completions
+        completions: {}, // May support completions
       }
 
       // Validate capability structure
       expect(expectedCapabilities.tools).toBeDefined()
       expect(expectedCapabilities.resources).toBeDefined()
       expect(expectedCapabilities.logging).toBeDefined()
-      
+
       // Check specific capabilities
       expect(expectedCapabilities.tools.listChanged).toBe(true)
       expect(expectedCapabilities.resources.subscribe).toBe(true)
@@ -201,7 +200,7 @@ describe('Enhanced McpServer Features', () => {
     test('should declare server information', () => {
       const expectedServerInfo = {
         name: 'lodgify-mcp',
-        version: '0.1.0'
+        version: '0.1.0',
       }
 
       expect(expectedServerInfo.name).toBe('lodgify-mcp')
@@ -215,7 +214,7 @@ describe('Enhanced McpServer Features', () => {
         uri: 'lodgify://health',
         name: 'Health Check',
         description: 'Check the health status of the Lodgify MCP server and API connectivity',
-        mimeType: 'application/json'
+        mimeType: 'application/json',
       }
 
       expect(healthCheckResource.uri).toBe('lodgify://health')
@@ -230,7 +229,7 @@ describe('Enhanced McpServer Features', () => {
         timestamp: expect.any(String),
         version: '0.1.0',
         baseUrl: 'https://api.lodgify.com',
-        apiKeyConfigured: true
+        apiKeyConfigured: true,
       }
 
       expect(expectedHealthData.ok).toBe(true)
@@ -257,11 +256,11 @@ describe('Enhanced McpServer Features', () => {
         'lodgify_availability_room',
         'lodgify_availability_property',
         'lodgify_get_quote',
-        'lodgify_get_thread'
+        'lodgify_get_thread',
       ]
 
       // All original tools should still be available
-      originalToolNames.forEach(toolName => {
+      originalToolNames.forEach((toolName) => {
         expect(toolName).toMatch(/^lodgify_/)
         expect(toolName.length).toBeGreaterThan(10) // Meaningful names
       })
@@ -281,11 +280,11 @@ describe('Enhanced McpServer Features', () => {
         'lodgify_delete_webhook',
         'lodgify_create_rate',
         'lodgify_update_rate',
-        'lodgify_update_property_availability'
+        'lodgify_update_property_availability',
       ]
 
       // All enhanced tools should be available
-      enhancedToolNames.forEach(toolName => {
+      enhancedToolNames.forEach((toolName) => {
         expect(toolName).toMatch(/^lodgify_/)
         expect(toolName.length).toBeGreaterThan(10) // Meaningful names
       })

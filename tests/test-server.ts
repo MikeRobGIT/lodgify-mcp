@@ -6,7 +6,8 @@ export function createTestServer(mockClient: any) {
   const tools = [
     {
       name: 'lodgify.list_properties',
-      description: 'List all properties with optional filtering and pagination (GET /v2/properties)',
+      description:
+        'List all properties with optional filtering and pagination (GET /v2/properties)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -47,7 +48,7 @@ export function createTestServer(mockClient: any) {
     },
     {
       name: 'lodgify.find_properties',
-      description: 'Find properties in the system when you don\'t know the exact property ID',
+      description: "Find properties in the system when you don't know the exact property ID",
       inputSchema: {
         type: 'object',
         properties: {
@@ -136,7 +137,8 @@ export function createTestServer(mockClient: any) {
     },
     {
       name: 'lodgify.get_booking_payment_link',
-      description: 'Get payment link for a booking (GET /v2/reservations/bookings/{id}/quote/paymentLink)',
+      description:
+        'Get payment link for a booking (GET /v2/reservations/bookings/{id}/quote/paymentLink)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -150,7 +152,8 @@ export function createTestServer(mockClient: any) {
     },
     {
       name: 'lodgify.create_booking_payment_link',
-      description: 'Create payment link for a booking (POST /v2/reservations/bookings/{id}/quote/paymentLink)',
+      description:
+        'Create payment link for a booking (POST /v2/reservations/bookings/{id}/quote/paymentLink)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -186,7 +189,8 @@ export function createTestServer(mockClient: any) {
     },
     {
       name: 'lodgify.availability_room',
-      description: 'Check availability for a specific room type (GET /v2/availability/{propertyId}/{roomTypeId})',
+      description:
+        'Check availability for a specific room type (GET /v2/availability/{propertyId}/{roomTypeId})',
       inputSchema: {
         type: 'object',
         properties: {
@@ -324,7 +328,11 @@ export function createTestServer(mockClient: any) {
             break
 
           case 'lodgify.availability_room':
-            result = await mockClient.getAvailabilityRoom(args.propertyId, args.roomTypeId, args.params)
+            result = await mockClient.getAvailabilityRoom(
+              args.propertyId,
+              args.roomTypeId,
+              args.params,
+            )
             break
 
           case 'lodgify.availability_property':
@@ -339,11 +347,11 @@ export function createTestServer(mockClient: any) {
             result = await mockClient.getThread(args.threadGuid)
             break
 
-          case 'lodgify.find_properties':
+          case 'lodgify.find_properties': {
             // Mock implementation for find_properties
             const properties = []
             const propertyIds = new Set()
-            
+
             // Add properties from listProperties
             const propertiesData = await mockClient.listProperties(args.params)
             if (propertiesData?.items) {
@@ -351,12 +359,12 @@ export function createTestServer(mockClient: any) {
                 properties.push({
                   id: property.id.toString(),
                   name: property.name || `Property ${property.id}`,
-                  source: 'property_list'
+                  source: 'property_list',
                 })
                 propertyIds.add(property.id.toString())
               }
             }
-            
+
             // Add property IDs from bookings if enabled
             if (args.includePropertyIds !== false) {
               const bookingsData = await mockClient.listBookings()
@@ -366,20 +374,21 @@ export function createTestServer(mockClient: any) {
                     properties.push({
                       id: booking.property_id.toString(),
                       name: `Property ${booking.property_id}`,
-                      source: 'bookings'
+                      source: 'bookings',
                     })
                     propertyIds.add(booking.property_id.toString())
                   }
                 }
               }
             }
-            
+
             result = {
               properties,
               message: `Found ${properties.length} property(ies)`,
-              suggestions: ['Use one of these property IDs with availability tools']
+              suggestions: ['Use one of these property IDs with availability tools'],
             }
             break
+          }
 
           default:
             throw new Error(`Unknown tool: ${name}`)
@@ -441,6 +450,6 @@ export function createTestServer(mockClient: any) {
       }
 
       throw new Error(`Unknown resource: ${uri}`)
-    }
+    },
   }
 }

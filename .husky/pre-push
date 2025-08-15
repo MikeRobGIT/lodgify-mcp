@@ -1,0 +1,12 @@
+#!/bin/sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🧪 Running pre-push checks..."
+
+# Run tests and build
+bun run pre-push || {
+  echo "❌ Pre-push checks failed. Please fix the issues before pushing."
+  exit 1
+}
+
+echo "✅ Pre-push checks passed! Ready to push."

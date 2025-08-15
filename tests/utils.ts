@@ -9,7 +9,7 @@ export function createMockResponse(
   headers: Record<string, string> = {},
 ): Response {
   const mockHeaders = new Headers(headers)
-  
+
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -76,7 +76,7 @@ export const fixtures = {
     country: 'US',
     rooms: [],
   },
-  
+
   booking: {
     id: 'book-456',
     propertyId: 'prop-123',
@@ -89,7 +89,7 @@ export const fixtures = {
     totalAmount: 1000,
     currency: 'USD',
   },
-  
+
   availability: {
     propertyId: 'prop-123',
     available: true,
@@ -101,7 +101,7 @@ export const fixtures = {
       { date: '2025-11-24', available: true, price: 200 },
     ],
   },
-  
+
   quote: {
     propertyId: 'prop-123',
     from: '2025-11-20',
@@ -114,7 +114,7 @@ export const fixtures = {
       serviceFee: 0,
     },
   },
-  
+
   thread: {
     guid: '550e8400-e29b-41d4-a716-446655440000',
     messages: [
@@ -157,7 +157,7 @@ export const mockTimers = {
     return {
       advance: async (ms: number) => {
         currentTime += ms
-        const toRun = timers.filter(t => t.time <= currentTime)
+        const toRun = timers.filter((t) => t.time <= currentTime)
         for (const timer of toRun) {
           await timer.callback()
           const index = timers.indexOf(timer)

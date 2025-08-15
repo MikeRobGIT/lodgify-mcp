@@ -10,26 +10,26 @@ import { safeLogger } from './logger.js'
  * Lodgify API key validation schema
  * Validates format, length, and basic structure
  */
-const apiKeySchema = z.string()
+const apiKeySchema = z
+  .string()
   .min(32, 'API key must be at least 32 characters long')
   .max(256, 'API key exceeds maximum length')
   .regex(/^[a-zA-Z0-9_-]+$/, 'API key contains invalid characters')
   .refine(
     (key) => !key.toLowerCase().includes('test') || key.toLowerCase().includes('sandbox'),
-    'Suspicious API key format detected'
+    'Suspicious API key format detected',
   )
 
 /**
  * Log level validation schema
  */
-const logLevelSchema = z.enum(['error', 'warn', 'info', 'debug'])
-  .optional()
-  .default('info')
+const logLevelSchema = z.enum(['error', 'warn', 'info', 'debug']).optional().default('info')
 
 /**
  * Debug HTTP flag validation schema
  */
-const debugHttpSchema = z.string()
+const debugHttpSchema = z
+  .string()
   .optional()
   .default('0')
   .transform((val) => val === '1' || val === 'true')
@@ -93,7 +93,7 @@ export function sanitizeApiKey(apiKey: string): string {
  */
 export function validateApiKey(
   apiKey: string,
-  config: Partial<SecurityConfig> = {}
+  config: Partial<SecurityConfig> = {},
 ): { isValid: boolean; warnings: string[] } {
   const securityConfig = { ...DEFAULT_SECURITY_CONFIG, ...config }
   const warnings: string[] = []
@@ -103,9 +103,10 @@ export function validateApiKey(
   } catch (error) {
     return {
       isValid: false,
-      warnings: error instanceof z.ZodError 
-        ? error.errors.map(e => e.message)
-        : ['Invalid API key format']
+      warnings:
+        error instanceof z.ZodError
+          ? error.errors.map((e) => e.message)
+          : ['Invalid API key format'],
     }
   }
 
@@ -128,14 +129,14 @@ export function validateApiKey(
   }
 
   if (securityConfig.logWarnings && warnings.length > 0) {
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       safeLogger.warn(`API Key validation warning: ${warning}`)
     })
   }
 
   return {
     isValid: true,
-    warnings
+    warnings,
   }
 }
 
@@ -159,16 +160,14 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
     if (!rawEnv.LODGIFY_API_KEY) {
       throw new Error(
         'LODGIFY_API_KEY environment variable is required. ' +
-        'Please set it in your .env file or environment variables.'
+          'Please set it in your .env file or environment variables.',
       )
     }
 
     // Validate API key security
     const apiKeyValidation = validateApiKey(rawEnv.LODGIFY_API_KEY, securityConfig)
     if (!apiKeyValidation.isValid) {
-      throw new Error(
-        `Invalid API key: ${apiKeyValidation.warnings.join(', ')}`
-      )
+      throw new Error(`Invalid API key: ${apiKeyValidation.warnings.join(', ')}`)
     }
 
     // Parse and validate all environment variables
@@ -179,12 +178,13 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
       debugHttp: config.DEBUG_HTTP,
       nodeEnv: config.NODE_ENV,
       apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
-      warnings: apiKeyValidation.warnings.length > 0 ? apiKeyValidation.warnings : undefined
+      warnings: apiKeyValidation.warnings.length > 0 ? apiKeyValidation.warnings : undefined,
     })
 
     return config
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown environment validation error'
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown environment validation error'
     safeLogger.error('Environment validation failed', { error: errorMessage })
     throw new Error(`Environment validation failed: ${errorMessage}`)
   }
@@ -222,14 +222,14 @@ export function isTest(config: EnvConfig): boolean {
  * @param config - Environment configuration
  * @returns Sanitized environment information
  */
-export function getSafeEnvInfo(config: EnvConfig): Record<string, any> {
+export function getSafeEnvInfo(config: EnvConfig): Record<string, unknown> {
   return {
     nodeEnv: config.NODE_ENV,
     logLevel: config.LOG_LEVEL,
     debugHttp: config.DEBUG_HTTP,
     apiKeyPresent: !!config.LODGIFY_API_KEY,
     apiKeyLength: config.LODGIFY_API_KEY.length,
-    apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY)
+    apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
   }
 }
 
@@ -237,7 +237,10 @@ export function getSafeEnvInfo(config: EnvConfig): Record<string, any> {
  * Environment validation error class
  */
 export class EnvironmentError extends Error {
-  constructor(message: string, public readonly details?: Record<string, any>) {
+  constructor(
+    message: string,
+    public readonly details?: Record<string, unknown>,
+  ) {
     super(message)
     this.name = 'EnvironmentError'
   }

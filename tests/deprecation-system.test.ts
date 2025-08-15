@@ -7,13 +7,14 @@ describe('Tool Deprecation System', () => {
       const deprecationInfo = {
         since: '0.1.1',
         removeIn: '1.0.0',
-        reason: 'Raw availability data is complex. Use availability helper tools for better results',
-        replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar'
+        reason:
+          'Raw availability data is complex. Use availability helper tools for better results',
+        replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
       }
 
       // This matches the generateDeprecationWarning function logic
       const expectedWarning = `⚠️ **DEPRECATED** (since v${deprecationInfo.since}): ${deprecationInfo.reason} Please use '${deprecationInfo.replacement}' instead. This tool will be removed in v${deprecationInfo.removeIn}.`
-      
+
       // Verify warning structure
       expect(expectedWarning).toContain('⚠️ **DEPRECATED**')
       expect(expectedWarning).toContain(`since v${deprecationInfo.since}`)
@@ -26,11 +27,11 @@ describe('Tool Deprecation System', () => {
       const deprecationInfo = {
         since: '0.1.0',
         reason: 'Performance improvements available in newer tools',
-        replacement: 'new_tool_name'
+        replacement: 'new_tool_name',
       }
 
       const expectedWarning = `⚠️ **DEPRECATED** (since v${deprecationInfo.since}): ${deprecationInfo.reason} Please use '${deprecationInfo.replacement}' instead.`
-      
+
       expect(expectedWarning).toContain('⚠️ **DEPRECATED**')
       expect(expectedWarning).toContain(deprecationInfo.reason)
       expect(expectedWarning).toContain(deprecationInfo.replacement)
@@ -41,11 +42,11 @@ describe('Tool Deprecation System', () => {
       const deprecationInfo = {
         since: '0.2.0',
         removeIn: '1.0.0',
-        reason: 'Tool no longer needed due to API changes'
+        reason: 'Tool no longer needed due to API changes',
       }
 
       const expectedWarning = `⚠️ **DEPRECATED** (since v${deprecationInfo.since}): ${deprecationInfo.reason} This tool will be removed in v${deprecationInfo.removeIn}.`
-      
+
       expect(expectedWarning).toContain('⚠️ **DEPRECATED**')
       expect(expectedWarning).toContain(deprecationInfo.reason)
       expect(expectedWarning).not.toContain('Please use')
@@ -61,7 +62,7 @@ describe('Tool Deprecation System', () => {
         totalDeprecatedTools: 2,
         deprecations: [],
         recommendations: [],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }
 
       // Validate structure matches expectations
@@ -77,9 +78,11 @@ describe('Tool Deprecation System', () => {
         tool: 'lodgify_availability_room',
         deprecatedSince: '0.1.1',
         removeIn: '1.0.0',
-        reason: 'Raw availability data is complex. Use availability helper tools for better results',
+        reason:
+          'Raw availability data is complex. Use availability helper tools for better results',
         replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
-        warning: '⚠️ **DEPRECATED** (since v0.1.1): Raw availability data is complex. Please use \'lodgify_check_next_availability, lodgify_get_availability_calendar\' instead. This tool will be removed in v1.0.0.'
+        warning:
+          "⚠️ **DEPRECATED** (since v0.1.1): Raw availability data is complex. Please use 'lodgify_check_next_availability, lodgify_get_availability_calendar' instead. This tool will be removed in v1.0.0.",
       }
 
       // Validate individual deprecation entry structure
@@ -97,29 +100,29 @@ describe('Tool Deprecation System', () => {
       // Test the actual deprecations configured in the server
       const deprecatedAvailabilityTools = [
         'lodgify_availability_room',
-        'lodgify_availability_property'
+        'lodgify_availability_property',
       ]
 
       const expectedReplacements = [
         'lodgify_check_next_availability',
-        'lodgify_get_availability_calendar'
+        'lodgify_get_availability_calendar',
       ]
 
-      deprecatedAvailabilityTools.forEach(toolName => {
+      deprecatedAvailabilityTools.forEach((toolName) => {
         expect(toolName).toMatch(/^lodgify_availability_/)
       })
 
-      expectedReplacements.forEach(replacement => {
+      expectedReplacements.forEach((replacement) => {
         expect(replacement).toMatch(/^lodgify_(check_|get_availability_)/)
       })
     })
 
     test('should validate deprecation reasons are informative', () => {
       const reasons = [
-        'Raw availability data is complex. Use availability helper tools for better results'
+        'Raw availability data is complex. Use availability helper tools for better results',
       ]
 
-      reasons.forEach(reason => {
+      reasons.forEach((reason) => {
         expect(reason.length).toBeGreaterThan(20) // Meaningful explanation
         expect(reason).toContain('better') // Should explain benefit of replacement
       })
@@ -133,7 +136,8 @@ describe('Tool Deprecation System', () => {
         deprecatedSince: '0.1.1',
         removeIn: '1.0.0',
         replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
-        reason: 'Raw availability data is complex. Use availability helper tools for better results'
+        reason:
+          'Raw availability data is complex. Use availability helper tools for better results',
       }
 
       // Log entry should contain all necessary information for monitoring
@@ -162,15 +166,15 @@ describe('Tool Deprecation System', () => {
         title: 'Test Tool',
         description: 'Original description',
         inputSchema: {
-          id: { type: 'string' }
-        }
+          id: { type: 'string' },
+        },
       }
 
       const mockDeprecationInfo = {
         since: '0.1.0',
         removeIn: '1.0.0',
         reason: 'Test deprecation',
-        replacement: 'new_test_tool'
+        replacement: 'new_test_tool',
       }
 
       // Simulate what the registerToolWithDeprecation function does
@@ -179,14 +183,16 @@ describe('Tool Deprecation System', () => {
 
       expect(enhancedDescription).toContain('⚠️ **DEPRECATED**')
       expect(enhancedDescription).toContain(mockToolConfig.description)
-      expect(enhancedDescription.indexOf('⚠️')).toBeLessThan(enhancedDescription.indexOf('Original description'))
+      expect(enhancedDescription.indexOf('⚠️')).toBeLessThan(
+        enhancedDescription.indexOf('Original description'),
+      )
     })
   })
 
   describe('Resource URI Validation', () => {
     test('should validate deprecation resource URI format', () => {
       const deprecationResourceURI = 'lodgify://deprecations'
-      
+
       expect(deprecationResourceURI).toMatch(/^lodgify:\/\//)
       expect(deprecationResourceURI).toContain('deprecations')
       expect(deprecationResourceURI).not.toContain(' ') // No spaces
@@ -197,7 +203,7 @@ describe('Tool Deprecation System', () => {
       const resourceMetadata = {
         title: 'Tool Deprecation Registry',
         description: 'View current tool deprecation notices and upgrade recommendations',
-        mimeType: 'application/json'
+        mimeType: 'application/json',
       }
 
       expect(resourceMetadata.title).toContain('Deprecation')

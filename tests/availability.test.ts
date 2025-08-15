@@ -1,5 +1,13 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
-import { LodgifyClient, getTodayISO, addDays, isValidDateISO, compareDates, isDateInRange, daysBetween } from '../src/lodgify.js'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import {
+  addDays,
+  compareDates,
+  daysBetween,
+  getTodayISO,
+  isDateInRange,
+  isValidDateISO,
+  LodgifyClient,
+} from '../src/lodgify.js'
 import { createMockResponse } from './utils.js'
 
 describe('Date Utility Functions', () => {
@@ -20,10 +28,10 @@ describe('Date Utility Functions', () => {
     expect(isValidDateISO('2025-08-14')).toBe(true)
     expect(isValidDateISO('2025-12-31')).toBe(true)
     expect(isValidDateISO('2025-02-29')).toBe(false) // Not a leap year
-    expect(isValidDateISO('2024-02-29')).toBe(true)  // Leap year
+    expect(isValidDateISO('2024-02-29')).toBe(true) // Leap year
     expect(isValidDateISO('2025-13-01')).toBe(false) // Invalid month
     expect(isValidDateISO('2025-08-32')).toBe(false) // Invalid day
-    expect(isValidDateISO('25-08-14')).toBe(false)   // Wrong format
+    expect(isValidDateISO('25-08-14')).toBe(false) // Wrong format
     expect(isValidDateISO('2025/08/14')).toBe(false) // Wrong format
     expect(isValidDateISO('')).toBe(false)
     expect(isValidDateISO('invalid')).toBe(false)
@@ -76,16 +84,16 @@ describe('LodgifyClient Availability Helper Methods', () => {
             property_id: 123,
             arrival: '2025-08-14',
             departure: '2025-08-16',
-            status: 'Booked'
+            status: 'Booked',
           },
           {
             id: 2,
             property_id: 123,
             arrival: '2025-08-20',
             departure: '2025-08-22',
-            status: 'Confirmed'
-          }
-        ]
+            status: 'Confirmed',
+          },
+        ],
       }
 
       global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
@@ -105,9 +113,9 @@ describe('LodgifyClient Availability Helper Methods', () => {
             property_id: 123,
             arrival: '2025-08-14',
             departure: '2025-09-14', // Covers entire check period
-            status: 'Booked'
-          }
-        ]
+            status: 'Booked',
+          },
+        ],
       }
 
       global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
@@ -126,16 +134,16 @@ describe('LodgifyClient Availability Helper Methods', () => {
             property_id: 123,
             arrival: '2025-08-14',
             departure: '2025-08-16',
-            status: 'Cancelled' // Should be ignored
+            status: 'Cancelled', // Should be ignored
           },
           {
             id: 2,
             property_id: 123,
             arrival: '2025-08-20',
             departure: '2025-08-22',
-            status: 'Booked'
-          }
-        ]
+            status: 'Booked',
+          },
+        ],
       }
 
       global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
@@ -161,19 +169,19 @@ describe('LodgifyClient Availability Helper Methods', () => {
         items: [
           {
             id: 1,
-            property_id: 456,  // Different property ID
+            property_id: 456, // Different property ID
             arrival: '2025-08-14',
             departure: '2025-08-16',
-            status: 'Booked'
+            status: 'Booked',
           },
           {
             id: 2,
-            property_id: 789,  // Another different property ID
+            property_id: 789, // Another different property ID
             arrival: '2025-08-20',
             departure: '2025-08-22',
-            status: 'Confirmed'
-          }
-        ]
+            status: 'Confirmed',
+          },
+        ],
       }
 
       global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
@@ -195,9 +203,9 @@ describe('LodgifyClient Availability Helper Methods', () => {
             property_id: 123,
             arrival: '2025-08-10',
             departure: '2025-08-12',
-            status: 'Booked'
-          }
-        ]
+            status: 'Booked',
+          },
+        ],
       }
 
       global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
@@ -217,9 +225,9 @@ describe('LodgifyClient Availability Helper Methods', () => {
             property_id: 123,
             arrival: '2025-08-16',
             departure: '2025-08-18',
-            status: 'Booked'
-          }
-        ]
+            status: 'Booked',
+          },
+        ],
       }
 
       global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
@@ -233,21 +241,21 @@ describe('LodgifyClient Availability Helper Methods', () => {
 
     test('should validate date format', async () => {
       await expect(
-        client.checkDateRangeAvailability('123', 'invalid-date', '2025-08-18')
+        client.checkDateRangeAvailability('123', 'invalid-date', '2025-08-18'),
       ).rejects.toThrow('Invalid date format')
 
       await expect(
-        client.checkDateRangeAvailability('123', '2025-08-15', 'invalid-date')
+        client.checkDateRangeAvailability('123', '2025-08-15', 'invalid-date'),
       ).rejects.toThrow('Invalid date format')
     })
 
     test('should validate check-in before check-out', async () => {
       await expect(
-        client.checkDateRangeAvailability('123', '2025-08-18', '2025-08-15')
+        client.checkDateRangeAvailability('123', '2025-08-18', '2025-08-15'),
       ).rejects.toThrow('Check-in date must be before check-out date')
 
       await expect(
-        client.checkDateRangeAvailability('123', '2025-08-15', '2025-08-15')
+        client.checkDateRangeAvailability('123', '2025-08-15', '2025-08-15'),
       ).rejects.toThrow('Check-in date must be before check-out date')
     })
   })
@@ -261,9 +269,9 @@ describe('LodgifyClient Availability Helper Methods', () => {
             property_id: 123,
             arrival: '2025-08-16',
             departure: '2025-08-18',
-            status: 'Booked'
-          }
-        ]
+            status: 'Booked',
+          },
+        ],
       }
 
       global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
@@ -311,17 +319,13 @@ describe('LodgifyClient Availability Helper Methods', () => {
     test('should handle API errors gracefully', async () => {
       global.fetch = mock(async () => createMockResponse(500, { error: 'Internal Server Error' }))
 
-      await expect(
-        client.getNextAvailableDate('123')
-      ).rejects.toThrow()
+      await expect(client.getNextAvailableDate('123')).rejects.toThrow()
 
       await expect(
-        client.checkDateRangeAvailability('123', '2025-08-15', '2025-08-18')
+        client.checkDateRangeAvailability('123', '2025-08-15', '2025-08-18'),
       ).rejects.toThrow()
 
-      await expect(
-        client.getAvailabilityCalendar('123')
-      ).rejects.toThrow()
+      await expect(client.getAvailabilityCalendar('123')).rejects.toThrow()
     })
 
     test('should handle empty booking responses', async () => {

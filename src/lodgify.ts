@@ -85,8 +85,11 @@ export function isValidDateISO(dateString: string): boolean {
     return false
   }
   const date = new Date(dateString)
-  return date instanceof Date && !isNaN(date.getTime()) && 
-         date.toISOString().split('T')[0] === dateString
+  return (
+    date instanceof Date &&
+    !Number.isNaN(date.getTime()) &&
+    date.toISOString().split('T')[0] === dateString
+  )
 }
 
 /**
@@ -128,7 +131,7 @@ export class LodgifyClient {
   private readonly rateLimiter: RateLimiter
   private requestCount = 0
   private windowStart = Date.now()
-  
+
   // Allow injection of sleep function for testing
   public _sleepFn?: (ms: number) => Promise<void>
 
@@ -146,7 +149,7 @@ export class LodgifyClient {
   private createRateLimiter(): RateLimiter {
     const limit = 60 // requests per minute
     const windowMs = 60000 // 1 minute
-    
+
     return {
       checkLimit: (): boolean => {
         const now = Date.now()
@@ -158,7 +161,7 @@ export class LodgifyClient {
       },
       recordRequest: (): void => {
         this.requestCount++
-      }
+      },
     }
   }
 
@@ -190,12 +193,12 @@ export class LodgifyClient {
 
     if (messageLevel <= currentLevel) {
       let sanitizedData = data
-      
+
       if (data) {
         // Sanitize sensitive data before logging
         sanitizedData = this.sanitizeLogData(data)
       }
-      
+
       // Use file-based logger with sanitized data to prevent STDIO interference
       switch (level) {
         case 'error':
@@ -223,17 +226,19 @@ export class LodgifyClient {
     }
 
     if (Array.isArray(data)) {
-      return data.map(item => this.sanitizeLogData(item))
+      return data.map((item) => this.sanitizeLogData(item))
     }
 
     const sanitized: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(data)) {
       // Never log API keys, passwords, or other sensitive data
-      if (key.toLowerCase().includes('key') || 
-          key.toLowerCase().includes('password') ||
-          key.toLowerCase().includes('token') ||
-          key.toLowerCase().includes('secret') ||
-          key.toLowerCase().includes('auth')) {
+      if (
+        key.toLowerCase().includes('key') ||
+        key.toLowerCase().includes('password') ||
+        key.toLowerCase().includes('token') ||
+        key.toLowerCase().includes('secret') ||
+        key.toLowerCase().includes('auth')
+      ) {
         sanitized[key] = '[REDACTED]'
       } else if (typeof value === 'object') {
         sanitized[key] = this.sanitizeLogData(value)
@@ -444,9 +449,7 @@ export class LodgifyClient {
    * List all properties with optional filtering and pagination
    * GET /v2/properties
    */
-  public async listProperties<T = unknown>(
-    params?: Record<string, unknown>,
-  ): Promise<T> {
+  public async listProperties<T = unknown>(params?: Record<string, unknown>): Promise<T> {
     this.log('debug', 'listProperties called', { params })
     return this.request<T>('GET', '/v2/properties', { params })
   }
@@ -458,24 +461,24 @@ export class LodgifyClient {
     if (!param || typeof param !== 'string') {
       return { isValid: false, error: `${paramName} is required and must be a string` }
     }
-    
+
     // Allow URL-encoded test data and special characters for backward compatibility
     if (param.includes('%') || param.includes(' ') || param.includes('/')) {
       // This is likely test data that needs encoding, allow it through
       return { isValid: true, sanitized: param }
     }
-    
+
     // Remove any potentially dangerous characters
     const sanitized = param.replace(/[^a-zA-Z0-9_-]/g, '')
-    
+
     if (sanitized !== param) {
       return { isValid: false, error: `${paramName} contains invalid characters` }
     }
-    
+
     if (sanitized.length === 0 || sanitized.length > 100) {
       return { isValid: false, error: `${paramName} must be 1-100 characters` }
     }
-    
+
     return { isValid: true, sanitized }
   }
 
@@ -488,7 +491,7 @@ export class LodgifyClient {
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
-    
+
     this.log('debug', 'getProperty called', { id: validation.sanitized })
     return this.request<T>('GET', `/v2/properties/${encodeURIComponent(validation.sanitized!)}`)
   }
@@ -502,18 +505,19 @@ export class LodgifyClient {
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
-    
+
     this.log('debug', 'listPropertyRooms called', { propertyId: validation.sanitized })
-    return this.request<T>('GET', `/v2/properties/${encodeURIComponent(validation.sanitized!)}/rooms`)
+    return this.request<T>(
+      'GET',
+      `/v2/properties/${encodeURIComponent(validation.sanitized!)}/rooms`,
+    )
   }
 
   /**
    * List deleted properties with optional filtering
    * GET /v2/deletedProperties
    */
-  public async listDeletedProperties<T = unknown>(
-    params?: Record<string, unknown>,
-  ): Promise<T> {
+  public async listDeletedProperties<T = unknown>(params?: Record<string, unknown>): Promise<T> {
     this.log('debug', 'listDeletedProperties called', { params })
     return this.request<T>('GET', '/v2/deletedProperties', { params })
   }
@@ -568,9 +572,12 @@ export class LodgifyClient {
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
-    
+
     this.log('debug', 'getBooking called', { id: validation.sanitized })
-    return this.request<T>('GET', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`)
+    return this.request<T>(
+      'GET',
+      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`,
+    )
   }
 
   /**
@@ -582,9 +589,12 @@ export class LodgifyClient {
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
-    
+
     this.log('debug', 'getBookingPaymentLink called', { id: validation.sanitized })
-    return this.request<T>('GET', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/quote/paymentLink`)
+    return this.request<T>(
+      'GET',
+      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/quote/paymentLink`,
+    )
   }
 
   /**
@@ -602,11 +612,15 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
+
     this.log('debug', 'createBookingPaymentLink called', { id: validation.sanitized, payload })
-    return this.request<T>('POST', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/quote/paymentLink`, {
-      body: payload,
-    })
+    return this.request<T>(
+      'POST',
+      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/quote/paymentLink`,
+      {
+        body: payload,
+      },
+    )
   }
 
   /**
@@ -624,11 +638,15 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
+
     this.log('debug', 'updateKeyCodes called', { id: validation.sanitized, payload })
-    return this.request<T>('PUT', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/keyCodes`, {
-      body: payload,
-    })
+    return this.request<T>(
+      'PUT',
+      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/keyCodes`,
+      {
+        body: payload,
+      },
+    )
   }
 
   // ============================================================================
@@ -648,13 +666,17 @@ export class LodgifyClient {
     if (!propertyValidation.isValid) {
       throw new Error(propertyValidation.error)
     }
-    
+
     const roomValidation = this.validatePathParam(roomTypeId, 'Room Type ID')
     if (!roomValidation.isValid) {
       throw new Error(roomValidation.error)
     }
-    
-    this.log('debug', 'getAvailabilityRoom called', { propertyId: propertyValidation.sanitized, roomTypeId: roomValidation.sanitized, params })
+
+    this.log('debug', 'getAvailabilityRoom called', {
+      propertyId: propertyValidation.sanitized,
+      roomTypeId: roomValidation.sanitized,
+      params,
+    })
     return this.request<T>(
       'GET',
       `/v2/availability/${encodeURIComponent(propertyValidation.sanitized!)}/${encodeURIComponent(roomValidation.sanitized!)}`,
@@ -674,9 +696,14 @@ export class LodgifyClient {
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
-    
-    this.log('debug', 'getAvailabilityProperty called', { propertyId: validation.sanitized, params })
-    return this.request<T>('GET', `/v2/availability/${encodeURIComponent(validation.sanitized!)}`, { params })
+
+    this.log('debug', 'getAvailabilityProperty called', {
+      propertyId: validation.sanitized,
+      params,
+    })
+    return this.request<T>('GET', `/v2/availability/${encodeURIComponent(validation.sanitized!)}`, {
+      params,
+    })
   }
 
   // ============================================================================
@@ -698,9 +725,11 @@ export class LodgifyClient {
     if (!params || typeof params !== 'object') {
       throw new Error('Valid parameters object is required for quote')
     }
-    
+
     this.log('debug', 'getQuote called', { propertyId: validation.sanitized, params })
-    return this.request<T>('GET', `/v2/quote/${encodeURIComponent(validation.sanitized!)}`, { params })
+    return this.request<T>('GET', `/v2/quote/${encodeURIComponent(validation.sanitized!)}`, {
+      params,
+    })
   }
 
   /**
@@ -712,14 +741,14 @@ export class LodgifyClient {
     if (!threadGuid || typeof threadGuid !== 'string') {
       throw new Error('Thread GUID is required and must be a string')
     }
-    
+
     // Allow GUID format (alphanumeric, hyphens, underscores)
     const sanitized = threadGuid.replace(/[^a-zA-Z0-9_-]/g, '')
-    
+
     if (sanitized !== threadGuid || sanitized.length === 0 || sanitized.length > 100) {
       throw new Error('Thread GUID contains invalid characters or invalid length')
     }
-    
+
     this.log('debug', 'getThread called', { threadGuid: sanitized })
     return this.request<T>('GET', `/v2/messaging/${encodeURIComponent(sanitized)}`)
   }
@@ -736,7 +765,7 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
+
     this.log('debug', 'createBooking called', { payload })
     return this.request<T>('POST', '/v2/bookings', { body: payload })
   }
@@ -756,11 +785,15 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
+
     this.log('debug', 'updateBooking called', { id: validation.sanitized, payload })
-    return this.request<T>('PUT', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`, {
-      body: payload,
-    })
+    return this.request<T>(
+      'PUT',
+      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`,
+      {
+        body: payload,
+      },
+    )
   }
 
   /**
@@ -772,9 +805,12 @@ export class LodgifyClient {
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
-    
+
     this.log('debug', 'deleteBooking called', { id: validation.sanitized })
-    return this.request<T>('DELETE', `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`)
+    return this.request<T>(
+      'DELETE',
+      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`,
+    )
   }
 
   // ============================================================================
@@ -796,11 +832,18 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
-    this.log('debug', 'updatePropertyAvailability called', { propertyId: validation.sanitized, payload })
-    return this.request<T>('PUT', `/v2/properties/${encodeURIComponent(validation.sanitized!)}/availability`, {
-      body: payload,
+
+    this.log('debug', 'updatePropertyAvailability called', {
+      propertyId: validation.sanitized,
+      payload,
     })
+    return this.request<T>(
+      'PUT',
+      `/v2/properties/${encodeURIComponent(validation.sanitized!)}/availability`,
+      {
+        body: payload,
+      },
+    )
   }
 
   // ============================================================================
@@ -815,7 +858,7 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
+
     this.log('debug', 'subscribeWebhook called', { payload })
     return this.request<T>('POST', '/v2/webhooks/subscribe', { body: payload })
   }
@@ -838,7 +881,7 @@ export class LodgifyClient {
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
-    
+
     this.log('debug', 'deleteWebhook called', { id: validation.sanitized })
     return this.request<T>('DELETE', `/v2/webhooks/${encodeURIComponent(validation.sanitized!)}`)
   }
@@ -855,7 +898,7 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
+
     this.log('debug', 'createRate called', { payload })
     return this.request<T>('POST', '/v2/rates', { body: payload })
   }
@@ -864,10 +907,7 @@ export class LodgifyClient {
    * Update a specific rate
    * PUT /v2/rates/{id}
    */
-  public async updateRate<T = unknown>(
-    id: string,
-    payload: Record<string, unknown>,
-  ): Promise<T> {
+  public async updateRate<T = unknown>(id: string, payload: Record<string, unknown>): Promise<T> {
     const validation = this.validatePathParam(id, 'Rate ID')
     if (!validation.isValid) {
       throw new Error(validation.error)
@@ -875,7 +915,7 @@ export class LodgifyClient {
     if (!payload || typeof payload !== 'object') {
       throw new Error('Payload is required')
     }
-    
+
     this.log('debug', 'updateRate called', { id: validation.sanitized, payload })
     return this.request<T>('PUT', `/v2/rates/${encodeURIComponent(validation.sanitized!)}`, {
       body: payload,
@@ -893,65 +933,66 @@ export class LodgifyClient {
   public async getNextAvailableDate(
     propertyId: string,
     fromDate?: string,
-    daysToCheck: number = 90
+    daysToCheck: number = 90,
   ): Promise<NextAvailabilityResult> {
     const startDate = fromDate || getTodayISO()
     const endDate = addDays(startDate, daysToCheck)
 
-    this.log('debug', 'getNextAvailableDate called', { 
-      propertyId, 
-      startDate, 
-      endDate, 
-      daysToCheck 
+    this.log('debug', 'getNextAvailableDate called', {
+      propertyId,
+      startDate,
+      endDate,
+      daysToCheck,
     })
 
     try {
       // Get all bookings in the date range (without property filter to check if property exists)
-      const bookingsData = await this.listBookings({
+      const bookingsData = (await this.listBookings({
         from: startDate,
-        to: endDate
-      }) as any
+        to: endDate,
+      })) as any
 
       const bookings = bookingsData?.items || []
-      
+
       // Filter and sort bookings for this property
       const propertyBookings = bookings
-        .filter((booking: any) => 
-          booking.property_id?.toString() === propertyId.toString() &&
-          booking.status !== 'Cancelled' &&
-          booking.arrival && 
-          booking.departure
+        .filter(
+          (booking: any) =>
+            booking.property_id?.toString() === propertyId.toString() &&
+            booking.status !== 'Cancelled' &&
+            booking.arrival &&
+            booking.departure,
         )
         .map((booking: any) => ({
           arrival: booking.arrival,
           departure: booking.departure,
           status: booking.status,
-          isBlocked: ['Booked', 'Confirmed', 'Tentative'].includes(booking.status)
+          isBlocked: ['Booked', 'Confirmed', 'Tentative'].includes(booking.status),
         }))
         .sort((a: BookingPeriod, b: BookingPeriod) => compareDates(a.arrival, b.arrival))
 
-      this.log('debug', 'Found property bookings', { 
+      this.log('debug', 'Found property bookings', {
         totalBookings: bookings.length,
-        propertyBookings: propertyBookings.length 
+        propertyBookings: propertyBookings.length,
       })
 
-      // If no bookings found for this property, check if property exists 
+      // If no bookings found for this property, check if property exists
       // by trying to verify against known property IDs in the system
       if (propertyBookings.length === 0) {
         // Only check property existence if there are other bookings in the system
         if (bookings.length > 0) {
-          const propertyExists = bookings.some((booking: any) => 
-            booking.property_id?.toString() === propertyId.toString()
+          const propertyExists = bookings.some(
+            (booking: any) => booking.property_id?.toString() === propertyId.toString(),
           )
-          
-          this.log('debug', 'Property existence check', { 
+
+          this.log('debug', 'Property existence check', {
             propertyId,
             propertyExists,
             totalBookingsInRange: bookings.length,
             propertyBookingsFound: propertyBookings.length,
-            samplePropertyIds: bookings.slice(0, 3).map((b: any) => b.property_id)
+            samplePropertyIds: bookings.slice(0, 3).map((b: any) => b.property_id),
           })
-          
+
           if (!propertyExists) {
             // No bookings found for this property ID in a system that has other bookings
             return {
@@ -959,7 +1000,7 @@ export class LodgifyClient {
               availableUntil: null,
               blockedPeriods: [],
               totalDaysAvailable: 0,
-              message: `No booking data found for property ID ${propertyId}. Property may not exist or may not have any bookings in the system. Use lodgify_find_properties to discover available property IDs.`
+              message: `No booking data found for property ID ${propertyId}. Property may not exist or may not have any bookings in the system. Use lodgify_find_properties to discover available property IDs.`,
             }
           }
         }
@@ -974,9 +1015,9 @@ export class LodgifyClient {
 
       while (compareDates(currentDate, endDate) <= 0) {
         // Check if current date is blocked by any booking
-        const isBlocked = propertyBookings.some((booking: BookingPeriod) => 
-          booking.isBlocked && 
-          isDateInRange(currentDate, booking.arrival, booking.departure)
+        const isBlocked = propertyBookings.some(
+          (booking: BookingPeriod) =>
+            booking.isBlocked && isDateInRange(currentDate, booking.arrival, booking.departure),
         )
 
         if (!isBlocked) {
@@ -986,9 +1027,9 @@ export class LodgifyClient {
           // Find how long this availability period lasts
           let checkDate = currentDate
           while (compareDates(checkDate, endDate) <= 0) {
-            const stillAvailable = !propertyBookings.some((booking: BookingPeriod) => 
-              booking.isBlocked && 
-              isDateInRange(checkDate, booking.arrival, booking.departure)
+            const stillAvailable = !propertyBookings.some(
+              (booking: BookingPeriod) =>
+                booking.isBlocked && isDateInRange(checkDate, booking.arrival, booking.departure),
             )
             if (stillAvailable) {
               availableUntil = checkDate
@@ -1003,9 +1044,8 @@ export class LodgifyClient {
         currentDate = addDays(currentDate, 1)
       }
 
-      const totalDaysAvailable = nextAvailableDate && availableUntil 
-        ? daysBetween(nextAvailableDate, availableUntil) + 1 
-        : 0
+      const totalDaysAvailable =
+        nextAvailableDate && availableUntil ? daysBetween(nextAvailableDate, availableUntil) + 1 : 0
 
       let message: string
       if (nextAvailableDate) {
@@ -1023,9 +1063,8 @@ export class LodgifyClient {
         availableUntil,
         blockedPeriods: propertyBookings.filter((b: BookingPeriod) => b.isBlocked),
         totalDaysAvailable,
-        message
+        message,
       }
-
     } catch (error) {
       this.log('error', 'Error in getNextAvailableDate', error)
       throw error
@@ -1038,16 +1077,16 @@ export class LodgifyClient {
   public async checkDateRangeAvailability(
     propertyId: string,
     checkInDate: string,
-    checkOutDate: string
+    checkOutDate: string,
   ): Promise<{
     isAvailable: boolean
     conflictingBookings: BookingPeriod[]
     message: string
   }> {
-    this.log('debug', 'checkDateRangeAvailability called', { 
-      propertyId, 
-      checkInDate, 
-      checkOutDate 
+    this.log('debug', 'checkDateRangeAvailability called', {
+      propertyId,
+      checkInDate,
+      checkOutDate,
     })
 
     // Validate dates
@@ -1061,33 +1100,36 @@ export class LodgifyClient {
 
     try {
       // Get bookings that might overlap with the requested range
-      const bookingsData = await this.listBookings({
+      const bookingsData = (await this.listBookings({
         propertyId,
         from: addDays(checkInDate, -1), // Check one day before to catch overlaps
-        to: addDays(checkOutDate, 1)    // Check one day after to catch overlaps
-      }) as any
+        to: addDays(checkOutDate, 1), // Check one day after to catch overlaps
+      })) as any
 
       const bookings = bookingsData?.items || []
 
       // Find conflicting bookings
       const conflictingBookings = bookings
-        .filter((booking: any) => 
-          booking.property_id?.toString() === propertyId.toString() &&
-          booking.status !== 'Cancelled' &&
-          booking.arrival && 
-          booking.departure &&
-          ['Booked', 'Confirmed', 'Tentative'].includes(booking.status)
+        .filter(
+          (booking: any) =>
+            booking.property_id?.toString() === propertyId.toString() &&
+            booking.status !== 'Cancelled' &&
+            booking.arrival &&
+            booking.departure &&
+            ['Booked', 'Confirmed', 'Tentative'].includes(booking.status),
         )
         .map((booking: any) => ({
           arrival: booking.arrival,
           departure: booking.departure,
           status: booking.status,
-          isBlocked: true
+          isBlocked: true,
         }))
         .filter((booking: BookingPeriod) => {
           // Check for date overlap: booking overlaps if it doesn't end before check-in or start after check-out
-          return !(compareDates(booking.departure, checkInDate) <= 0 || 
-                   compareDates(booking.arrival, checkOutDate) >= 0)
+          return !(
+            compareDates(booking.departure, checkInDate) <= 0 ||
+            compareDates(booking.arrival, checkOutDate) >= 0
+          )
         })
 
       const isAvailable = conflictingBookings.length === 0
@@ -1103,9 +1145,8 @@ export class LodgifyClient {
       return {
         isAvailable,
         conflictingBookings,
-        message
+        message,
       }
-
     } catch (error) {
       this.log('error', 'Error in checkDateRangeAvailability', error)
       throw error
@@ -1118,7 +1159,7 @@ export class LodgifyClient {
   public async getAvailabilityCalendar(
     propertyId: string,
     fromDate?: string,
-    daysToShow: number = 30
+    daysToShow: number = 30,
   ): Promise<{
     calendar: Array<{
       date: string
@@ -1137,20 +1178,20 @@ export class LodgifyClient {
     const endDate = addDays(startDate, daysToShow - 1)
     const today = getTodayISO()
 
-    this.log('debug', 'getAvailabilityCalendar called', { 
-      propertyId, 
-      startDate, 
-      endDate, 
-      daysToShow 
+    this.log('debug', 'getAvailabilityCalendar called', {
+      propertyId,
+      startDate,
+      endDate,
+      daysToShow,
     })
 
     try {
       // Get bookings for the date range
-      const bookingsData = await this.listBookings({
+      const bookingsData = (await this.listBookings({
         propertyId,
         from: startDate,
-        to: endDate
-      }) as any
+        to: endDate,
+      })) as any
 
       const bookings = bookingsData?.items || []
 
@@ -1160,15 +1201,16 @@ export class LodgifyClient {
 
       for (let i = 0; i < daysToShow; i++) {
         const currentDate = addDays(startDate, i)
-        
+
         // Find if this date is blocked by any booking
-        const blockingBooking = bookings.find((booking: any) => 
-          booking.property_id?.toString() === propertyId.toString() &&
-          booking.status !== 'Cancelled' &&
-          booking.arrival && 
-          booking.departure &&
-          ['Booked', 'Confirmed', 'Tentative'].includes(booking.status) &&
-          isDateInRange(currentDate, booking.arrival, booking.departure)
+        const blockingBooking = bookings.find(
+          (booking: any) =>
+            booking.property_id?.toString() === propertyId.toString() &&
+            booking.status !== 'Cancelled' &&
+            booking.arrival &&
+            booking.departure &&
+            ['Booked', 'Confirmed', 'Tentative'].includes(booking.status) &&
+            isDateInRange(currentDate, booking.arrival, booking.departure),
         )
 
         const isAvailable = !blockingBooking
@@ -1178,7 +1220,7 @@ export class LodgifyClient {
           date: currentDate,
           isAvailable,
           bookingStatus: blockingBooking?.status,
-          isToday: currentDate === today
+          isToday: currentDate === today,
         })
       }
 
@@ -1191,10 +1233,9 @@ export class LodgifyClient {
           totalDays: daysToShow,
           availableDays,
           blockedDays,
-          availabilityRate
-        }
+          availabilityRate,
+        },
       }
-
     } catch (error) {
       this.log('error', 'Error in getAvailabilityCalendar', error)
       throw error
@@ -1216,28 +1257,28 @@ export class LodgifyClient {
     const limit = 60 // requests per minute
     const windowMs = 60000 // 1 minute
     const now = Date.now()
-    
+
     // Check if we're in a new window
     let currentRequestCount = this.requestCount
     let currentWindowStart = this.windowStart
-    
+
     if (now - this.windowStart >= windowMs) {
       // We're in a new window, so current usage is 0
       currentRequestCount = 0
       currentWindowStart = now
     }
-    
+
     const remainingRequests = Math.max(0, limit - currentRequestCount)
     const resetTime = new Date(currentWindowStart + windowMs).toISOString()
     const utilizationPercent = Math.round((currentRequestCount / limit) * 100)
-    
+
     return {
       requestCount: currentRequestCount,
       windowStart: currentWindowStart,
       windowDurationMs: windowMs,
       remainingRequests,
       resetTime,
-      utilizationPercent
+      utilizationPercent,
     }
   }
 }

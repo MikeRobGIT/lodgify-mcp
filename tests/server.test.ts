@@ -32,9 +32,9 @@ describe('MCP Server Integration Tests', () => {
 
   afterEach(() => {
     // Clear all mocks
-    Object.values(mockClient).forEach(mockFn => {
+    Object.values(mockClient).forEach((mockFn) => {
       if (typeof mockFn === 'function' && 'mockClear' in mockFn) {
-        (mockFn as any).mockClear()
+        ;(mockFn as any).mockClear()
       }
     })
   })
@@ -142,10 +142,10 @@ describe('MCP Server Integration Tests', () => {
         payload: { amount: 1000, currency: 'USD' },
       })
 
-      expect(mockClient.createBookingPaymentLink).toHaveBeenCalledWith(
-        'book-456',
-        { amount: 1000, currency: 'USD' }
-      )
+      expect(mockClient.createBookingPaymentLink).toHaveBeenCalledWith('book-456', {
+        amount: 1000,
+        currency: 'USD',
+      })
       expect(response.content[0].text).toContain('https://pay.lodgify.com/xyz')
     })
   })
@@ -160,11 +160,10 @@ describe('MCP Server Integration Tests', () => {
         params: { from: '2025-11-20', to: '2025-11-25' },
       })
 
-      expect(mockClient.getAvailabilityRoom).toHaveBeenCalledWith(
-        'prop-123',
-        'room-456',
-        { from: '2025-11-20', to: '2025-11-25' }
-      )
+      expect(mockClient.getAvailabilityRoom).toHaveBeenCalledWith('prop-123', 'room-456', {
+        from: '2025-11-20',
+        to: '2025-11-25',
+      })
       expect(response.content[0].text).toContain('available')
     })
 
@@ -176,10 +175,10 @@ describe('MCP Server Integration Tests', () => {
         params: { from: '2025-11-20', to: '2025-11-25' },
       })
 
-      expect(mockClient.getAvailabilityProperty).toHaveBeenCalledWith(
-        'prop-123',
-        { from: '2025-11-20', to: '2025-11-25' }
-      )
+      expect(mockClient.getAvailabilityProperty).toHaveBeenCalledWith('prop-123', {
+        from: '2025-11-20',
+        to: '2025-11-25',
+      })
       expect(response.content[0].text).toContain('available')
     })
   })
@@ -198,15 +197,12 @@ describe('MCP Server Integration Tests', () => {
         },
       })
 
-      expect(mockClient.getQuote).toHaveBeenCalledWith(
-        'prop-123',
-        {
-          from: '2025-11-20',
-          to: '2025-11-25',
-          'roomTypes[0].Id': 999,
-          'guest_breakdown[adults]': 2,
-        }
-      )
+      expect(mockClient.getQuote).toHaveBeenCalledWith('prop-123', {
+        from: '2025-11-20',
+        to: '2025-11-25',
+        'roomTypes[0].Id': 999,
+        'guest_breakdown[adults]': 2,
+      })
       expect(response.content[0].text).toContain('1000')
     })
 
@@ -229,14 +225,14 @@ describe('MCP Server Integration Tests', () => {
         items: [
           { id: 435705, name: 'Villa Sunrise', type: 'Apartment' },
           { id: 435706, name: 'Beach House', type: 'House' },
-        ]
+        ],
       })
-      
+
       mockClient.listBookings.mockResolvedValue({
         items: [
           { property_id: 435707, status: 'Booked' },
           { property_id: 435708, status: 'Confirmed' },
-        ]
+        ],
       })
 
       const response = await testServer.callTool('lodgify.find_properties', {

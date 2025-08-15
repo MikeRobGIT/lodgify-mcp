@@ -2,9 +2,10 @@
  * File-based logger configuration for MCP server
  * Prevents console.log interference with STDIO transport
  */
+
+import fs from 'node:fs'
+import path from 'node:path'
 import pino from 'pino'
-import path from 'path'
-import fs from 'fs'
 
 /**
  * Valid log levels supported by the logger
@@ -16,13 +17,13 @@ export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
  */
 function ensureLogDirectory(): string {
   const logDir = path.join(process.cwd(), 'logs')
-  
+
   try {
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true })
     }
     return logDir
-  } catch (error) {
+  } catch (_error) {
     // Fallback to temp directory if we can't create logs directory
     const tempDir = path.join(process.env.TMPDIR || '/tmp', 'lodgify-mcp-logs')
     try {
@@ -30,7 +31,7 @@ function ensureLogDirectory(): string {
         fs.mkdirSync(tempDir, { recursive: true })
       }
       return tempDir
-    } catch (fallbackError) {
+    } catch (_fallbackError) {
       // Final fallback - use current directory
       return process.cwd()
     }
@@ -51,11 +52,11 @@ function getLogLevel(): LogLevel {
 function createLogger() {
   const logDir = ensureLogDirectory()
   const logLevel = getLogLevel()
-  
+
   // Log file path with timestamp for rotation
   const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD
   const logFile = path.join(logDir, `lodgify-mcp-${timestamp}.log`)
-  
+
   // Create logger instance with file destination
   const logger = pino(
     {
@@ -64,16 +65,16 @@ function createLogger() {
       formatters: {
         level: (label) => {
           return { level: label }
-        }
-      }
+        },
+      },
     },
     pino.destination({
       dest: logFile,
       sync: false, // Async writes for better performance
-      mkdir: true   // Create directory if needed
-    })
+      mkdir: true, // Create directory if needed
+    }),
   )
-  
+
   return logger
 }
 
@@ -88,96 +89,99 @@ export const logger = createLogger()
  */
 export class SafeLogger {
   private readonly pino: pino.Logger
-  
+
   constructor() {
     this.pino = logger
   }
-  
+
   /**
    * Log error level messages
    */
-  error(message: string, ...args: any[]): void {
+  error(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
       this.pino.error({ extra: args }, message)
     } else {
       this.pino.error(message)
     }
   }
-  
+
   /**
    * Log warning level messages
    */
-  warn(message: string, ...args: any[]): void {
+  warn(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
       this.pino.warn({ extra: args }, message)
     } else {
       this.pino.warn(message)
     }
   }
-  
+
   /**
    * Log info level messages
    */
-  info(message: string, ...args: any[]): void {
+  info(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
       this.pino.info({ extra: args }, message)
     } else {
       this.pino.info(message)
     }
   }
-  
+
   /**
    * Log debug level messages
    */
-  debug(message: string, ...args: any[]): void {
+  debug(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
       this.pino.debug({ extra: args }, message)
     } else {
       this.pino.debug(message)
     }
   }
-  
+
   /**
    * Log HTTP request details when DEBUG_HTTP is enabled
    */
   debugHttp(details: {
     method: string
     url: string
-    headers?: Record<string, any>
-    body?: any
+    headers?: Record<string, unknown>
+    body?: unknown
     status?: number
-    response?: any
+    response?: unknown
   }): void {
     if (process.env.DEBUG_HTTP === '1') {
-      this.pino.debug({
-        http: {
-          method: details.method,
-          url: details.url,
-          headers: this.sanitizeHeaders(details.headers),
-          body: details.body,
-          status: details.status,
-          response: details.response
-        }
-      }, 'HTTP Request/Response')
+      this.pino.debug(
+        {
+          http: {
+            method: details.method,
+            url: details.url,
+            headers: this.sanitizeHeaders(details.headers),
+            body: details.body,
+            status: details.status,
+            response: details.response,
+          },
+        },
+        'HTTP Request/Response',
+      )
     }
   }
-  
+
   /**
    * Sanitize headers to remove sensitive information
    */
-  private sanitizeHeaders(headers?: Record<string, any>): Record<string, any> | undefined {
+  private sanitizeHeaders(headers?: Record<string, unknown>): Record<string, unknown> | undefined {
     if (!headers) return undefined
-    
+
     const sanitized = { ...headers }
-    
+
     // Remove or mask sensitive headers
     if (sanitized['X-ApiKey']) {
       sanitized['X-ApiKey'] = '***REDACTED***'
     }
-    if (sanitized['Authorization']) {
-      sanitized['Authorization'] = '***REDACTED***'
+    if (sanitized.Authorization) {
+      sanitized.Authorization = '***REDACTED***'
     }
-    
+
     return sanitized
   }
 }
@@ -190,42 +194,42 @@ export const safeLogger = new SafeLogger()
 /**
  * Create a child logger with additional context
  */
-export function createChildLogger(context: Record<string, any>): SafeLogger {
+export function createChildLogger(context: Record<string, unknown>): SafeLogger {
   const childPino = logger.child(context)
-  
+
   class ChildSafeLogger extends SafeLogger {
     private readonly childPino: pino.Logger
-    
+
     constructor(pino: pino.Logger) {
       super()
       this.childPino = pino
     }
-    
-    error(message: string, ...args: any[]): void {
+
+    error(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
         this.childPino.error({ extra: args }, message)
       } else {
         this.childPino.error(message)
       }
     }
-    
-    warn(message: string, ...args: any[]): void {
+
+    warn(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
         this.childPino.warn({ extra: args }, message)
       } else {
         this.childPino.warn(message)
       }
     }
-    
-    info(message: string, ...args: any[]): void {
+
+    info(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
         this.childPino.info({ extra: args }, message)
       } else {
         this.childPino.info(message)
       }
     }
-    
-    debug(message: string, ...args: any[]): void {
+
+    debug(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
         this.childPino.debug({ extra: args }, message)
       } else {
@@ -233,6 +237,6 @@ export function createChildLogger(context: Record<string, any>): SafeLogger {
       }
     }
   }
-  
+
   return new ChildSafeLogger(childPino)
 }
