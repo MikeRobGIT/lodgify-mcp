@@ -71,9 +71,14 @@ const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
 }
 
 /**
- * Sanitizes an API key for logging purposes
- * @param apiKey - The API key to sanitize
- * @returns Sanitized key showing only first 4 and last 4 characters
+ * Return a logging-safe, masked version of an API key.
+ *
+ * If the key length is 8 characters or fewer the function returns `'***'`.
+ * For longer keys it preserves the first four and last four characters and
+ * replaces the middle with asterisks (at least four `*` characters).
+ *
+ * @param apiKey - The raw API key to mask.
+ * @returns A masked string safe for inclusion in logs.
  */
 export function sanitizeApiKey(apiKey: string): string {
   if (apiKey.length <= 8) {
@@ -86,10 +91,20 @@ export function sanitizeApiKey(apiKey: string): string {
 }
 
 /**
- * Validates API key format and security properties
- * @param apiKey - The API key to validate
- * @param config - Security configuration options
- * @returns Validation result with warnings
+ * Validate an API key's format and apply additional security checks, returning any non-fatal warnings.
+ *
+ * The function first validates the key against the runtime `apiKeySchema`. If schema validation fails,
+ * it returns { isValid: false } and populates `warnings` with the schema error messages. If the schema
+ * passes, the function performs extra checks (e.g., test/demo indicators, length under strict mode,
+ * repeating-character patterns) and returns { isValid: true } together with any generated warnings.
+ * When `config.logWarnings` is true, warnings are emitted via the configured logger as a side effect.
+ *
+ * @param apiKey - The API key to validate.
+ * @param config - Partial security options that override defaults. Recognized keys:
+ *   - allowTestKeys: when true, suppresses warnings for keys containing `test`.
+ *   - strictValidation: when true, enforces stricter length warnings for short keys.
+ *   - logWarnings: when true, warnings will be logged via the safe logger.
+ * @returns An object with `isValid` (false when schema validation fails) and `warnings` (array of messages).
  */
 export function validateApiKey(
   apiKey: string,
@@ -141,10 +156,15 @@ export function validateApiKey(
 }
 
 /**
- * Validates and loads environment configuration
- * @param securityConfig - Optional security configuration
- * @returns Validated environment configuration
- * @throws Error if validation fails
+ * Load, validate, and return the application's environment configuration.
+ *
+ * Reads required environment variables, enforces presence of LODGIFY_API_KEY,
+ * runs security checks against the API key, and validates all values against
+ * the runtime schema before returning a typed EnvConfig.
+ *
+ * @param securityConfig - Optional overrides for runtime security checks (e.g., allowTestKeys, strictValidation, logWarnings).
+ * @returns The validated environment configuration (EnvConfig).
+ * @throws Error when a required environment variable is missing, the API key fails security validation, or schema validation fails.
  */
 export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): EnvConfig {
   try {
@@ -191,18 +211,18 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
 }
 
 /**
- * Checks if the current environment is production
- * @param config - Environment configuration
- * @returns True if production environment
+ * Return true when the provided EnvConfig indicates a production environment.
+ *
+ * @returns True if `NODE_ENV` equals `"production"`.
  */
 export function isProduction(config: EnvConfig): boolean {
   return config.NODE_ENV === 'production'
 }
 
 /**
- * Checks if the current environment is development
- * @param config - Environment configuration
- * @returns True if development environment
+ * Return true if the provided environment config represents a development environment.
+ *
+ * @returns `true` when `config.NODE_ENV === 'development'`, otherwise `false`.
  */
 export function isDevelopment(config: EnvConfig): boolean {
   return config.NODE_ENV === 'development'
@@ -218,9 +238,18 @@ export function isTest(config: EnvConfig): boolean {
 }
 
 /**
- * Gets safe environment info for logging/debugging
- * @param config - Environment configuration
- * @returns Sanitized environment information
+ * Return a sanitized, non-sensitive snapshot of selected environment settings for logging or diagnostics.
+ *
+ * The returned object includes runtime flags and a masked representation of the API key so logs do not expose secrets.
+ *
+ * @param config - Validated environment configuration
+ * @returns An object with:
+ *  - `nodeEnv` — NODE_ENV value
+ *  - `logLevel` — LOG_LEVEL value
+ *  - `debugHttp` — DEBUG_HTTP boolean
+ *  - `apiKeyPresent` — whether an API key is present
+ *  - `apiKeyLength` — length of the raw API key
+ *  - `apiKeyMask` — masked API key produced by `sanitizeApiKey`
  */
 export function getSafeEnvInfo(config: EnvConfig): Record<string, unknown> {
   return {

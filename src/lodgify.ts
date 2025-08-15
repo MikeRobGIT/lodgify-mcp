@@ -69,7 +69,14 @@ export function getTodayISO(): string {
 }
 
 /**
- * Add days to a date and return in ISO format (YYYY-MM-DD)
+ * Return an ISO date string (YYYY-MM-DD) by adding a number of days to the given date.
+ *
+ * The `date` may be any value accepted by `new Date(...)` (commonly an ISO date string).
+ * `days` may be negative to subtract days. The result is formatted as `YYYY-MM-DD`.
+ *
+ * @param date - The base date to adjust (parsable by `Date`).
+ * @param days - Number of days to add (use a negative number to subtract).
+ * @returns The resulting date as an ISO string in `YYYY-MM-DD` format.
  */
 export function addDays(date: string, days: number): string {
   const result = new Date(date)
@@ -78,7 +85,14 @@ export function addDays(date: string, days: number): string {
 }
 
 /**
- * Check if a date string is valid and in YYYY-MM-DD format
+ * Returns true if `dateString` is a valid calendar date in `YYYY-MM-DD` format.
+ *
+ * Performs two checks:
+ * - Matches the strict `YYYY-MM-DD` pattern.
+ * - Parses the string as a date and verifies the parsed ISO date equals the input (rejects invalid dates like `2023-02-30`).
+ *
+ * @param dateString - Date in `YYYY-MM-DD` format (no time or timezone component).
+ * @returns `true` when `dateString` is a syntactically correct and actual calendar date; otherwise `false`.
  */
 export function isValidDateISO(dateString: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
@@ -93,8 +107,13 @@ export function isValidDateISO(dateString: string): boolean {
 }
 
 /**
- * Compare two date strings (YYYY-MM-DD format)
- * Returns: -1 if date1 < date2, 0 if equal, 1 if date1 > date2
+ * Compare two ISO date strings (YYYY-MM-DD).
+ *
+ * Returns -1 when `date1` is earlier than `date2`, 0 when they are equal, and 1 when `date1` is later than `date2`.
+ *
+ * @param date1 - Date in `YYYY-MM-DD` format.
+ * @param date2 - Date in `YYYY-MM-DD` format.
+ * @returns -1 | 0 | 1 indicating the ordering of `date1` vs `date2`.
  */
 export function compareDates(date1: string, date2: string): number {
   if (date1 < date2) return -1
@@ -103,14 +122,30 @@ export function compareDates(date1: string, date2: string): number {
 }
 
 /**
- * Check if date is within a range (inclusive)
+ * Determine whether a date falls within an inclusive date range.
+ *
+ * Dates must be in ISO YYYY-MM-DD format. The check is inclusive: a date equal
+ * to `startDate` or `endDate` returns true.
+ *
+ * @param date - The date to test (YYYY-MM-DD)
+ * @param startDate - Range start (inclusive, YYYY-MM-DD)
+ * @param endDate - Range end (inclusive, YYYY-MM-DD)
+ * @returns True if `date` is between `startDate` and `endDate`, inclusive
  */
 export function isDateInRange(date: string, startDate: string, endDate: string): boolean {
   return compareDates(date, startDate) >= 0 && compareDates(date, endDate) <= 0
 }
 
 /**
- * Calculate the number of days between two dates
+ * Returns the number of days between two dates.
+ *
+ * Both inputs should be ISO date strings (YYYY-MM-DD). The result is computed
+ * as the difference in calendar days rounded up to the next whole day (uses
+ * fractional-day ceilings). Same-day inputs yield 0.
+ *
+ * @param startDate - Start date in `YYYY-MM-DD` format
+ * @param endDate - End date in `YYYY-MM-DD` format
+ * @returns The number of days from `startDate` to `endDate` (may be 0 for same-day or small negative-time differences)
  */
 export function daysBetween(startDate: string, endDate: string): number {
   const start = new Date(startDate)

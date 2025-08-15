@@ -17,7 +17,22 @@ export interface TestMcpServer {
 }
 
 /**
- * Create a test server instance using the actual McpServer
+ * Create a test wrapper around the real McpServer for use in tests.
+ *
+ * When called without `mockClient`, constructs a minimal default client with
+ * `listProperties` and `getProperty` that return resolved promises and uses it
+ * to initialize the real McpServer via `setupServer`. When `mockClient` is
+ * provided, its function-valued properties replace the corresponding methods
+ * on the server's client instance after setup.
+ *
+ * The returned object exposes the underlying `server` and `client`, accessor
+ * helpers `getServerInstance()` and `getClientInstance()`, and an async `close()`
+ * that calls `server.close()` if that function exists.
+ *
+ * @param mockClient - Optional partial client implementation whose function
+ *   properties will override the server client's methods to customize behavior
+ *   for tests.
+ * @returns A TestMcpServer wrapper with `server`, `client`, accessors, and `close()`.
  */
 export function createMcpTestServer(mockClient?: any): TestMcpServer {
   // For tests, always pass a mock client to avoid environment validation
@@ -61,7 +76,18 @@ export function createMcpTestServer(mockClient?: any): TestMcpServer {
 }
 
 /**
- * Helper function to test tool schemas and metadata
+ * Asserts that a tool object contains valid metadata and an optional input schema.
+ *
+ * Validations performed:
+ * - Required: `name` — defined, string, non-empty.
+ * - Required: `description` — defined, string, length > 10.
+ * - Optional: `title` — if present, must be a non-empty string.
+ * - Optional: `inputSchema` — if present, must be an object (expected to be a Zod schema-like structure, not a plain JSON schema).
+ *
+ * This function performs assertions via the provided `expect` helper (e.g., Jest `expect`) and will fail the test when validations do not hold.
+ *
+ * @param tool - The tool metadata object to validate.
+ * @param expect - Assertion helper used to make the checks (e.g., Jest `expect`).
  */
 export function validateToolMetadata(tool: any, expect: any) {
   // Check required metadata fields
@@ -87,7 +113,13 @@ export function validateToolMetadata(tool: any, expect: any) {
 }
 
 /**
- * Helper function to validate error responses
+ * Assert that an error object matches the expected error-response shape used in MCP/JSON-RPC tests.
+ *
+ * Validations performed:
+ * - `error` is defined and has a `message` property that is a string.
+ * - If `error.code` is present, it must be a number within the JSON-RPC reserved range -32999..-32000.
+ *
+ * @param error - The error object to validate (should contain at least a `message` string; may include a numeric `code`)
  */
 export function validateErrorResponse(error: any, expect: any) {
   expect(error).toBeDefined()

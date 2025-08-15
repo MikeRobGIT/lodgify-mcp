@@ -1,6 +1,21 @@
 /**
- * Create a test server with a mock client
- * This is a simplified version of the main server for testing
+ * Build a lightweight test server that delegates actions to a provided mock client.
+ *
+ * The returned server exposes four async handlers useful for tests:
+ * - listTools(): returns the array of tool descriptors the server supports.
+ * - callTool(name, args): routes tool calls to corresponding mockClient methods and returns a content payload.
+ *   - Supports Lodgify tools such as list_properties, get_property, list_property_rooms, daily_rates, rate_settings,
+ *     list_bookings, get_booking, booking payment link operations, update_key_codes, availability checks, get_quote,
+ *     get_thread, and the test-only lodgify.find_properties (which merges properties from listProperties and recent
+ *     bookings, deduplicates IDs, respects an optional limit (default 10), and can include booking-derived property IDs).
+ *   - On success returns { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }.
+ *   - On error returns the same shape with isError: true and a JSON error object.
+ * - listResources(): returns the server's resource descriptors (includes a 'lodgify://health' resource).
+ * - readResource(uri): returns resource contents for known URIs (currently 'lodgify://health'); throws for unknown URIs.
+ *
+ * The function is intended for testing and delegates all data operations to the provided mockClient.
+ *
+ * @returns An object with async handlers: listTools, callTool, listResources, and readResource.
  */
 export function createTestServer(mockClient: any) {
   const tools = [

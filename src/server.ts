@@ -9,40 +9,19 @@ import { LodgifyClient } from './lodgify.js'
 import { safeLogger } from './logger.js'
 
 /**
- * Helper function to find properties when exact property ID is unknown.
+ * Discover property IDs when an exact ID is unknown by aggregating property list results
+ * and recent bookings, optionally filtering by name.
  *
- * This utility function helps users discover property IDs by searching through
- * property names and extracting IDs from recent bookings. It provides a unified
- * interface for property discovery when users don't know the exact property
- * identifiers required by other API endpoints.
+ * Searches the Lodgify property list (and, if enabled, recent bookings) to produce a
+ * short list of candidate properties with id, optional name, and the source of the result.
  *
- * @param client - The LodgifyClient instance for making API calls
- * @param searchTerm - Optional search term to filter properties by name (case-insensitive)
- * @param includePropertyIds - Whether to include property IDs found in recent bookings (default: true)
- * @param limit - Maximum number of properties to return (default: 10, max: 50)
- *
- * @returns Promise resolving to object containing:
- *   - properties: Array of property objects with id, name, and source
- *   - message: Descriptive message about the search results
- *   - suggestions: Array of helpful suggestions for improving search results
- *
- * @example
- * ```typescript
- * // Find all properties
- * const result = await findProperties(client);
- *
- * // Search by name
- * const result = await findProperties(client, "beach house");
- *
- * // Limit results
- * const result = await findProperties(client, undefined, true, 5);
- * ```
- *
- * @remarks
- * This function combines multiple data sources:
- * 1. Direct property listing from the properties API
- * 2. Property IDs extracted from recent bookings
- * 3. Name-based filtering with case-insensitive matching
+ * @param searchTerm - Optional case-insensitive substring to filter property names.
+ * @param includePropertyIds - Include property IDs derived from recent bookings (default: true).
+ * @param limit - Maximum number of properties to return (default: 10, capped at 50).
+ * @returns An object with:
+ *  - properties: array of { id, name?, source? } candidates,
+ *  - message: human-readable summary of the outcome,
+ *  - suggestions: actionable hints to improve or troubleshoot the search.
  */
 async function findProperties(
   client: LodgifyClient,
@@ -163,6 +142,13 @@ config()
 // Load and validate environment configuration (only for production execution)
 let envConfig: EnvConfig | undefined
 
+/**
+ * Load and return the validated environment configuration, caching the result.
+ *
+ * Attempts to load and validate environment variables via `loadEnvironment` on first call and stores the result for subsequent calls. In `NODE_ENV === 'test'` failures it returns a minimal, safe test-only config; in non-test failures it logs the validation error and terminates the process (calls `process.exit(1)`).
+ *
+ * @returns The resolved `EnvConfig` instance (cached after first successful load or test fallback).
+ */
 function getEnvConfig(): EnvConfig {
   if (!envConfig) {
     try {
@@ -287,7 +273,18 @@ const DEPRECATED_TOOLS: Record<string, DeprecationInfo> = {
 }
 
 /**
- * Generate deprecation warning text for tool descriptions
+ * Build a human-readable deprecation warning string for a tool.
+ *
+ * The returned string includes the deprecation marker, the version when it was deprecated,
+ * the reason, and optional guidance about a replacement and planned removal version.
+ *
+ * @param _toolName - The tool's registered name (not currently used in the message body).
+ * @param info - Deprecation metadata. Expected fields:
+ *   - since: version when the deprecation began
+ *   - reason: short explanation for the deprecation
+ *   - replacement: optional tool name to use instead
+ *   - removeIn: optional target removal version
+ * @returns A formatted deprecation warning suitable for appending to a tool description.
  */
 function generateDeprecationWarning(_toolName: string, info: DeprecationInfo): string {
   let warning = `⚠️ **DEPRECATED** (since v${info.since}): ${info.reason}`
@@ -304,7 +301,14 @@ function generateDeprecationWarning(_toolName: string, info: DeprecationInfo): s
 }
 
 /**
- * Enhanced tool registration that handles deprecation warnings
+ * Register a tool on the MCP server, automatically applying deprecation metadata and runtime warning behavior when configured as deprecated.
+ *
+ * If the tool is listed in DEPRECATED_TOOLS this function prepends a generated deprecation warning to the tool's description and registers a wrapped handler that emits a structured warning to the logger each time the tool is invoked (unless logging is suppressed by the deprecation entry). If the tool is not deprecated it is registered unchanged.
+ *
+ * @param server - MCP server instance to register the tool on
+ * @param toolName - Canonical name used to register and invoke the tool
+ * @param toolConfig - Tool metadata (title, description, input schema, etc.); when deprecated the function augments `description` with a deprecation notice
+ * @param handler - Tool request handler; when deprecated it will be wrapped to emit a deprecation warning before delegating to this handler
  */
 function registerToolWithDeprecation(
   server: McpServer,
@@ -341,6 +345,18 @@ function registerToolWithDeprecation(
   }
 }
 
+/**
+ * Register the full suite of Lodgify MCP tools on the provided McpServer.
+ *
+ * This wires a comprehensive set of property, booking, availability, rates, webhook,
+ * and messaging tools (including property-discovery helpers and rate/booking operations)
+ * into the server. Each tool is registered with input schema validation and a handler
+ * that delegates work to the supplied LodgifyClient; deprecated tools are wrapped to
+ * emit deprecation warnings and augmented descriptions via the deprecation infrastructure.
+ *
+ * The function performs no network I/O itself — handlers perform API calls at runtime —
+ * and returns immediately after registering all tool handlers.
+ */
 function registerTools(server: McpServer, client: LodgifyClient): void {
   // ============================================================================
   // PROPERTY MANAGEMENT TOOLS
@@ -1543,9 +1559,15 @@ function sanitizeErrorMessage(message: string): string {
 }
 
 /**
- * Extracts safe error details while removing sensitive information
- * @param errorDetails - Raw error details object
- * @returns Sanitized error details safe for client consumption
+ * Recursively sanitizes an error-detail object by masking known sensitive fields and cleaning strings.
+ *
+ * Traverses the provided object (and nested objects) and:
+ * - Replaces values of common secret fields (e.g., `apiKey`, `api_key`, `authorization`, `x-api-key`, `token`, `secret`, `password`) with `"***"`.
+ * - Applies `sanitizeErrorMessage` to any string values to scrub embedded credentials or tokens.
+ * - Recursively processes nested objects and arrays.
+ *
+ * @param errorDetails - Arbitrary error detail value (object, array, or primitive). Non-object values are returned unchanged.
+ * @returns A new value structurally equivalent to `errorDetails` with sensitive fields masked and strings sanitized, safe for client-facing error output.
  */
 function sanitizeErrorDetails(errorDetails: any): any {
   if (!errorDetails || typeof errorDetails !== 'object') {
@@ -1702,7 +1724,20 @@ function handleToolError(error: unknown): never {
 }
 
 /**
- * Check the health status of all dependencies
+ * Gather health checks for external dependencies and environment configuration.
+ *
+ * Runs lightweight probes against the Lodgify API, verifies required environment
+ * variables, and reports current rate-limit utilization. The result is a mapping
+ * of dependency names to their status, last-checked timestamp, optional response
+ * time, and human-readable details or error messages.
+ *
+ * @returns A record keyed by dependency name (e.g., `lodgifyApi`, `environment`, `rateLimiting`)
+ * containing:
+ * - `status`: one of `'healthy' | 'unhealthy' | 'degraded'`.
+ * - `responseTime` (optional): milliseconds for probes that measure latency.
+ * - `lastChecked`: ISO timestamp of when the check ran.
+ * - `error` (optional): short error message when the check failed.
+ * - `details` (optional): human-readable details or metrics about the dependency.
  */
 async function checkDependencies(client: LodgifyClient): Promise<
   Record<
@@ -1767,7 +1802,16 @@ async function checkDependencies(client: LodgifyClient): Promise<
   return dependencies
 }
 
-// Function to register resources with the McpServer
+/**
+ * Registers health, rate-limit, and deprecations resources on the given MCP server.
+ *
+ * Adds three read-only resources:
+ * - lodgify://health — reports overall service health, dependency checks, and runtime metrics.
+ * - lodgify://rate-limit — reports current Lodgify API rate-limit usage, derived status, and a recommendation.
+ * - lodgify://deprecations — lists current tool deprecations with removal guidance and upgrade recommendations.
+ *
+ * Each resource responds with a JSON payload suitable for external monitoring or tooling. This function has the side effect of mutating the provided server by registering those resources.
+ */
 function registerResources(server: McpServer, client: LodgifyClient) {
   // Health check resource
   server.registerResource(
@@ -1909,27 +1953,17 @@ function registerResources(server: McpServer, client: LodgifyClient) {
 }
 
 /**
- * Sets up and configures the Lodgify MCP server with all tools and resources.
+ * Create and configure a McpServer instance wired to the Lodgify client and register all tools and resources.
  *
- * This function creates a high-level McpServer instance using the latest SDK patterns,
- * registers all Lodgify API tools with enhanced metadata, declares server capabilities,
- * and configures robust error handling and notification management.
+ * When provided, an injected LodgifyClient is used (typical for tests). If no client is supplied, a new
+ * LodgifyClient is constructed from validated environment configuration (via getEnvConfig). The function
+ * registers the full toolset and resources, declares server capabilities (tools, resources, logging),
+ * and enables debounced notifications.
  *
- * @param injectedClient - Optional pre-configured LodgifyClient for testing purposes.
- *                        If not provided, creates a new client using environment variables.
- * @returns Object containing the configured McpServer instance and LodgifyClient
+ * Note: getEnvConfig may terminate the process on fatal configuration validation failures in non-test
+ * environments; callers relying on that behavior should account for process exit.
  *
- * @example
- * ```typescript
- * // Production usage
- * const { server, client } = setupServer();
- *
- * // Testing usage with mock client
- * const mockClient = new MockLodgifyClient();
- * const { server, client } = setupServer(mockClient);
- * ```
- *
- * @throws {Error} When LODGIFY_API_KEY environment variable is missing
+ * @returns An object with the configured `server` (McpServer) and the active `client` (LodgifyClient).
  */
 export function setupServer(injectedClient?: LodgifyClient) {
   const server = new McpServer(
@@ -1991,21 +2025,12 @@ const { server } = setupServer()
 // ============================================================================
 
 /**
- * Main entry point for the Lodgify MCP server.
+ * Start the Lodgify MCP server using a STDIO transport.
  *
- * Initializes the STDIO transport, configures error handling and graceful shutdown,
- * then connects the server and starts accepting MCP protocol messages.
- * Uses file-based logging to prevent interference with STDIO communication.
- *
- * @remarks
- * This function:
- * 1. Creates a StdioServerTransport for MCP protocol communication
- * 2. Sets up error handling for transport issues (logged to file)
- * 3. Configures graceful shutdown on SIGINT/SIGTERM signals
- * 4. Connects the server to the transport and starts message processing
- * 5. Logs all events to files to maintain STDIO protocol compatibility
- *
- * @throws {Error} If server connection fails or environment is misconfigured
+ * Initializes a StdioServerTransport, attaches a transport error handler, registers graceful
+ * shutdown handlers for SIGINT and SIGTERM that close the server, then connects the MCP server
+ * to the transport so it can begin processing protocol messages. Logs lifecycle events via the
+ * safe logger.
  */
 async function main() {
   const transport = new StdioServerTransport()

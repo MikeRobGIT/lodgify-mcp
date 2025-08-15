@@ -1,7 +1,24 @@
 import { mock } from 'bun:test'
 
 /**
- * Create a mock Response object
+ * Create a Response-like mock suitable for tests.
+ *
+ * The returned object implements the common Response surface used in fetch-based code:
+ * - `ok` is true for 2xx statuses.
+ * - `statusText` is derived from `status`.
+ * - `headers` is a Headers instance constructed from `headers`.
+ * - Body-reading helpers resolve to predictable values:
+ *   - `json()` resolves to `data`.
+ *   - `text()` resolves to `JSON.stringify(data)`.
+ *   - `blob()` resolves to an empty `Blob`.
+ *   - `arrayBuffer()` resolves to a zero-length `ArrayBuffer`.
+ *   - `formData()` resolves to an empty `FormData`.
+ * - `clone()` returns a new mock Response with the same status, data, and headers.
+ *
+ * @param status - HTTP status code for the mock response; influences `ok` and `statusText`.
+ * @param data - Value returned by `json()` and used as the source for `text()` (stringified).
+ * @param headers - Plain object of header key/value pairs used to construct the response `headers`.
+ * @returns A value cast as a `Response` that behaves like a real fetch Response for testing.
  */
 export function createMockResponse(
   status: number,

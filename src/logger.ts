@@ -13,7 +13,15 @@ import pino from 'pino'
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
 
 /**
- * Create log directory if it doesn't exist
+ * Determines and ensures a directory for application log files, returning its path.
+ *
+ * Attempts to create a "logs" directory under the current working directory and returns that path.
+ * If creation fails, falls back to a temporary directory (TMPDIR or `/tmp`) under `lodgify-mcp-logs`.
+ * If that also cannot be created, returns the current working directory as a final fallback.
+ *
+ * Errors during directory creation are handled internally; this function always returns a usable directory path.
+ *
+ * @returns The chosen directory path where logs can be written.
  */
 function ensureLogDirectory(): string {
   const logDir = path.join(process.cwd(), 'logs')
@@ -39,7 +47,12 @@ function ensureLogDirectory(): string {
 }
 
 /**
- * Get the configured log level from environment or default to 'info'
+ * Returns the active log level from the LOG_LEVEL environment variable.
+ *
+ * Reads LOG_LEVEL case‑insensitively and validates it against the supported levels
+ * ('error', 'warn', 'info', 'debug'). If LOG_LEVEL is unset or invalid, returns 'info'.
+ *
+ * @returns The selected log level.
  */
 function getLogLevel(): LogLevel {
   const level = process.env.LOG_LEVEL?.toLowerCase() as LogLevel
@@ -47,7 +60,16 @@ function getLogLevel(): LogLevel {
 }
 
 /**
- * Create and configure the file-based logger
+ * Create and configure a file-based Pino logger and return the logger instance.
+ *
+ * This function determines a log directory and log level (via ensureLogDirectory and getLogLevel),
+ * builds a daily log file named `lodgify-mcp-YYYY-MM-DD.log`, and constructs a Pino logger configured to:
+ * - use the resolved log level,
+ * - emit ISO timestamps,
+ * - format the level as an object `{ level: <label> }`,
+ * - write asynchronously to the constructed file path and create directories as needed.
+ *
+ * @returns A configured `pino.Logger` that writes structured logs to the daily file.
  */
 function createLogger() {
   const logDir = ensureLogDirectory()
@@ -192,7 +214,14 @@ export class SafeLogger {
 export const safeLogger = new SafeLogger()
 
 /**
- * Create a child logger with additional context
+ * Create a SafeLogger bound to the provided context by creating a pino child logger.
+ *
+ * The returned logger will include the given context on every log record. Use this to
+ * attach persistent metadata (for example `requestId`, `userId`, or component identifiers)
+ * that should appear with all logs emitted by the child logger.
+ *
+ * @param context - Key/value pairs to add as persistent context on the child logger
+ * @returns A SafeLogger instance that logs with the provided context applied
  */
 export function createChildLogger(context: Record<string, unknown>): SafeLogger {
   const childPino = logger.child(context)
