@@ -218,13 +218,160 @@ function getEnvConfig(): EnvConfig {
  * registerTools(server, client);
  * ```
  */
+/**
+ * Tool categories for better organization and discovery
+ */
+const TOOL_CATEGORIES = {
+  PROPERTY_MANAGEMENT: 'Property Management',
+  BOOKING_MANAGEMENT: 'Booking & Reservation Management',
+  AVAILABILITY: 'Availability & Calendar',
+  RATES_PRICING: 'Rates & Pricing',
+  WEBHOOKS: 'Webhooks & Notifications',
+  PROPERTY_DISCOVERY: 'Property Discovery & Search',
+  MESSAGING: 'Messaging & Communication'
+} as const
+
+/**
+ * Tool deprecation registry
+ * 
+ * This system allows graceful handling of deprecated tools and API changes.
+ * Deprecated tools will continue to work but will include deprecation warnings
+ * in their descriptions and can log usage warnings.
+ * 
+ * @example
+ * ```typescript
+ * // To deprecate a tool:
+ * DEPRECATED_TOOLS.tool_name = {
+ *   since: '0.2.0',
+ *   removeIn: '1.0.0',
+ *   reason: 'Replaced by new_tool_name for better performance',
+ *   replacement: 'new_tool_name'
+ * }
+ * ```
+ */
+interface DeprecationInfo {
+  /** Version when deprecation started */
+  since: string
+  /** Version when tool will be removed (optional) */
+  removeIn?: string
+  /** Reason for deprecation */
+  reason: string
+  /** Suggested replacement tool (optional) */
+  replacement?: string
+  /** Whether to log usage warnings (default: true) */
+  logWarnings?: boolean
+}
+
+const DEPRECATED_TOOLS: Record<string, DeprecationInfo> = {
+  // Example deprecations showing how the system works
+  'lodgify_availability_room': {
+    since: '0.1.1',
+    removeIn: '1.0.0',
+    reason: 'Raw availability data is complex. Use availability helper tools for better results',
+    replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar'
+  },
+  'lodgify_availability_property': {
+    since: '0.1.1',
+    removeIn: '1.0.0',
+    reason: 'Raw availability data is complex. Use availability helper tools for better results',
+    replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar'
+  }
+}
+
+/**
+ * Generate deprecation warning text for tool descriptions
+ */
+function generateDeprecationWarning(_toolName: string, info: DeprecationInfo): string {
+  let warning = `⚠️ **DEPRECATED** (since v${info.since}): ${info.reason}`
+  
+  if (info.replacement) {
+    warning += ` Please use '${info.replacement}' instead.`
+  }
+  
+  if (info.removeIn) {
+    warning += ` This tool will be removed in v${info.removeIn}.`
+  }
+  
+  return warning
+}
+
+/**
+ * Enhanced tool registration that handles deprecation warnings
+ */
+function registerToolWithDeprecation(
+  server: McpServer,
+  toolName: string,
+  toolConfig: any,
+  handler: any
+): void {
+  const deprecationInfo = DEPRECATED_TOOLS[toolName]
+  
+  if (deprecationInfo) {
+    // Add deprecation warning to description
+    const warning = generateDeprecationWarning(toolName, deprecationInfo)
+    toolConfig.description = `${warning}\n\n${toolConfig.description}`
+    
+    // Wrap handler to log deprecation warnings
+    const originalHandler = handler
+    const wrappedHandler = async (args: any) => {
+      if (deprecationInfo.logWarnings !== false) {
+        safeLogger.warn(`Deprecated tool '${toolName}' used`, {
+          tool: toolName,
+          deprecatedSince: deprecationInfo.since,
+          removeIn: deprecationInfo.removeIn,
+          replacement: deprecationInfo.replacement,
+          reason: deprecationInfo.reason
+        })
+      }
+      return originalHandler(args)
+    }
+    
+    server.registerTool(toolName, toolConfig, wrappedHandler)
+  } else {
+    // Register normally if not deprecated
+    server.registerTool(toolName, toolConfig, handler)
+  }
+}
+
 function registerTools(server: McpServer, client: LodgifyClient): void {
-  // Property Management Tools
-  server.registerTool(
+  // ============================================================================
+  // PROPERTY MANAGEMENT TOOLS
+  // Core tools for managing properties, rooms, and property configurations
+  // ============================================================================
+  registerToolWithDeprecation(
+    server,
     'lodgify_list_properties',
     {
       title: 'List Properties',
-      description: 'List all properties with optional filtering and pagination. Returns property details including names, IDs, locations, and basic configuration. Supports filtering by status, location, and other criteria.',
+      description: `[${TOOL_CATEGORIES.PROPERTY_MANAGEMENT}] List all properties with optional filtering and pagination. Returns property details including names, IDs, locations, and basic configuration. Supports filtering by status, location, and other criteria.
+
+Example request:
+{
+  "params": {
+    "limit": 10,
+    "offset": 0,
+    "status": "active"
+  }
+}
+
+Example response:
+{
+  "data": [
+    {
+      "id": 123,
+      "name": "Ocean View Villa",
+      "location": "Miami Beach, FL",
+      "status": "active",
+      "rooms": 3,
+      "currency": "USD"
+    }
+  ],
+  "pagination": {
+    "total": 150,
+    "limit": 10,
+    "offset": 0
+  }
+}`,
       inputSchema: {
         params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
           .optional()
@@ -248,11 +395,43 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_get_property',
     {
       title: 'Get Property Details',
-      description: 'Retrieve comprehensive details for a specific property including configuration, amenities, room types, location information, and booking settings. Essential for understanding property structure before making bookings or checking availability.',
+      description: `[${TOOL_CATEGORIES.PROPERTY_MANAGEMENT}] Retrieve comprehensive details for a specific property including configuration, amenities, room types, location information, and booking settings. Essential for understanding property structure before making bookings or checking availability.
+
+Example request:
+{
+  "id": "123"
+}
+
+Example response:
+{
+  "id": 123,
+  "name": "Ocean View Villa",
+  "description": "Luxury beachfront villa with stunning ocean views",
+  "location": {
+    "address": "123 Ocean Drive",
+    "city": "Miami Beach",
+    "state": "FL",
+    "country": "USA",
+    "zipCode": "33139"
+  },
+  "amenities": ["WiFi", "Pool", "Beach Access", "Parking"],
+  "roomTypes": [
+    {
+      "id": 456,
+      "name": "Master Suite",
+      "maxOccupancy": 2,
+      "beds": 1
+    }
+  ],
+  "currency": "USD",
+  "checkInTime": "15:00",
+  "checkOutTime": "11:00"
+}`,
       inputSchema: {
         id: z.string().min(1).describe('Unique identifier of the property to retrieve'),
       }
@@ -275,7 +454,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_list_property_rooms',
     {
       title: 'List Property Room Types',
@@ -301,11 +481,61 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_list_bookings',
     {
       title: 'List Bookings & Reservations',
-      description: 'Retrieve all bookings with comprehensive filtering options. Filter by dates, status, property, guest information, and more. Returns booking details including guest info, dates, pricing, and payment status. Essential for managing reservations and analyzing booking patterns.',
+      description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Retrieve all bookings with comprehensive filtering options. Filter by dates, status, property, guest information, and more. Returns booking details including guest info, dates, pricing, and payment status. Essential for managing reservations and analyzing booking patterns.
+
+Example request (filter by date range):
+{
+  "params": {
+    "start": "2024-03-01",
+    "end": "2024-03-31",
+    "limit": 10,
+    "status": "confirmed"
+  }
+}
+
+Example request (filter by property):
+{
+  "params": {
+    "propertyId": "123",
+    "limit": 5
+  }
+}
+
+Example response:
+{
+  "data": [
+    {
+      "id": "BK001",
+      "status": "confirmed",
+      "propertyId": 123,
+      "propertyName": "Ocean View Villa",
+      "checkIn": "2024-03-15",
+      "checkOut": "2024-03-22",
+      "guests": {
+        "adults": 2,
+        "children": 0
+      },
+      "guest": {
+        "name": "John Smith",
+        "email": "john@example.com",
+        "phone": "+1234567890"
+      },
+      "totalAmount": 1750.00,
+      "currency": "USD",
+      "paymentStatus": "paid"
+    }
+  ],
+  "pagination": {
+    "total": 45,
+    "limit": 10,
+    "offset": 0
+  }
+}`,
       inputSchema: {
         params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
           .optional()
@@ -329,7 +559,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_get_booking',
     {
       title: 'Get Booking Details',
@@ -355,11 +586,51 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_find_properties',
     {
       title: 'Find Properties',
-      description: 'Find properties in the system when you don\'t know the exact property ID. Searches properties by name, gets property IDs from bookings, or lists all properties.',
+      description: `[${TOOL_CATEGORIES.PROPERTY_DISCOVERY}] Find properties in the system when you don't know the exact property ID. Searches properties by name, gets property IDs from bookings, or lists all properties.
+
+Example request (search by name):
+{
+  "searchTerm": "beach",
+  "includePropertyIds": true,
+  "limit": 5
+}
+
+Example request (list all):
+{
+  "includePropertyIds": true,
+  "limit": 10
+}
+
+Example response:
+{
+  "properties": [
+    {
+      "id": "123",
+      "name": "Ocean View Beach House",
+      "source": "properties"
+    },
+    {
+      "id": "456", 
+      "name": "Beachfront Villa",
+      "source": "properties"
+    },
+    {
+      "id": "789",
+      "name": "Property found in booking #BK001",
+      "source": "bookings"
+    }
+  ],
+  "message": "Found 3 property(ies) matching \"beach\"",
+  "suggestions": [
+    "Use one of these property IDs with availability tools like lodgify_check_next_availability",
+    "Property names are case-insensitive. Try partial matches for better results."
+  ]
+}`,
       inputSchema: {
         searchTerm: z.string().optional().describe('Optional search term to filter properties by name (case-insensitive)'),
         includePropertyIds: z.boolean().default(true).optional().describe('Include property IDs found in recent bookings (default: true)'),
@@ -383,7 +654,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_delete_booking',
     {
       title: 'Cancel/Delete Booking',
@@ -410,7 +682,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 
   // Deleted Properties Tools
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_list_deleted_properties',
     {
       title: 'List Deleted Properties',
@@ -439,7 +712,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 
   // Rates Management Tools
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_daily_rates',
     {
       title: 'Get Daily Rates Calendar',
@@ -466,7 +740,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_rate_settings',
     {
       title: 'Get Rate Settings & Configuration',
@@ -493,7 +768,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_create_rate',
     {
       title: 'Create/Update Rates',
@@ -526,7 +802,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_update_rate',
     {
       title: 'Update Existing Rate',
@@ -558,8 +835,12 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  // Booking Payment & Management Tools
-  server.registerTool(
+  // ============================================================================
+  // BOOKING & RESERVATION MANAGEMENT TOOLS
+  // Tools for managing bookings, payments, and guest reservations
+  // ============================================================================
+  registerToolWithDeprecation(
+    server,
     'lodgify_get_booking_payment_link',
     {
       title: 'Get Booking Payment Link',
@@ -585,7 +866,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_create_booking_payment_link',
     {
       title: 'Create Booking Payment Link',
@@ -616,7 +898,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_update_key_codes',
     {
       title: 'Update Access Key Codes',
@@ -645,7 +928,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_create_booking',
     {
       title: 'Create New Booking',
@@ -684,7 +968,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_update_booking',
     {
       title: 'Update Existing Booking',
@@ -721,7 +1006,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 
   // Availability Tools
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_availability_room',
     {
       title: 'Get Raw Availability (Room)',
@@ -752,7 +1038,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_availability_property',
     {
       title: 'Get Raw Availability (Property)',
@@ -782,12 +1069,36 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  // Enhanced Availability Helper Tools
-  server.registerTool(
+  // ============================================================================
+  // AVAILABILITY & CALENDAR TOOLS
+  // Enhanced helper tools for checking availability and calendar management
+  // ============================================================================
+  registerToolWithDeprecation(
+    server,
     'lodgify_check_next_availability',
     {
       title: 'Find Next Available Date',
-      description: 'Find the next available date for a property by analyzing bookings. Returns when the property is next available and for how long. If property ID is unknown, use lodgify_find_properties first.',
+      description: `[${TOOL_CATEGORIES.AVAILABILITY}] Find the next available date for a property by analyzing bookings. Returns when the property is next available and for how long. If property ID is unknown, use lodgify_find_properties first.
+
+Example request:
+{
+  "propertyId": "123",
+  "fromDate": "2024-03-15",
+  "daysToCheck": 90
+}
+
+Example response:
+{
+  "propertyId": 123,
+  "nextAvailableDate": "2024-03-22",
+  "availableDays": 7,
+  "availableUntil": "2024-03-29",
+  "message": "Next available from 2024-03-22 for 7 days",
+  "recommendations": [
+    "Check availability calendar for detailed daily status",
+    "Consider checking different room types if property is fully booked"
+  ]
+}`,
       inputSchema: {
         propertyId: z.string().min(1).describe('Property ID'),
         fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional().describe('Start date to check from (YYYY-MM-DD). Defaults to today if not provided.'),
@@ -811,7 +1122,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_check_date_range_availability',
     {
       title: 'Check Date Range Availability',
@@ -839,7 +1151,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_get_availability_calendar',
     {
       title: 'Get Availability Calendar View',
@@ -868,7 +1181,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 
   // Quote & Messaging Tools
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_get_quote',
     {
       title: 'Get Booking Quote & Pricing',
@@ -896,7 +1210,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_get_thread',
     {
       title: 'Get Messaging Thread',
@@ -923,7 +1238,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 
   // Property Management Tools
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_update_property_availability',
     {
       title: 'Update Property Availability Rules',
@@ -957,7 +1273,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 
   // Webhook Management Tools
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_subscribe_webhook',
     {
       title: 'Subscribe to Webhook Events',
@@ -986,7 +1303,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
     }
   )
 
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_list_webhooks',
     {
       title: 'List Active Webhook Subscriptions',
@@ -1015,7 +1333,8 @@ function registerTools(server: McpServer, client: LodgifyClient): void {
   )
 
   // Store handle for dangerous tool - can be disabled at runtime
-  server.registerTool(
+  registerToolWithDeprecation(
+    server,
     'lodgify_delete_webhook',
     {
       title: 'Delete Webhook Subscription',
@@ -1225,8 +1544,68 @@ function handleToolError(error: unknown): never {
   )
 }
 
+/**
+ * Check the health status of all dependencies
+ */
+async function checkDependencies(client: LodgifyClient): Promise<Record<string, {
+  status: 'healthy' | 'unhealthy' | 'degraded'
+  responseTime?: number
+  lastChecked: string
+  error?: string
+  details?: string
+}>> {
+  const dependencies: Record<string, any> = {}
+  
+  // Check Lodgify API connectivity
+  try {
+    const startTime = Date.now()
+    // Try to make a simple API call to test connectivity
+    await client.listProperties({ limit: 1 })
+    const responseTime = Date.now() - startTime
+    
+    dependencies.lodgifyApi = {
+      status: 'healthy',
+      responseTime,
+      lastChecked: new Date().toISOString(),
+      details: 'Successfully connected to Lodgify API'
+    }
+  } catch (error) {
+    dependencies.lodgifyApi = {
+      status: 'unhealthy',
+      lastChecked: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to connect to Lodgify API'
+    }
+  }
+  
+  // Check environment variables
+  const envVars = ['LODGIFY_API_KEY', 'LOG_LEVEL']
+  const missingEnvVars = envVars.filter(envVar => 
+    envVar === 'LODGIFY_API_KEY' ? !process.env[envVar] : false
+  )
+  
+  dependencies.environment = {
+    status: missingEnvVars.length === 0 ? 'healthy' : 'unhealthy',
+    lastChecked: new Date().toISOString(),
+    details: missingEnvVars.length === 0 
+      ? 'All required environment variables are configured'
+      : `Missing required environment variables: ${missingEnvVars.join(', ')}`,
+    ...(missingEnvVars.length > 0 && { error: `Missing: ${missingEnvVars.join(', ')}` })
+  }
+  
+  // Check rate limit status
+  const rateLimitStatus = client.getRateLimitStatus()
+  dependencies.rateLimiting = {
+    status: rateLimitStatus.utilizationPercent >= 95 ? 'degraded' : 'healthy',
+    lastChecked: new Date().toISOString(),
+    details: `API rate limit utilization: ${rateLimitStatus.utilizationPercent}% (${rateLimitStatus.requestCount}/${60} requests this minute)`
+  }
+  
+  return dependencies
+}
+
 // Function to register resources with the McpServer
-function registerResources(server: McpServer) {
+function registerResources(server: McpServer, client: LodgifyClient) {
   // Health check resource
   server.registerResource(
     'health',
@@ -1237,11 +1616,30 @@ function registerResources(server: McpServer) {
       mimeType: 'application/json',
     },
     async (uri) => {
+      // Check dependencies
+      const dependencies = await checkDependencies(client)
+      
+      // Determine overall status
+      const allHealthy = Object.values(dependencies).every(dep => dep.status === 'healthy')
+      const overallStatus = allHealthy ? 'healthy' : 'unhealthy'
+      
       const health = {
-        status: 'healthy',
+        status: overallStatus,
         service: 'lodgify-mcp',
         version: '0.1.0',
         timestamp: new Date().toISOString(),
+        dependencies,
+        runtimeInfo: {
+          nodeVersion: process.version,
+          platform: process.platform,
+          arch: process.arch,
+          uptime: Math.round(process.uptime()),
+          memoryUsage: {
+            used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+            total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+            unit: 'MB'
+          }
+        }
       }
 
       return {
@@ -1250,6 +1648,88 @@ function registerResources(server: McpServer) {
             uri: uri.href,
             mimeType: 'application/json',
             text: JSON.stringify(health, null, 2),
+          },
+        ],
+      }
+    }
+  )
+
+  // Rate limit status resource
+  server.registerResource(
+    'rate-limit',
+    'lodgify://rate-limit',
+    {
+      title: 'Rate Limit Status',
+      description: 'Monitor current API rate limit usage and status',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      const rateLimitStatus = client.getRateLimitStatus()
+      
+      const status = {
+        service: 'lodgify-api',
+        rateLimitInfo: {
+          ...rateLimitStatus,
+          status: rateLimitStatus.utilizationPercent >= 95 ? 'critical' : 
+                  rateLimitStatus.utilizationPercent >= 80 ? 'warning' : 'ok',
+          recommendation: rateLimitStatus.utilizationPercent >= 95 
+            ? 'Rate limit nearly exhausted. Consider reducing request frequency.' 
+            : rateLimitStatus.utilizationPercent >= 80 
+            ? 'High rate limit usage detected. Monitor closely.'
+            : 'Rate limit usage is within normal range.'
+        },
+        timestamp: new Date().toISOString(),
+      }
+
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(status, null, 2),
+          },
+        ],
+      }
+    }
+  )
+
+  // Deprecation registry resource
+  server.registerResource(
+    'deprecations',
+    'lodgify://deprecations',
+    {
+      title: 'Tool Deprecation Registry',
+      description: 'View current tool deprecation notices and upgrade recommendations',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      const deprecationList = Object.entries(DEPRECATED_TOOLS).map(([toolName, info]) => ({
+        tool: toolName,
+        deprecatedSince: info.since,
+        removeIn: info.removeIn || 'TBD',
+        reason: info.reason,
+        replacement: info.replacement,
+        warning: generateDeprecationWarning(toolName, info)
+      }))
+
+      const registry = {
+        service: 'lodgify-mcp-deprecations',
+        totalDeprecatedTools: deprecationList.length,
+        deprecations: deprecationList,
+        recommendations: deprecationList.length > 0 ? [
+          'Update your integration to use recommended replacement tools',
+          'Test replacement tools before deprecated ones are removed',
+          'Subscribe to release notes for deprecation announcements'
+        ] : ['No deprecated tools - all tools are current'],
+        timestamp: new Date().toISOString(),
+      }
+
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(registry, null, 2),
           },
         ],
       }
@@ -1316,7 +1796,7 @@ export function setupServer(injectedClient?: LodgifyClient) {
 
   // Register tools and resources
   registerTools(server, client)
-  registerResources(server)
+  registerResources(server, client)
 
   // Return server and client for testing
   return { server, client }

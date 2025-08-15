@@ -1200,4 +1200,44 @@ export class LodgifyClient {
       throw error
     }
   }
+
+  /**
+   * Get current rate limit status for monitoring API usage
+   * @returns Rate limit status information
+   */
+  public getRateLimitStatus(): {
+    requestCount: number
+    windowStart: number
+    windowDurationMs: number
+    remainingRequests: number
+    resetTime: string
+    utilizationPercent: number
+  } {
+    const limit = 60 // requests per minute
+    const windowMs = 60000 // 1 minute
+    const now = Date.now()
+    
+    // Check if we're in a new window
+    let currentRequestCount = this.requestCount
+    let currentWindowStart = this.windowStart
+    
+    if (now - this.windowStart >= windowMs) {
+      // We're in a new window, so current usage is 0
+      currentRequestCount = 0
+      currentWindowStart = now
+    }
+    
+    const remainingRequests = Math.max(0, limit - currentRequestCount)
+    const resetTime = new Date(currentWindowStart + windowMs).toISOString()
+    const utilizationPercent = Math.round((currentRequestCount / limit) * 100)
+    
+    return {
+      requestCount: currentRequestCount,
+      windowStart: currentWindowStart,
+      windowDurationMs: windowMs,
+      remainingRequests,
+      resetTime,
+      utilizationPercent
+    }
+  }
 }
