@@ -1,0 +1,29 @@
+# MCP-optimized Dockerfile for stdio communication
+FROM oven/bun:1-alpine AS builder
+
+WORKDIR /app
+COPY package.json bun.lockb* ./
+RUN bun install --frozen-lockfile
+COPY src ./src
+COPY tsconfig.json ./
+RUN bun run build
+
+FROM node:20-alpine AS production
+
+LABEL maintainer="lodgify-mcp"
+LABEL description="Lodgify MCP Server - Model Context Protocol server for Lodgify API"
+
+WORKDIR /app
+
+# Copy built files and dependencies
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json ./
+
+# Copy simple MCP entrypoint
+COPY docker-entrypoint-mcp.sh /app/
+RUN chmod +x /app/docker-entrypoint-mcp.sh
+
+# MCP servers run as stdio processes, not daemons
+ENTRYPOINT ["/app/docker-entrypoint-mcp.sh"]
+CMD ["node", "dist/server.js"]

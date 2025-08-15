@@ -14,7 +14,7 @@ const apiKeySchema = z
   .string()
   .min(32, 'API key must be at least 32 characters long')
   .max(256, 'API key exceeds maximum length')
-  .regex(/^[a-zA-Z0-9_-]+$/, 'API key contains invalid characters')
+  .regex(/^[a-zA-Z0-9+/=_-]+$/, 'API key contains invalid characters')
   .refine(
     (key) => !key.toLowerCase().includes('test') || key.toLowerCase().includes('sandbox'),
     'Suspicious API key format detected',
