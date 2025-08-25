@@ -175,7 +175,7 @@ function getEnvConfig(): EnvConfig {
     } catch (error) {
       // Store validation error for lazy client initialization
       envValidationError = error instanceof Error ? error : new Error(String(error))
-      
+
       // Provide fallback config to allow MCP server to start
       envConfig = {
         LODGIFY_API_KEY: process.env.LODGIFY_API_KEY || 'invalid-key',
