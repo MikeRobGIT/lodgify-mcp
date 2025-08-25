@@ -1,0 +1,98 @@
+# Multi-stage Dockerfile for Lodgify MCP Server with MCPO Support
+# Stage 1: Build the Lodgify MCP Server
+FROM oven/bun:1-alpine AS lodgify-builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY package.json bun.lockb* ./
+
+# Install all dependencies including dev dependencies
+RUN bun install --frozen-lockfile
+
+# Copy source code and other necessary files
+COPY src ./src
+COPY tsconfig.json ./
+
+# Build the application
+RUN bun run build
+
+# Stage 2: MCPO Python environment
+FROM python:3.11-alpine AS mcpo-builder
+
+# Install system dependencies for MCPO
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    libffi-dev \
+    openssl-dev
+
+# Install MCPO
+RUN pip install --no-cache-dir mcpo
+
+# Stage 3: Final runtime with both Lodgify MCP Server and MCPO
+FROM python:3.11-alpine AS production
+
+# Add metadata labels
+LABEL maintainer="lodgify-mcp"
+LABEL version="1.0.0"
+LABEL description="Lodgify MCP Server with MCPO - REST API proxy for Model Context Protocol server"
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    nodejs \
+    npm \
+    && npm install -g bun
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S mcpuser && \
+    adduser -u 1001 -S mcpuser -G mcpuser
+
+# Copy MCPO from builder stage
+COPY --from=mcpo-builder /usr/local/bin/mcpo /usr/local/bin/mcpo
+COPY --from=mcpo-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+
+# Set working directory
+WORKDIR /app
+
+# Copy built Lodgify MCP Server from builder stage
+COPY --from=lodgify-builder --chown=mcpuser:mcpuser /app/node_modules ./node_modules
+COPY --from=lodgify-builder --chown=mcpuser:mcpuser /app/dist ./dist
+COPY --chown=mcpuser:mcpuser package.json ./
+
+# Copy MCPO configuration files
+COPY --chown=mcpuser:mcpuser mcpo.*.json ./
+COPY --chown=mcpuser:mcpuser mcpo.config.json ./
+
+# Copy scripts and entrypoints
+COPY --chown=mcpuser:mcpuser docker-entrypoint.sh /app/
+COPY --chown=mcpuser:mcpuser scripts/ /app/scripts/
+RUN chmod +x /app/docker-entrypoint.sh /app/scripts/*.sh || true
+
+# Create directories for configuration and logs
+RUN mkdir -p /app/config /app/logs && chown -R mcpuser:mcpuser /app/config /app/logs
+
+# Switch to non-root user
+USER mcpuser
+
+# Expose ports
+# 3000: MCP Server (internal)
+# 8000: MCPO REST API (external)
+EXPOSE 3000 8000
+
+# Health check for MCPO REST API
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || curl -f http://localhost:8000/docs || exit 1
+
+# Environment variables
+ENV MCPO_PORT=8000
+ENV MCP_PORT=3000
+ENV LOG_LEVEL=info
+
+# Use entrypoint script for signal handling and environment setup
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
+# Default command starts MCPO with the Lodgify MCP Server
+CMD ["mcpo", "--port", "8000", "--config", "/app/mcpo.config.json"]

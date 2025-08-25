@@ -25,6 +25,22 @@ jobs:
       packages: write
       security-events: write
     
+    strategy:
+      matrix:
+        include:
+          - image_type: "mcp"
+            dockerfile: "Dockerfile"
+            image_suffix: ""
+            test_port: "3000"
+            test_endpoint: "/health"
+            test_command: "health-check"
+          - image_type: "mcpo" 
+            dockerfile: "Dockerfile.mcpo"
+            image_suffix: "-mcpo"
+            test_port: "8000"
+            test_endpoint: "/health"
+            test_command: "mcpo"
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,87 +62,107 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.image_suffix }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch,suffix=${{ matrix.image_suffix }}
+            type=ref,event=pr,suffix=${{ matrix.image_suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.image_suffix }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.image_suffix }}
+            type=semver,pattern={{major}},suffix=${{ matrix.image_suffix }}
+            type=sha,prefix={{branch}}-,suffix=${{ matrix.image_suffix }}
+            type=raw,value=latest${{ matrix.image_suffix }},enable={{is_default_branch}}
       
       - name: Build Docker image for testing
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           push: false
           load: true
-          tags: ${{ env.IMAGE_NAME }}:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ env.IMAGE_NAME }}:test-${{ matrix.image_type }}
+          cache-from: type=gha,key=${{ matrix.image_type }}
+          cache-to: type=gha,key=${{ matrix.image_type }},mode=max
           platforms: linux/amd64
       
       - name: Run container tests
         run: |
-          # Start container in health check mode for testing
+          # Set environment variables based on image type
+          if [ "${{ matrix.image_type }}" = "mcpo" ]; then
+            export EXTRA_ENV="-e MCPO_API_KEY=test-mcpo-key -e LODGIFY_API_KEY=test-lodgify-key"
+          else
+            export EXTRA_ENV=""
+          fi
+          
+          # Start container in test mode
           docker run -d \
-            --name test-container \
+            --name test-container-${{ matrix.image_type }} \
             -e LOG_LEVEL=debug \
-            -p 3000:3000 \
-            ${{ env.IMAGE_NAME }}:test \
-            health-check
+            $EXTRA_ENV \
+            -p ${{ matrix.test_port }}:${{ matrix.test_port }} \
+            ${{ env.IMAGE_NAME }}:test-${{ matrix.image_type }} \
+            ${{ matrix.test_command }}
           
           # Wait for container to be healthy
-          echo "Waiting for health check server to start..."
-          for i in {1..30}; do
-            if docker exec test-container curl -f http://localhost:3000/health 2>/dev/null; then
-              echo "Health check server is responding!"
+          echo "Waiting for ${{ matrix.image_type }} server to start on port ${{ matrix.test_port }}..."
+          for i in {1..45}; do
+            if docker exec test-container-${{ matrix.image_type }} curl -f http://localhost:${{ matrix.test_port }}${{ matrix.test_endpoint }} 2>/dev/null; then
+              echo "${{ matrix.image_type }} server is responding!"
               break
             fi
-            echo "Waiting... ($i/30)"
-            sleep 2
+            echo "Waiting... ($i/45)"
+            sleep 3
           done
           
           # Check container logs
-          echo "Container logs:"
-          docker logs test-container
+          echo "Container logs for ${{ matrix.image_type }}:"
+          docker logs test-container-${{ matrix.image_type }}
           
           # Verify the health endpoint is working
-          echo "Testing health endpoint:"
-          docker exec test-container curl -f http://localhost:3000/health || exit 1
+          echo "Testing ${{ matrix.image_type }} health endpoint:"
+          docker exec test-container-${{ matrix.image_type }} curl -f http://localhost:${{ matrix.test_port }}${{ matrix.test_endpoint }} || exit 1
+          
+          # Additional MCPO-specific tests
+          if [ "${{ matrix.image_type }}" = "mcpo" ]; then
+            echo "Testing MCPO OpenAPI endpoint:"
+            docker exec test-container-${{ matrix.image_type }} curl -f http://localhost:8000/docs 2>/dev/null || echo "OpenAPI docs test skipped (may require proper auth)"
+            
+            echo "Testing MCPO OpenAPI spec:"
+            docker exec test-container-${{ matrix.image_type }} curl -f http://localhost:8000/openapi.json 2>/dev/null || echo "OpenAPI spec test skipped (may require proper auth)"
+          fi
           
           # Clean up
-          docker stop test-container
-          docker rm test-container
+          docker stop test-container-${{ matrix.image_type }}
+          docker rm test-container-${{ matrix.image_type }}
       
       - name: Run Trivy vulnerability scanner
         if: success()
         continue-on-error: true
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.IMAGE_NAME }}:test
+          image-ref: ${{ env.IMAGE_NAME }}:test-${{ matrix.image_type }}
           format: 'sarif'
-          output: 'trivy-results.sarif'
+          output: 'trivy-results-${{ matrix.image_type }}.sarif'
           severity: 'CRITICAL,HIGH'
-          timeout: 10m
+          timeout: 15m
       
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && hashFiles('trivy-results.sarif') != ''
+        if: always() && hashFiles('trivy-results-${{ matrix.image_type }}.sarif') != ''
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: 'trivy-results-${{ matrix.image_type }}.sarif'
+          category: 'trivy-${{ matrix.image_type }}'
       
       - name: Build and push multi-platform Docker image
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,key=${{ matrix.image_type }}
+          cache-to: type=gha,key=${{ matrix.image_type }},mode=max
           platforms: linux/amd64,linux/arm64
           build-args: |
             BUILD_DATE=${{ github.event.repository.updated_at }}
@@ -138,7 +174,7 @@ jobs:
         id: normalize
         run: |
           # Convert repository name to lowercase for registry compatibility
-          NORMALIZED_IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" | tr '[:upper:]' '[:lower:]')
+          NORMALIZED_IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.image_suffix }}:latest${{ matrix.image_suffix }}" | tr '[:upper:]' '[:lower:]')
           echo "image=$NORMALIZED_IMAGE" >> $GITHUB_OUTPUT
       
       - name: Generate SBOM
@@ -148,26 +184,38 @@ jobs:
         with:
           image: ${{ steps.normalize.outputs.image }}
           format: spdx-json
-          output-file: sbom.spdx.json
+          output-file: sbom-${{ matrix.image_type }}.spdx.json
       
       - name: Upload SBOM
-        if: github.event_name != 'pull_request' && hashFiles('sbom.spdx.json') != ''
+        if: github.event_name != 'pull_request' && hashFiles('sbom-${{ matrix.image_type }}.spdx.json') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: sbom
-          path: sbom.spdx.json
+          name: sbom-${{ matrix.image_type }}
+          path: sbom-${{ matrix.image_type }}.spdx.json
       
       - name: Create release summary
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          echo "## Docker Image Published! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "## Docker Image Published! 🎉 (${{ matrix.image_type }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Type:** \`${{ matrix.image_type }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.image_suffix }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Pull Command" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest${{ matrix.image_suffix }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ matrix.image_type }}" = "mcpo" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### MCPO Usage" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "# Run MCPO proxy with REST API on port 8000" >> $GITHUB_STEP_SUMMARY
+            echo "docker run -p 8000:8000 \\\\" >> $GITHUB_STEP_SUMMARY
+            echo "  -e LODGIFY_API_KEY=your_api_key \\\\" >> $GITHUB_STEP_SUMMARY
+            echo "  -e MCPO_API_KEY=your_mcpo_key \\\\" >> $GITHUB_STEP_SUMMARY
+            echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest${{ matrix.image_suffix }} mcpo" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi

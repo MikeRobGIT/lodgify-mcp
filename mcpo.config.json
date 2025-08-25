@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "lodgify-mcp": {
+      "command": "bun",
+      "args": ["run", "start"],
+      "env": {
+        "LODGIFY_API_KEY": "your_lodgify_api_key_here",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

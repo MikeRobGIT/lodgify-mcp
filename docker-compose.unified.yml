@@ -1,0 +1,264 @@
+version: '3.8'
+
+services:
+  # MCP Server - Core stdio-based server
+  lodgify-mcp:
+    image: ghcr.io/mikerobgit/lodgify-mcp:latest
+    container_name: lodgify-mcp-server
+    
+    # Environment variables from .env file
+    env_file:
+      - .env
+    
+    # Additional environment variables
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    
+    # No port mapping needed - MCP uses stdio
+    # The MCPO proxy will communicate with this container
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check using internal command
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Shared network for container communication
+    networks:
+      - lodgify-unified-network
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Override entrypoint to keep container running
+    entrypoint: ["node", "dist/server.js"]
+    stdin_open: true
+    tty: true
+
+  # MCPO Proxy - REST API gateway
+  lodgify-mcpo:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcpo
+    container_name: lodgify-mcpo-proxy
+    
+    # Environment variables from .env file
+    env_file:
+      - .env
+    
+    # MCPO-specific environment variables
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MCPO_PORT=${MCPO_PORT:-8000}
+      - MCPO_API_KEY=${MCPO_API_KEY:-mcpo-secret-key}
+      - MCPO_CONFIG=/app/mcpo.docker.json
+      # Override the MCP server command to use network connection
+      - MCP_SERVER_COMMAND=docker
+      - MCP_SERVER_ARGS=exec,-i,lodgify-mcp-server,node,dist/server.js
+    
+    # Port mapping - 8000 for REST API
+    ports:
+      - "${MCPO_PORT:-8000}:8000"
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check for MCPO REST API
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Shared network
+    networks:
+      - lodgify-unified-network
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Use MCPO entrypoint
+    entrypoint: ["/app/docker-entrypoint-mcpo.sh"]
+    command: ["mcpo"]
+    
+    # Mount Docker socket for container-to-container communication
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    
+    # Ensure MCP server starts first
+    depends_on:
+      lodgify-mcp:
+        condition: service_healthy
+
+  # Development MCP Server
+  lodgify-mcp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: lodgify-mcp-dev
+    
+    # Mount source code for hot reload
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    
+    # Development environment
+    env_file:
+      - .env
+      - .env.docker
+    
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - DEBUG_HTTP=${DEBUG_HTTP:-1}
+    
+    # Development command
+    command: ["bun", "run", "dev"]
+    stdin_open: true
+    tty: true
+    
+    # Always restart in development
+    restart: always
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    
+    # Logging for development
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    
+    # Network
+    networks:
+      - lodgify-unified-network
+    
+    # Development profile
+    profiles:
+      - dev
+      - development
+
+  # Development MCPO Proxy
+  lodgify-mcpo-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcpo
+      target: production
+    container_name: lodgify-mcpo-dev
+    
+    # Mount configuration files for hot reload
+    volumes:
+      - ./mcpo.config.json:/app/mcpo.config.json:ro
+      - ./mcpo.dev.json:/app/mcpo.dev.json:ro
+      - ./mcpo.docker.json:/app/mcpo.docker.json:ro
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    
+    # Development environment
+    env_file:
+      - .env
+      - .env.docker
+    
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - MCPO_PORT=${MCPO_PORT:-8000}
+      - MCPO_API_KEY=${MCPO_API_KEY:-mcpo-dev-key}
+      - MCPO_CONFIG=/app/mcpo.docker.json
+      - DEBUG_HTTP=${DEBUG_HTTP:-1}
+      - MCP_SERVER_COMMAND=docker
+      - MCP_SERVER_ARGS=exec,-i,lodgify-mcp-dev,bun,run,dev
+    
+    # Port mapping for development
+    ports:
+      - "${MCPO_PORT:-8000}:8000"
+    
+    # Always restart in development
+    restart: always
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    
+    # Logging for development
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    
+    # Network
+    networks:
+      - lodgify-unified-network
+    
+    # Use MCPO entrypoint
+    entrypoint: ["/app/docker-entrypoint-mcpo.sh"]
+    command: ["mcpo", "--hot-reload"]
+    
+    # Ensure MCP server starts first
+    depends_on:
+      lodgify-mcp-dev:
+        condition: service_healthy
+    
+    # Development profile
+    profiles:
+      - dev
+      - development
+
+networks:
+  lodgify-unified-network:
+    driver: bridge
+    name: lodgify-unified-network
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

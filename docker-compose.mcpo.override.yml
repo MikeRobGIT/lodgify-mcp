@@ -1,0 +1,53 @@
+version: '3.8'
+
+# Override file for MCPO development and testing
+# Use with: docker-compose -f docker-compose.mcpo.yml -f docker-compose.mcpo.override.yml up
+
+services:
+  mcpo-proxy:
+    # Override for local development
+    environment:
+      - MCPO_API_KEY=local-dev-key
+      - LOG_LEVEL=debug
+      - DEBUG_HTTP=1
+    
+    # Add volume mounts for configuration hot-reload
+    volumes:
+      - ./mcpo.config.json:/app/mcpo.config.json:ro
+      - ./logs:/app/logs:rw
+    
+    # Enable debug port for Node.js debugging
+    ports:
+      - "8000:8000"
+      - "9229:9229"  # Debug port
+    
+    # Override command for development
+    command: ["mcpo", "--hot-reload", "--debug"]
+
+  mcpo-dev:
+    # Additional development overrides
+    environment:
+      - MCPO_API_KEY=dev-override-key
+    
+    # Additional volume mounts
+    volumes:
+      - ./mcpo.config.json:/app/mcpo.config.json:ro
+      - ./mcpo.dev.json:/app/mcpo.dev.json:ro
+      - ./logs:/app/logs:rw
+      - ./scripts:/app/scripts:ro
+
+  # Additional service for testing OpenAPI docs
+  openapi-docs:
+    image: swaggerapi/swagger-ui
+    container_name: mcpo-swagger-ui
+    environment:
+      - SWAGGER_JSON_URL=http://mcpo-proxy:8000/docs
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mcpo-proxy
+    networks:
+      - mcpo-network
+    profiles:
+      - docs
+      - testing

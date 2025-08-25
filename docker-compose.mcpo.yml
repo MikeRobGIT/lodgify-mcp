@@ -1,0 +1,165 @@
+version: '3.8'
+
+services:
+  # MCPO Proxy Service - Exposes MCP server as REST API
+  mcpo-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcpo
+    container_name: lodgify-mcpo-proxy
+    
+    # Environment variables from .env file
+    env_file:
+      - .env
+    
+    # MCPO-specific environment variables
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MCPO_PORT=${MCPO_PORT:-8000}
+      - MCPO_API_KEY=${MCPO_API_KEY:-mcpo-secret-key}
+      - MCPO_CONFIG=/app/mcpo.config.json
+    
+    # Port mapping - 8000 for REST API
+    ports:
+      - "${MCPO_PORT:-8000}:8000"
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check for MCPO REST API
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health", "||", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Network for communication
+    networks:
+      - mcpo-network
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Use MCPO entrypoint
+    entrypoint: ["/app/docker-entrypoint-mcpo.sh"]
+    command: ["mcpo"]
+    
+    # Default profile (production)
+    profiles:
+      - mcpo
+      - production
+
+  # Development MCPO configuration
+  mcpo-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcpo
+      target: production
+    
+    container_name: lodgify-mcpo-dev
+    
+    # Mount configuration files for hot reload
+    volumes:
+      - ./mcpo.config.json:/app/mcpo.config.json:ro
+      - ./mcpo.dev.json:/app/mcpo.dev.json:ro
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+    
+    # Development environment
+    env_file:
+      - .env
+      - .env.docker
+    
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - MCPO_PORT=${MCPO_PORT:-8000}
+      - MCPO_API_KEY=${MCPO_API_KEY:-mcpo-dev-key}
+      - MCPO_CONFIG=/app/mcpo.dev.json
+      - DEBUG_HTTP=${DEBUG_HTTP:-1}
+    
+    # Port mapping for development
+    ports:
+      - "${MCPO_PORT:-8000}:8000"
+    
+    # Always restart in development
+    restart: always
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health", "||", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    
+    # Logging for development
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    
+    # Network
+    networks:
+      - mcpo-network
+    
+    # Use MCPO entrypoint
+    entrypoint: ["/app/docker-entrypoint-mcpo.sh"]
+    command: ["mcpo", "--hot-reload"]
+    
+    # Development profile
+    profiles:
+      - mcpo-dev
+      - development
+
+  # Standalone MCP Server (for comparison/testing)
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lodgify-mcp-standalone
+    
+    env_file:
+      - .env
+    
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    
+    # No port mapping - MCP uses stdio
+    # ports: []
+    
+    restart: unless-stopped
+    
+    networks:
+      - mcpo-network
+    
+    # Only for testing MCP functionality
+    profiles:
+      - testing
+      - mcp-only
+
+networks:
+  mcpo-network:
+    driver: bridge
+    name: lodgify-mcpo-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
