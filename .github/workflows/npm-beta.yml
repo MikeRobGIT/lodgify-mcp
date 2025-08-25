@@ -1,0 +1,248 @@
+name: NPM Beta Release
+
+on:
+  push:
+    branches:
+      - develop
+      - 'feature/*'
+      - 'beta/*'
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'package.json'
+      - 'tsconfig.json'
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: 'Pre-release type'
+        required: true
+        default: 'beta'
+        type: choice
+        options:
+          - beta
+          - alpha
+          - rc
+      version:
+        description: 'Version bump type'
+        required: true
+        default: 'prerelease'
+        type: choice
+        options:
+          - prerelease
+          - prepatch
+          - preminor
+          - premajor
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  publish-beta:
+    name: Publish Beta to NPM
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      - name: Setup Node.js (for npm)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      
+      - name: Run tests
+        run: bun test
+        env:
+          LODGIFY_API_KEY: test-api-key
+          TEST_MODE: mock
+      
+      - name: Build
+        run: bun run build
+      
+      - name: Verify build
+        run: |
+          echo "Verifying build artifacts..."
+          [ -f "dist/server.js" ] || exit 1
+          [ -f "bin/lodgify-mcp.js" ] || exit 1
+          [ -x "bin/lodgify-mcp.js" ] || exit 1
+          echo "✅ Build verification passed"
+      
+      - name: Determine pre-release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            PRERELEASE_TAG="${{ github.event.inputs.prerelease }}"
+          else
+            # Auto-determine based on branch
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            if [[ "$BRANCH_NAME" == "develop" ]]; then
+              PRERELEASE_TAG="beta"
+            elif [[ "$BRANCH_NAME" == feature/* ]]; then
+              PRERELEASE_TAG="alpha"
+            elif [[ "$BRANCH_NAME" == beta/* ]]; then
+              PRERELEASE_TAG="beta"
+            else
+              PRERELEASE_TAG="beta"
+            fi
+          fi
+          echo "tag=$PRERELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "Using pre-release tag: $PRERELEASE_TAG"
+      
+      - name: Get current version
+        id: current
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          # Remove any existing pre-release suffix
+          BASE_VERSION=${CURRENT_VERSION%-*}
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "base=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+          echo "Base version: $BASE_VERSION"
+      
+      - name: Calculate next pre-release version
+        id: next
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          CURRENT="${{ steps.current.outputs.current }}"
+          BASE="${{ steps.current.outputs.base }}"
+          
+          # Check if current version is already a pre-release of the same type
+          if [[ "$CURRENT" == *"-$TAG."* ]]; then
+            # Increment the pre-release number
+            PRERELEASE_NUM=$(echo "$CURRENT" | sed -n "s/.*-$TAG\.\([0-9]*\).*/\1/p")
+            NEXT_NUM=$((PRERELEASE_NUM + 1))
+            NEW_VERSION="$BASE-$TAG.$NEXT_NUM"
+          else
+            # Start new pre-release series
+            if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+              VERSION_BUMP="${{ github.event.inputs.version }}"
+              case "$VERSION_BUMP" in
+                prepatch)
+                  # Increment patch and add pre-release
+                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                  NEW_BASE="$MAJOR.$MINOR.$((PATCH + 1))"
+                  ;;
+                preminor)
+                  # Increment minor and add pre-release
+                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                  NEW_BASE="$MAJOR.$((MINOR + 1)).0"
+                  ;;
+                premajor)
+                  # Increment major and add pre-release
+                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                  NEW_BASE="$((MAJOR + 1)).0.0"
+                  ;;
+                *)
+                  NEW_BASE="$BASE"
+                  ;;
+              esac
+            else
+              NEW_BASE="$BASE"
+            fi
+            NEW_VERSION="$NEW_BASE-$TAG.0"
+          fi
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_VERSION"
+      
+      - name: Update package.json version
+        run: |
+          NEW_VERSION="${{ steps.next.outputs.version }}"
+          npm version "$NEW_VERSION" --no-git-tag-version
+          echo "Updated package.json to version $NEW_VERSION"
+      
+      - name: Publish to npm with beta tag
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          npm publish --tag "$TAG" --provenance --access public
+          echo "✅ Published with tag: $TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Commit version change
+        run: |
+          VERSION="${{ steps.next.outputs.version }}"
+          git add package.json
+          git commit -m "chore: bump pre-release version to $VERSION [skip ci]" || echo "No changes to commit"
+      
+      - name: Push changes
+        if: github.event_name == 'push'
+        run: |
+          git push origin HEAD
+        continue-on-error: true
+      
+      - name: Create pre-release tag
+        run: |
+          VERSION="${{ steps.next.outputs.version }}"
+          git tag -a "v$VERSION" -m "Pre-release v$VERSION"
+          git push origin "v$VERSION"
+        continue-on-error: true
+      
+      - name: Create GitHub Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.next.outputs.version }}
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ## Lodgify MCP Server v${{ steps.next.outputs.version }} (Pre-release)
+            
+            ⚠️ **This is a pre-release version for testing purposes**
+            
+            ### Installation
+            
+            #### Install specific pre-release version:
+            ```bash
+            npm install lodgify-mcp@${{ steps.next.outputs.version }}
+            ```
+            
+            #### Install latest ${{ steps.tag.outputs.tag }} version:
+            ```bash
+            npm install lodgify-mcp@${{ steps.tag.outputs.tag }}
+            ```
+            
+            #### Use with npx:
+            ```bash
+            npx lodgify-mcp@${{ steps.next.outputs.version }}
+            ```
+            
+            ### Testing
+            This pre-release is intended for testing new features and fixes before the stable release.
+            Please report any issues you encounter.
+            
+            ### Changes
+            View changes since last stable release in the [commit history](https://github.com/${{ github.repository }}/commits/v${{ steps.next.outputs.version }}).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Summary
+        run: |
+          echo "## 🚀 Pre-Release Published!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: \`${{ steps.next.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: \`${{ steps.tag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **NPM Package**: [lodgify-mcp@${{ steps.next.outputs.version }}](https://www.npmjs.com/package/lodgify-mcp/v/${{ steps.next.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm install lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

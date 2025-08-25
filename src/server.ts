@@ -162,35 +162,37 @@ config()
 
 // Load and validate environment configuration (only for production execution)
 let envConfig: EnvConfig | undefined
+let envValidationError: Error | undefined
 
 function getEnvConfig(): EnvConfig {
   if (!envConfig) {
     try {
       envConfig = loadEnvironment({
-        allowTestKeys: process.env.NODE_ENV === 'test', // Allow test keys in test environment
+        allowTestKeys: process.env.NODE_ENV === 'test',
         strictValidation: process.env.NODE_ENV !== 'test',
         logWarnings: process.env.NODE_ENV !== 'test',
       })
     } catch (error) {
-      // In test environments, provide a minimal config
-      if (process.env.NODE_ENV === 'test') {
-        envConfig = {
-          LODGIFY_API_KEY: 'test-api-key-for-testing-purposes-only',
-          LOG_LEVEL: 'error' as const,
-          DEBUG_HTTP: false,
-          NODE_ENV: 'test' as const,
-        }
-      } else {
-        // Log the error and exit if environment validation fails in production
-        console.error(
-          'Environment validation failed:',
-          error instanceof Error ? error.message : error,
-        )
-        process.exit(1)
+      // Store validation error for lazy client initialization
+      envValidationError = error instanceof Error ? error : new Error(String(error))
+
+      // Provide fallback config to allow MCP server to start
+      envConfig = {
+        LODGIFY_API_KEY: process.env.LODGIFY_API_KEY || 'invalid-key',
+        LOG_LEVEL: (process.env.LOG_LEVEL as EnvConfig['LOG_LEVEL']) || 'error',
+        DEBUG_HTTP: process.env.DEBUG_HTTP === '1',
+        NODE_ENV: (process.env.NODE_ENV as EnvConfig['NODE_ENV']) || 'production',
       }
     }
   }
   return envConfig
+}
+
+/**
+ * Check if environment is properly validated
+ */
+function isEnvValid(): boolean {
+  return !envValidationError
 }
 
 /**
@@ -341,7 +343,7 @@ function registerToolWithDeprecation(
   }
 }
 
-function registerTools(server: McpServer, client: LodgifyClient): void {
+function registerTools(server: McpServer, getClient: () => LodgifyClient): void {
   // ============================================================================
   // PROPERTY MANAGEMENT TOOLS
   // Core tools for managing properties, rooms, and property configurations
@@ -391,7 +393,7 @@ Example response:
     },
     async ({ params }) => {
       try {
-        const result = await client.listProperties(params)
+        const result = await getClient().listProperties(params)
         return {
           content: [
             {
@@ -450,7 +452,7 @@ Example response:
     async ({ id }) => {
       try {
         // Validate input directly since McpServer already parses the schema
-        const result = await client.getProperty(id)
+        const result = await getClient().getProperty(id)
         return {
           content: [
             {
@@ -478,7 +480,7 @@ Example response:
     },
     async ({ propertyId }) => {
       try {
-        const result = await client.listPropertyRooms(propertyId)
+        const result = await getClient().listPropertyRooms(propertyId)
         return {
           content: [
             {
@@ -559,7 +561,7 @@ Example response:
     },
     async ({ params }) => {
       try {
-        const result = await client.listBookings(params)
+        const result = await getClient().listBookings(params)
         return {
           content: [
             {
@@ -587,7 +589,7 @@ Example response:
     },
     async ({ id }) => {
       try {
-        const result = await client.getBooking(id)
+        const result = await getClient().getBooking(id)
         return {
           content: [
             {
@@ -668,7 +670,7 @@ Example response:
     },
     async ({ searchTerm, includePropertyIds, limit }) => {
       try {
-        const result = await findProperties(client, searchTerm, includePropertyIds, limit)
+        const result = await findProperties(getClient(), searchTerm, includePropertyIds, limit)
         return {
           content: [
             {
@@ -696,7 +698,7 @@ Example response:
     },
     async ({ id }) => {
       try {
-        const result = await client.deleteBooking(id)
+        const result = await getClient().deleteBooking(id)
         return {
           content: [
             {
@@ -728,7 +730,7 @@ Example response:
     },
     async ({ params }) => {
       try {
-        const result = await client.listDeletedProperties(params)
+        const result = await getClient().listDeletedProperties(params)
         return {
           content: [
             {
@@ -761,7 +763,7 @@ Example response:
     },
     async ({ params }) => {
       try {
-        const result = await client.getDailyRates(params)
+        const result = await getClient().getDailyRates(params)
         return {
           content: [
             {
@@ -791,7 +793,7 @@ Example response:
     },
     async ({ params }) => {
       try {
-        const result = await client.getRateSettings(params)
+        const result = await getClient().getRateSettings(params)
         return {
           content: [
             {
@@ -828,7 +830,7 @@ Example response:
     },
     async ({ payload }) => {
       try {
-        const result = await client.createRate(payload)
+        const result = await getClient().createRate(payload)
         return {
           content: [
             {
@@ -864,7 +866,7 @@ Example response:
     },
     async ({ id, payload }) => {
       try {
-        const result = await client.updateRate(id, payload)
+        const result = await getClient().updateRate(id, payload)
         return {
           content: [
             {
@@ -896,7 +898,7 @@ Example response:
     },
     async ({ id }) => {
       try {
-        const result = await client.getBookingPaymentLink(id)
+        const result = await getClient().getBookingPaymentLink(id)
         return {
           content: [
             {
@@ -935,7 +937,7 @@ Example response:
     },
     async ({ id, payload }) => {
       try {
-        const result = await client.createBookingPaymentLink(id, payload)
+        const result = await getClient().createBookingPaymentLink(id, payload)
         return {
           content: [
             {
@@ -971,7 +973,7 @@ Example response:
     },
     async ({ id, payload }) => {
       try {
-        const result = await client.updateKeyCodes(id, payload)
+        const result = await getClient().updateKeyCodes(id, payload)
         return {
           content: [
             {
@@ -1020,7 +1022,7 @@ Example response:
     },
     async ({ payload }) => {
       try {
-        const result = await client.createBooking(payload)
+        const result = await getClient().createBooking(payload)
         return {
           content: [
             {
@@ -1066,7 +1068,7 @@ Example response:
     },
     async ({ id, payload }) => {
       try {
-        const result = await client.updateBooking(id, payload)
+        const result = await getClient().updateBooking(id, payload)
         return {
           content: [
             {
@@ -1111,7 +1113,7 @@ Example response:
     },
     async ({ propertyId, roomTypeId, params }) => {
       try {
-        const result = await client.getAvailabilityRoom(propertyId, roomTypeId, params)
+        const result = await getClient().getAvailabilityRoom(propertyId, roomTypeId, params)
         return {
           content: [
             {
@@ -1154,7 +1156,7 @@ Example response:
     },
     async ({ propertyId, params }) => {
       try {
-        const result = await client.getAvailabilityProperty(propertyId, params)
+        const result = await getClient().getAvailabilityProperty(propertyId, params)
         return {
           content: [
             {
@@ -1216,7 +1218,7 @@ Example response:
     },
     async ({ propertyId, fromDate, daysToCheck }) => {
       try {
-        const result = await client.getNextAvailableDate(propertyId, fromDate, daysToCheck)
+        const result = await getClient().getNextAvailableDate(propertyId, fromDate, daysToCheck)
         return {
           content: [
             {
@@ -1252,7 +1254,7 @@ Example response:
     },
     async ({ propertyId, checkInDate, checkOutDate }) => {
       try {
-        const result = await client.checkDateRangeAvailability(
+        const result = await getClient().checkDateRangeAvailability(
           propertyId,
           checkInDate,
           checkOutDate,
@@ -1295,7 +1297,7 @@ Example response:
     },
     async ({ propertyId, fromDate, daysToShow }) => {
       try {
-        const result = await client.getAvailabilityCalendar(propertyId, fromDate, daysToShow)
+        const result = await getClient().getAvailabilityCalendar(propertyId, fromDate, daysToShow)
         return {
           content: [
             {
@@ -1329,7 +1331,7 @@ Example response:
     },
     async ({ propertyId, params }) => {
       try {
-        const result = await client.getQuote(propertyId, params)
+        const result = await getClient().getQuote(propertyId, params)
         return {
           content: [
             {
@@ -1360,7 +1362,7 @@ Example response:
     },
     async ({ threadGuid }) => {
       try {
-        const result = await client.getThread(threadGuid)
+        const result = await getClient().getThread(threadGuid)
         return {
           content: [
             {
@@ -1402,7 +1404,7 @@ Example response:
     },
     async ({ propertyId, payload }) => {
       try {
-        const result = await client.updatePropertyAvailability(propertyId, payload)
+        const result = await getClient().updatePropertyAvailability(propertyId, payload)
         return {
           content: [
             {
@@ -1442,7 +1444,7 @@ Example response:
     },
     async ({ payload }) => {
       try {
-        const result = await client.subscribeWebhook(payload)
+        const result = await getClient().subscribeWebhook(payload)
         return {
           content: [
             {
@@ -1473,7 +1475,7 @@ Example response:
     },
     async ({ params }) => {
       try {
-        const result = await client.listWebhooks(params)
+        const result = await getClient().listWebhooks(params)
         return {
           content: [
             {
@@ -1502,7 +1504,7 @@ Example response:
     },
     async ({ id }) => {
       try {
-        const result = await client.deleteWebhook(id)
+        const result = await getClient().deleteWebhook(id)
         return {
           content: [
             {
@@ -1768,7 +1770,7 @@ async function checkDependencies(client: LodgifyClient): Promise<
 }
 
 // Function to register resources with the McpServer
-function registerResources(server: McpServer, client: LodgifyClient) {
+function registerResources(server: McpServer, getClient: () => LodgifyClient) {
   // Health check resource
   server.registerResource(
     'health',
@@ -1780,7 +1782,7 @@ function registerResources(server: McpServer, client: LodgifyClient) {
     },
     async (uri) => {
       // Check dependencies
-      const dependencies = await checkDependencies(client)
+      const dependencies = await checkDependencies(getClient())
 
       // Determine overall status
       const allHealthy = Object.values(dependencies).every((dep) => dep.status === 'healthy')
@@ -1827,7 +1829,7 @@ function registerResources(server: McpServer, client: LodgifyClient) {
       mimeType: 'application/json',
     },
     async (uri) => {
-      const rateLimitStatus = client.getRateLimitStatus()
+      const rateLimitStatus = getClient().getRateLimitStatus()
 
       const status = {
         service: 'lodgify-api',
@@ -1959,20 +1961,36 @@ export function setupServer(injectedClient?: LodgifyClient) {
     },
   )
 
-  const client =
-    injectedClient ||
-    (() => {
-      // Use validated environment configuration instead of direct process.env access
+  // Lazy client initialization - only create when needed
+  let clientInstance: LodgifyClient | undefined = injectedClient
+
+  const getClient = (): LodgifyClient => {
+    if (!clientInstance) {
+      // Check if environment is valid before creating client
+      if (!isEnvValid()) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `Server configuration error: ${envValidationError?.message || 'Invalid environment'}`,
+          {
+            hint: 'Please check your LODGIFY_API_KEY environment variable',
+            error: envValidationError?.message,
+          },
+        )
+      }
+
       const config = getEnvConfig()
-      return new LodgifyClient(config.LODGIFY_API_KEY)
-    })()
+      clientInstance = new LodgifyClient(config.LODGIFY_API_KEY)
+    }
+    return clientInstance
+  }
 
-  // Register tools and resources
-  registerTools(server, client)
-  registerResources(server, client)
+  // Register tools and resources with lazy client
+  registerTools(server, getClient)
+  registerResources(server, getClient)
 
-  // Return server and client for testing
-  return { server, client }
+  // Return server and client getter for testing
+  // Include 'client' for backward compatibility with tests when injectedClient is provided
+  return { server, getClient, client: injectedClient }
 }
 
 // Initialize server for production
@@ -2033,8 +2051,15 @@ async function main() {
   safeLogger.info('Lodgify MCP server started successfully')
 }
 
-// Only run main if this is the entry point (not imported for testing)
-if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('/server.js')) {
+// Export main for wrapper script
+export { main }
+
+// Only run main if this is the direct entry point (not imported)
+// Check if running directly (not via the bin wrapper which imports this module)
+if (
+  import.meta.url === `file://${process.argv[1]}` ||
+  (process.argv[1]?.endsWith('/server.js') && !process.argv[1]?.includes('node_modules'))
+) {
   main().catch((error) => {
     safeLogger.error('Fatal error:', error)
     process.exit(1)
