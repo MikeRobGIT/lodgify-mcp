@@ -27,17 +27,10 @@ export function createMcpTestServer(mockClient?: any): TestMcpServer {
     // Add minimal mock methods to avoid initialization issues
   }
 
-  const { server, client } = setupServer(testClient)
+  const { server, getClient } = setupServer(testClient)
 
-  // Replace the client methods with mock methods if provided
-  if (mockClient) {
-    // Replace all client methods with mock methods
-    Object.keys(mockClient).forEach((method) => {
-      if (typeof mockClient[method] === 'function') {
-        ;(client as any)[method] = mockClient[method]
-      }
-    })
-  }
+  // Get the client instance
+  const client = mockClient || getClient()
 
   return {
     server,

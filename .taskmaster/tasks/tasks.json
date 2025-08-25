@@ -847,11 +847,95 @@
             "parentTaskId": 14
           }
         ]
+      },
+      {
+        "id": 15,
+        "title": "Create MCPO Configuration File for Claude Desktop Integration",
+        "description": "Define and implement the mcpo.config.json file to configure the lodgify-mcp server for use with Claude Desktop, specifying the command, arguments, and environment variables required to expose the MCP server as an OpenAPI endpoint.",
+        "details": "Create a JSON configuration file named mcpo.config.json that follows the standard MCP server configuration schema recognized by Claude Desktop and other MCP-compatible clients. The file must include a top-level \"mcpServers\" object, with a key representing the Lodgify MCP server (e.g., \"lodgify-mcp\"). Under this key, specify:\n\n- \"command\": The executable to launch the MCP server (e.g., \"node\" or \"npx\").\n- \"args\": An array of command-line arguments to start the server, such as the entry point (e.g., \"src/server.js\" or the package name) and any required flags (e.g., \"--openapi\").\n- \"env\": An object mapping environment variable names to values, including at minimum the Lodgify API key (e.g., \"LODGIFY_API_KEY\"), and any other required variables for server operation or OpenAPI exposure.\n\nEnsure the configuration is compatible with the Claude Desktop format (see ~/.claude/claude_desktop_config.json or %APPDATA%\\Claude\\claude_desktop_config.json). Document the meaning of each field in comments or accompanying documentation. Example structure:\n\n```json\n{\n  \"mcpServers\": {\n    \"lodgify-mcp\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@yourorg/lodgify-mcp-server\", \"--openapi\"],\n      \"env\": {\n        \"LODGIFY_API_KEY\": \"your-api-key\",\n        \"NODE_ENV\": \"production\"\n      }\n    }\n  }\n}\n```\n\nConsider cross-platform compatibility (Windows, macOS, Linux) and ensure that all paths and commands are valid for the intended environments. Reference the latest MCP configuration standards and Claude Desktop documentation for any required or optional fields. If the server supports additional configuration (such as port selection or logging), expose these as environment variables or arguments as appropriate.",
+        "testStrategy": "1. Validate that mcpo.config.json is syntactically correct JSON and conforms to the MCP server configuration schema used by Claude Desktop.\n2. Place the configuration file in the appropriate location (e.g., ~/.claude/claude_desktop_config.json) and verify that Claude Desktop detects and lists the lodgify-mcp server.\n3. Start Claude Desktop and confirm that it can launch the lodgify-mcp server using the specified command, arguments, and environment variables.\n4. Verify that the MCP server is accessible and exposes the OpenAPI endpoint as intended.\n5. Test with both valid and invalid configurations to ensure error handling and clear diagnostics.\n6. Confirm that all required environment variables are documented and that missing variables result in clear startup errors.",
+        "status": "done",
+        "dependencies": [
+          7,
+          14
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Complete MCPO Integration with Documentation and Examples",
+        "description": "Finalize MCPO integration by creating comprehensive documentation, NPM/Bun scripts, REST API client examples, and updating the README with quick start guide. Includes testing documentation accuracy and ensuring compatibility with OpenWebUI.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          15
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Comprehensive MCPO Integration Documentation",
+            "description": "Develop a detailed documentation file at docs/MCPO_INTEGRATION.md covering MCPO architecture, configuration, usage patterns, and integration points, ensuring clarity for both new and experienced developers.",
+            "dependencies": [],
+            "details": "Analyze the existing codebase for MCPO-related modules, configuration files, and integration points. Follow the documentation structure and conventions used in other docs/ files. Include sections on architecture overview, configuration options, tool registration, security considerations, and usage examples. Reference actual code snippets and configuration blocks from the repository. Ensure the documentation is accurate, up-to-date, and covers OpenWebUI compatibility.",
+            "status": "done",
+            "testStrategy": "Peer review the documentation for completeness and technical accuracy. Validate that all documented configuration and usage steps can be followed successfully in a clean environment."
+          },
+          {
+            "id": 2,
+            "title": "Add NPM/Bun Scripts for MCPO Operations",
+            "description": "Define and document NPM and Bun scripts in package.json for MCPO operations, including start, build, and test commands, ensuring consistency with existing project scripts.",
+            "dependencies": [
+              "16.1"
+            ],
+            "details": "Review the current package.json for script conventions and naming patterns. Add scripts for starting the MCPO server, building TypeScript sources, and running tests (unit, integration, and smoke). Ensure scripts work with both npm and bun, and document any environment variables or prerequisites. Update the documentation in docs/MCPO_INTEGRATION.md to reference these scripts with usage examples.",
+            "status": "done",
+            "testStrategy": "Run each script in a clean environment to verify correct execution. Confirm that build artifacts are generated, the server starts as expected, and tests pass."
+          },
+          {
+            "id": 3,
+            "title": "Create Example REST API Client for OpenAPI Endpoints",
+            "description": "Develop a sample REST API client (e.g., in examples/mcpo-client.ts) that demonstrates how to interact with MCPO OpenAPI endpoints, including authentication and typical request/response flows.",
+            "dependencies": [
+              "16.2"
+            ],
+            "details": "Identify the primary OpenAPI endpoints exposed by the MCPO server. Implement a TypeScript or JavaScript client using fetch or axios, following patterns used in existing example or client files. Include examples for authentication, making requests to at least two endpoints, and handling responses and errors. Reference this client in the documentation and README for quick start guidance.",
+            "status": "done",
+            "testStrategy": "Test the client against a running MCPO server instance. Validate that requests succeed, responses are parsed correctly, and error handling works as documented."
+          },
+          {
+            "id": 4,
+            "title": "Update README with MCPO Quick Start and OpenWebUI Integration",
+            "description": "Revise the project README to include a quick start guide for MCPO, referencing the new documentation, scripts, and example client, and provide clear instructions for integrating with OpenWebUI.",
+            "dependencies": [
+              "16.3"
+            ],
+            "details": "Follow the README structure and formatting conventions already present in the repository. Add a 'MCPO Quick Start' section with step-by-step setup, script usage, and example client invocation. Include a dedicated subsection for OpenWebUI integration, outlining configuration steps and compatibility notes. Ensure all links and references are accurate and up-to-date.",
+            "status": "done",
+            "testStrategy": "Have a new developer follow the README instructions from scratch to verify that MCPO can be set up and integrated with OpenWebUI without missing steps."
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "title": "Add Configurable Read-Only Mode to MCP Server",
+        "description": "Implement a configurable read-only mode in the MCP server that restricts all write operations (POST, PUT, DELETE) and allows only read operations (GET), controlled via an environment variable.",
+        "details": "1. Introduce a new environment variable, e.g., LODGIFY_READ_ONLY, to control the server's access mode. Load this variable at server startup using dotenv or the existing configuration mechanism.\n\n2. At the HTTP request handling layer (or within each tool handler if necessary), implement a middleware or guard that checks the read-only flag. If enabled, intercept all write operations (POST, PUT, DELETE) and immediately return a standardized error response (e.g., HTTP 403 Forbidden or MCP error code) with a clear message such as 'The server is in read-only mode.'\n\n3. Ensure that all registered tools and endpoints that perform write/update/delete actions are covered by this check. For best maintainability, centralize the logic (e.g., a middleware or decorator) rather than duplicating checks in each handler.\n\n4. Update tool metadata and documentation to indicate that write operations are disabled in read-only mode, if possible.\n\n5. Follow best practices by making the error message user-friendly and including instructions or contact info if appropriate (see ArcGIS and Atlassian patterns[1][3]).\n\n6. Ensure that the read-only mode is enforced regardless of the transport (HTTP, stdio, etc.) and that no bypass is possible except for explicitly whitelisted admin actions (if required, but avoid unless necessary for system health).\n\n7. Document the new environment variable and its effect in the README and any relevant configuration files.",
+        "testStrategy": "1. Start the MCP server with LODGIFY_READ_ONLY=true and verify that all GET requests succeed as normal, while all POST, PUT, and DELETE requests return the expected error response and message.\n\n2. Attempt to invoke each tool that performs a write operation and confirm that it is blocked in read-only mode, with a clear and consistent error message.\n\n3. Start the server with LODGIFY_READ_ONLY unset or false and verify that all operations (read and write) function as before.\n\n4. Add automated tests that simulate both modes and assert correct behavior for each tool and endpoint.\n\n5. Review server logs to ensure that attempts to perform blocked operations are logged appropriately for audit purposes.\n\n6. Validate that the documentation and tool metadata reflect the new behavior.",
+        "status": "pending",
+        "dependencies": [
+          7,
+          14
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-08-13T22:02:17.495Z",
-      "updated": "2025-08-15T01:22:06.159Z",
+      "updated": "2025-08-25T16:26:42.028Z",
       "description": "Tasks for master context"
     }
   }

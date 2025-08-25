@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-08-25
+
+### Fixed
+- Fixed npx execution failure with ES modules by adding bin wrapper script
+- Resolved duplicate main function execution issue
+- Server now starts correctly when invoked via `npx -y lodgify-mcp@0.2.6`
+
+### Changed
+- Created `bin/lodgify-mcp.js` wrapper for proper npx compatibility
+- Updated package.json bin field to point to wrapper instead of ES module directly
+- Export main function from server.ts for wrapper to import
+- Modified entry point detection to prevent double execution
+
+### Technical Details
+- The wrapper script uses dynamic import to load the ES module server
+- Entry point detection now excludes node_modules paths to prevent wrapper conflicts
+- All tests updated to work with new lazy initialization pattern
+
+## [0.2.5] - 2025-08-25
+
+### Fixed
+- Initial attempt to fix npx execution with bin wrapper (had duplicate execution issue)
+
+## [0.2.4] - 2025-08-25
+
+### Fixed
+- Critical fix: Server no longer exits on invalid/missing API key
+- Implemented lazy client initialization to ensure MCP server always starts
+- Environment validation errors are now properly reported via JSON-RPC instead of console
+- Server provides graceful error messages when API key is invalid or missing
+
+### Changed
+- API client is now initialized only when first tool is called, not at server startup
+- Environment validation provides fallback configuration to allow server to start
+
+## [0.2.3] - 2025-08-24
+
+### Fixed
+- Fixed MCP protocol compatibility by suppressing dotenv console output with `quiet: true`
+- Resolved stdio interference that prevented proper JSON-RPC communication
+
+## [0.2.2] - 2025-08-24
+
+### Fixed
+- Added `-y` flag to npx/bunx commands in MCP configuration for auto-confirmation
+- Build script now ensures dist/server.js has executable permissions
+- Added `prepare` script to automatically build on install
+
+### Changed
+- Aligned package configuration with official MCP server best practices
+
+## [0.2.1] - 2025-08-24
+
+### Changed
+- Prioritized Bun runtime in all scripts and documentation
+- Updated package.json scripts to use `bun` commands instead of `npm`
+- Updated README to show Bun installation methods first (`bunx` instead of `npx`)
+- Improved MCP configuration examples with Bun-first approach
+
+### Fixed
+- Package naming issue in MCP configuration (correct package name is `lodgify-mcp`)
+
+## [0.2.0] - 2025-08-24
+
+### Added
+- NPM package publication support
+- Improved documentation for NPM users
+- Package metadata and author information
+- npm badges in README
+- publishConfig for npm registry
+
+### Changed
+- Restructured README to prioritize NPM installation
+- Updated .npmignore to exclude development files
+- Simplified installation instructions
+- Moved Docker/MCPO content to alternative methods section
+
+### Technical
+- Added proper npm publish configuration
+- Optimized package size for npm distribution
+- Enhanced package.json with complete metadata
+
 ## [0.1.0] - 2025-08-14
 
 ### Added
