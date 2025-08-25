@@ -56,10 +56,10 @@ jobs:
           # Check if version already exists on npm
           if npm view lodgify-mcp@$CURRENT_VERSION version 2>/dev/null; then
             echo "Version $CURRENT_VERSION already published"
-            echo "should-publish=true" >> $GITHUB_OUTPUT
+            echo "should-publish=false" >> $GITHUB_OUTPUT
           else
             echo "Version $CURRENT_VERSION not published yet"
-            echo "should-publish=false" >> $GITHUB_OUTPUT
+            echo "should-publish=true" >> $GITHUB_OUTPUT
           fi
       
       - name: Analyze commits for version bump
