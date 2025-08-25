@@ -96,6 +96,21 @@ jobs:
     if: needs.check-changes.outputs.should-publish == 'true' || github.event_name == 'workflow_dispatch'
     
     steps:
+      # Validate that the PAT secret is configured
+      # This is required to push version bumps to protected branches
+      - name: Validate PAT Configuration
+        run: |
+          if [ -z "${{ secrets.RELEASE_PAT }}" ]; then
+            echo "❌ Error: RELEASE_PAT secret is not configured"
+            echo "ℹ️  A Personal Access Token is required to push version bumps to protected branches"
+            echo "ℹ️  Please create a PAT with 'repo' scope and add it as RELEASE_PAT secret"
+            exit 1
+          fi
+          echo "✅ RELEASE_PAT is configured"
+      
+      # Checkout with PAT to enable pushing to protected branches
+      # Using PAT instead of GITHUB_TOKEN allows bypassing branch protection rules
+      # for automated version bumps and tag creation
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -195,14 +210,32 @@ jobs:
       
       - name: Push changes
         run: |
-          git push origin main
+          # Attempt to push version bump to main
+          if ! git push origin main; then
+            echo "⚠️  Warning: Could not push version bump to main branch"
+            echo "This may be due to branch protection rules or PAT permissions"
+            echo "The package has been published to NPM, but version bump commit was not pushed"
+            echo "Please manually create a PR with the version bump or check PAT permissions"
+            # Don't fail the workflow since NPM publish succeeded
+            echo "skip_tag=true" >> $GITHUB_ENV
+          else
+            echo "✅ Successfully pushed version bump to main"
+            echo "skip_tag=false" >> $GITHUB_ENV
+          fi
       
       - name: Create git tag
+        if: env.skip_tag != 'true'
         run: |
           git tag -a "v${{ steps.bump.outputs.version }}" -m "Release v${{ steps.bump.outputs.version }}"
-          git push origin "v${{ steps.bump.outputs.version }}"
+          if ! git push origin "v${{ steps.bump.outputs.version }}"; then
+            echo "⚠️  Warning: Could not push tag to origin"
+            echo "The package has been published to NPM, but tag was not pushed"
+          else
+            echo "✅ Successfully pushed tag v${{ steps.bump.outputs.version }}"
+          fi
       
       - name: Create GitHub Release
+        if: env.skip_tag != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.bump.outputs.version }}
