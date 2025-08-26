@@ -2,8 +2,19 @@
 
 [![npm version](https://badge.fury.io/js/lodgify-mcp.svg)](https://www.npmjs.com/package/lodgify-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/MikeRobGIT/lodgify-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeRobGIT/lodgify-mcp/actions)
+[![npm downloads](https://img.shields.io/npm/dm/lodgify-mcp)](https://www.npmjs.com/package/lodgify-mcp)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/lodgify-mcp)](https://bundlephobia.com/package/lodgify-mcp)
+[![node-current](https://img.shields.io/node/v/lodgify-mcp)](https://www.npmjs.com/package/lodgify-mcp)
 
-A Model Context Protocol (MCP) server that exposes Lodgify Public API v2 endpoints as tools for AI assistants like Claude. Built using the high-level McpServer SDK with enhanced metadata, capabilities declaration, and robust error handling.
+[![GitHub stars](https://img.shields.io/github/stars/MikeRobGIT/lodgify-mcp?style=social)](https://github.com/MikeRobGIT/lodgify-mcp)
+[![GitHub issues](https://img.shields.io/github/issues/MikeRobGIT/lodgify-mcp)](https://github.com/MikeRobGIT/lodgify-mcp/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/MikeRobGIT/lodgify-mcp/pulls)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+
+A Model Context Protocol (MCP) server that exposes Lodgify Public API
+ endpoints as tools for AI assistants like Claude. Built using the high-level McpServer SDK with enhanced metadata, capabilities declaration, and robust error handling.
 
 ## Quick Start
 
@@ -100,7 +111,7 @@ The MCP server will automatically use the appropriate Lodgify API endpoints and 
 
 ## Features
 
-- **🔧 15+ Lodgify API Tools**: Property management, bookings, availability, rates, quotes, and messaging
+- **🔧 20+ Lodgify API Tools**: Property management, bookings, availability, rates, quotes, and messaging
 - **🔄 Automatic Retry Logic**: Smart handling of rate limits with exponential backoff
 - **📝 Type-Safe**: Full TypeScript support with Zod validation
 - **🛡️ Robust Error Handling**: Structured error responses with detailed context
@@ -128,8 +139,9 @@ The server exposes the following Lodgify API endpoints as MCP tools:
 
 ### Availability & Rates
 
-- `lodgify_availability_property` - Check property availability
-- `lodgify_availability_room` - Check room availability
+- `lodgify_check_next_availability` - Find next available dates for a property
+- `lodgify_check_date_range_availability` - Check if specific dates are available
+- `lodgify_get_availability_calendar` - Get visual calendar view of availability
 - `lodgify_daily_rates` - Get daily pricing calendar
 - `lodgify_rate_settings` - Get rate configuration
 
@@ -169,10 +181,7 @@ Try these example prompts to interact with your Lodgify properties:
 - "Show me all bookings for November"
 - "List confirmed bookings for the Beach House"
 - "Get details for booking BK-2024-001"
-- "Create a booking for Ocean View Villa from Dec 15-20 for 2 adults and 1 child"
-- "Update booking BK-2024-001 to add one more guest"
 - "Generate a payment link for the Smith family booking"
-- "Cancel the Johnson reservation"
 - "Update the key code for the upcoming Wilson booking to 4567"
 
 ### 💰 Pricing & Rates

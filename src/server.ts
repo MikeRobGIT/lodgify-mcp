@@ -1,12 +1,68 @@
 #!/usr/bin/env node
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { McpServer, type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { config } from 'dotenv'
-import { z } from 'zod'
+import { type ZodRawShape, z } from 'zod'
 import { type EnvConfig, isProduction, loadEnvironment } from './env.js'
-import { LodgifyClient } from './lodgify.js'
+import { type CreateBookingRequest, LodgifyClient, type RateUpdateRequest } from './lodgify.js'
 import { safeLogger } from './logger.js'
+
+// ============================================================================
+// Common Zod Schemas for Lodgify API Parameter Validation
+// ============================================================================
+
+/**
+ * Date format validation for YYYY-MM-DD format
+ */
+const DateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+
+/**
+ * DateTime format validation for ISO 8601
+ */
+const DateTimeSchema = z.string().datetime({
+  message: 'DateTime must be in ISO 8601 format (e.g., 2024-03-15T10:00:00Z)',
+})
+
+/**
+ * Stay filter enum for booking queries
+ */
+const StayFilterEnum = z.enum([
+  'Upcoming',
+  'Current',
+  'Historic',
+  'All',
+  'ArrivalDate',
+  'DepartureDate',
+])
+
+/**
+ * Trash filter enum for booking queries
+ */
+const TrashFilterEnum = z.enum(['False', 'True', 'All'])
+
+// Type definitions for API responses
+interface PropertyItem {
+  id: string
+  name?: string
+  title?: string
+}
+
+interface PropertiesResponse {
+  items?: PropertyItem[]
+}
+
+interface BookingItem {
+  id?: string
+  property_id?: string | number
+  property_name?: string
+}
+
+interface BookingsResponse {
+  items?: BookingItem[]
+}
 
 /**
  * Helper function to find properties when exact property ID is unknown.
@@ -65,8 +121,10 @@ async function findProperties(
   try {
     // Get properties from property list API
     try {
-      const propertiesData = (await client.listProperties()) as any
-      const propertyList = propertiesData?.items || propertiesData || []
+      const propertiesData = (await client.listProperties()) as PropertiesResponse | PropertyItem[]
+      const propertyList = Array.isArray(propertiesData)
+        ? propertiesData
+        : propertiesData?.items || []
 
       for (const property of propertyList.slice(0, limit)) {
         if (property.id) {
@@ -91,8 +149,8 @@ async function findProperties(
     // Get property IDs from recent bookings if enabled
     if (includePropertyIds && properties.length < limit) {
       try {
-        const bookingsData = (await client.listBookings()) as any
-        const bookings = bookingsData?.items || []
+        const bookingsData = (await client.listBookings()) as BookingsResponse
+        const bookings: BookingItem[] = bookingsData?.items || []
 
         const uniquePropertyIds = new Set<string>()
         for (const booking of bookings) {
@@ -274,18 +332,7 @@ interface DeprecationInfo {
 
 const DEPRECATED_TOOLS: Record<string, DeprecationInfo> = {
   // Example deprecations showing how the system works
-  lodgify_availability_room: {
-    since: '0.1.1',
-    removeIn: '1.0.0',
-    reason: 'Raw availability data is complex. Use availability helper tools for better results',
-    replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
-  },
-  lodgify_availability_property: {
-    since: '0.1.1',
-    removeIn: '1.0.0',
-    reason: 'Raw availability data is complex. Use availability helper tools for better results',
-    replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
-  },
+  // Note: Previously deprecated tools that don't exist in the official API have been removed
 }
 
 /**
@@ -308,11 +355,15 @@ function generateDeprecationWarning(_toolName: string, info: DeprecationInfo): s
 /**
  * Enhanced tool registration that handles deprecation warnings
  */
-function registerToolWithDeprecation(
+function registerToolWithDeprecation<TInput extends ZodRawShape = ZodRawShape>(
   server: McpServer,
   toolName: string,
-  toolConfig: any,
-  handler: any,
+  toolConfig: {
+    title?: string
+    description?: string
+    inputSchema?: TInput
+  },
+  handler: ToolCallback<TInput>,
 ): void {
   const deprecationInfo = DEPRECATED_TOOLS[toolName]
 
@@ -323,7 +374,8 @@ function registerToolWithDeprecation(
 
     // Wrap handler to log deprecation warnings
     const originalHandler = handler
-    const wrappedHandler = async (args: any) => {
+    // Create a properly typed wrapper that handles both cases
+    const wrappedHandler = async (input: TInput) => {
       if (deprecationInfo.logWarnings !== false) {
         safeLogger.warn(`Deprecated tool '${toolName}' used`, {
           tool: toolName,
@@ -333,10 +385,13 @@ function registerToolWithDeprecation(
           reason: deprecationInfo.reason,
         })
       }
-      return originalHandler(args)
+      // Call original handler with the arguments
+      // The handler is already properly typed, so this maintains type safety
+      // @ts-expect-error - Handler may be called with different argument patterns
+      return originalHandler(input)
     }
 
-    server.registerTool(toolName, toolConfig, wrappedHandler)
+    server.registerTool(toolName, toolConfig, wrappedHandler as unknown as ToolCallback<TInput>)
   } else {
     // Register normally if not deprecated
     server.registerTool(toolName, toolConfig, handler)
@@ -357,11 +412,12 @@ function registerTools(server: McpServer, getClient: () => LodgifyClient): void 
 
 Example request:
 {
-  "params": {
-    "limit": 10,
-    "offset": 0,
-    "status": "active"
-  }
+  "wid": 12345,
+  "updatedSince": "2024-01-01T00:00:00Z",
+  "includeCount": true,
+  "includeInOut": false,
+  "page": 1,
+  "size": 10
 }
 
 Example response:
@@ -378,20 +434,33 @@ Example response:
   ],
   "pagination": {
     "total": 150,
-    "limit": 10,
-    "offset": 0
+    "page": 1,
+    "size": 10
   }
 }`,
       inputSchema: {
-        params: z
-          .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+        wid: z.number().int().optional().describe('Website ID'),
+        updatedSince: z
+          .string()
+          .datetime()
           .optional()
-          .describe(
-            'Optional query parameters for filtering and pagination (e.g., limit, offset, status)',
-          ),
+          .describe('Return only properties modified since this datetime'),
+        includeCount: z.boolean().default(false).describe('Return the total number of results'),
+        includeInOut: z
+          .boolean()
+          .default(false)
+          .describe('Include available dates for arrival or departure'),
+        page: z.number().int().min(1).default(1).describe('Page number to retrieve'),
+        size: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .default(50)
+          .describe('Number of items per page (max 50)'),
       },
     },
-    async ({ params }) => {
+    async (params) => {
       try {
         const result = await getClient().listProperties(params)
         return {
@@ -417,7 +486,9 @@ Example response:
 
 Example request:
 {
-  "id": "123"
+  "id": 123,
+  "wid": 456,
+  "includeInOut": true
 }
 
 Example response:
@@ -446,13 +517,23 @@ Example response:
   "checkOutTime": "11:00"
 }`,
       inputSchema: {
-        id: z.string().min(1).describe('Unique identifier of the property to retrieve'),
+        id: z.number().int().describe('Property ID (required)'),
+        wid: z.number().int().optional().describe('Website ID'),
+        includeInOut: z
+          .boolean()
+          .default(false)
+          .describe('Include available dates for arrival or departure'),
       },
     },
-    async ({ id }) => {
+    async ({ id, wid, includeInOut }) => {
       try {
-        // Validate input directly since McpServer already parses the schema
-        const result = await getClient().getProperty(id)
+        // Build params object for the API call
+        const params: Record<string, unknown> = {}
+        if (wid !== undefined) params.wid = wid
+        if (includeInOut !== undefined) params.includeInOut = includeInOut
+
+        // Call with property ID and optional query params
+        const result = await getClient().getProperty(id.toString(), params)
         return {
           content: [
             {
@@ -502,22 +583,22 @@ Example response:
       title: 'List Bookings & Reservations',
       description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Retrieve all bookings with comprehensive filtering options. Filter by dates, status, property, guest information, and more. Returns booking details including guest info, dates, pricing, and payment status. Essential for managing reservations and analyzing booking patterns.
 
-Example request (filter by date range):
+Example request (filter by stay dates):
 {
-  "params": {
-    "start": "2024-03-01",
-    "end": "2024-03-31",
-    "limit": 10,
-    "status": "confirmed"
-  }
+  "page": 1,
+  "size": 10,
+  "includeCount": true,
+  "stayFilter": "Upcoming",
+  "updatedSince": "2024-03-01T00:00:00Z",
+  "includeTransactions": false,
+  "includeQuoteDetails": false
 }
 
-Example request (filter by property):
+Example request (filter by arrival date):
 {
-  "params": {
-    "propertyId": "123",
-    "limit": 5
-  }
+  "stayFilter": "ArrivalDate",
+  "stayFilterDate": "2024-03-15T00:00:00Z",
+  "size": 5
 }
 
 Example response:
@@ -551,15 +632,26 @@ Example response:
   }
 }`,
       inputSchema: {
-        params: z
-          .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-          .optional()
-          .describe(
-            'Optional query parameters for filtering (date range, status, property ID, guest details, etc.)',
-          ),
+        page: z.number().int().min(1).default(1).describe('Page number to retrieve'),
+        size: z.number().int().min(1).max(50).default(50).describe('Number of items per page'),
+        includeCount: z.boolean().default(false).describe('Include total number of results'),
+        stayFilter: StayFilterEnum.optional().describe('Filter bookings by stay dates'),
+        stayFilterDate: DateTimeSchema.optional().describe(
+          'Date to filter when using ArrivalDate or DepartureDate in stayFilter',
+        ),
+        updatedSince: DateTimeSchema.optional().describe(
+          'Include only bookings updated since this date',
+        ),
+        includeTransactions: z
+          .boolean()
+          .default(false)
+          .describe('Include details about transactions and schedule'),
+        includeExternal: z.boolean().default(false).describe('Include external bookings'),
+        includeQuoteDetails: z.boolean().default(false).describe('Include quote details'),
+        trash: TrashFilterEnum.optional().describe('Query bookings that are in trash'),
       },
     },
-    async ({ params }) => {
+    async (params) => {
       try {
         const result = await getClient().listBookings(params)
         return {
@@ -685,34 +777,6 @@ Example response:
     },
   )
 
-  registerToolWithDeprecation(
-    server,
-    'lodgify_delete_booking',
-    {
-      title: 'Cancel/Delete Booking',
-      description:
-        'Permanently cancel and delete a booking from the system. This is a destructive operation that cannot be undone. Use with extreme caution and ensure proper authorization. Consider using booking modification instead of deletion when possible.',
-      inputSchema: {
-        id: z.string().min(1).describe('Booking ID to cancel and delete permanently'),
-      },
-    },
-    async ({ id }) => {
-      try {
-        const result = await getClient().deleteBooking(id)
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        }
-      } catch (error) {
-        handleToolError(error)
-      }
-    },
-  )
-
   // Deleted Properties Tools
   registerToolWithDeprecation(
     server,
@@ -725,7 +789,9 @@ Example response:
         params: z
           .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
           .optional()
-          .describe('Optional query parameters for filtering deleted properties'),
+          .describe(
+            'Optional query parameters. Available: deletedSince (date-time, filter properties deleted after this date)',
+          ),
       },
     },
     async ({ params }) => {
@@ -751,18 +817,31 @@ Example response:
     'lodgify_daily_rates',
     {
       title: 'Get Daily Rates Calendar',
-      description:
-        'Retrieve daily pricing calendar for properties showing rates across date ranges. Essential for pricing analysis, revenue optimization, and understanding seasonal rate variations. Returns detailed rate information including base rates, modifiers, and availability-based pricing.',
+      description: `Retrieve daily pricing calendar for properties showing rates across date ranges. Essential for pricing analysis, revenue optimization, and understanding seasonal rate variations. Returns detailed rate information including base rates, modifiers, and availability-based pricing.
+      
+Example request:
+{
+  "roomTypeId": 123,
+  "houseId": 456,
+  "startDate": "2024-03-01",
+  "endDate": "2024-03-31"
+}`,
       inputSchema: {
-        params: z
-          .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-          .describe(
-            'Required: propertyId, from/to dates (YYYY-MM-DD format). Optional: roomTypeId, currency',
-          ),
+        roomTypeId: z.number().int().describe('Room Type ID (required)'),
+        houseId: z.number().int().describe('House/Property ID (required)'),
+        startDate: DateStringSchema.describe('Start date for rates calendar (YYYY-MM-DD)'),
+        endDate: DateStringSchema.describe('End date for rates calendar (YYYY-MM-DD)'),
       },
     },
-    async ({ params }) => {
+    async ({ roomTypeId, houseId, startDate, endDate }) => {
       try {
+        // Note: API expects PascalCase parameter names
+        const params = {
+          RoomTypeId: roomTypeId,
+          HouseId: houseId,
+          StartDate: startDate,
+          EndDate: endDate,
+        }
         const result = await getClient().getDailyRates(params)
         return {
           content: [
@@ -788,85 +867,12 @@ Example response:
       inputSchema: {
         params: z
           .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-          .describe('Query parameters for rate settings (propertyId, currency, etc.)'),
+          .describe('Query parameters for rate settings. Available: houseId (int32)'),
       },
     },
     async ({ params }) => {
       try {
         const result = await getClient().getRateSettings(params)
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        }
-      } catch (error) {
-        handleToolError(error)
-      }
-    },
-  )
-
-  registerToolWithDeprecation(
-    server,
-    'lodgify_create_rate',
-    {
-      title: 'Create/Update Rates',
-      description:
-        'Create or update pricing rates for specific properties and room types over date ranges. Use this to set seasonal pricing, special event rates, or update base pricing. Rates can be set for specific date ranges and room types.',
-      inputSchema: {
-        payload: z
-          .object({
-            propertyId: z.string().min(1).describe('Property to set rates for'),
-            roomTypeId: z.string().min(1).describe('Room type to set rates for'),
-            from: z.string().min(1).describe('Start date (YYYY-MM-DD)'),
-            to: z.string().min(1).describe('End date (YYYY-MM-DD)'),
-            rate: z.number().positive().describe('Rate amount per night'),
-            currency: z.string().length(3).optional().describe('Currency code (e.g., USD, EUR)'),
-          })
-          .describe('Rate details including property, room type, dates, and rate amount'),
-      },
-    },
-    async ({ payload }) => {
-      try {
-        const result = await getClient().createRate(payload)
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        }
-      } catch (error) {
-        handleToolError(error)
-      }
-    },
-  )
-
-  registerToolWithDeprecation(
-    server,
-    'lodgify_update_rate',
-    {
-      title: 'Update Existing Rate',
-      description:
-        'Modify an existing rate entry with new pricing, dates, or currency. Use this to adjust previously set rates, extend date ranges, or update pricing for specific rate periods. Requires the rate ID from previous rate operations.',
-      inputSchema: {
-        id: z.string().min(1).describe('Unique rate ID to update'),
-        payload: z
-          .object({
-            rate: z.number().positive().optional().describe('New rate amount per night'),
-            currency: z.string().length(3).optional().describe('Currency code (e.g., USD, EUR)'),
-            from: z.string().optional().describe('New start date (YYYY-MM-DD)'),
-            to: z.string().optional().describe('New end date (YYYY-MM-DD)'),
-          })
-          .describe('Updated rate details - only provided fields will be changed'),
-      },
-    },
-    async ({ id, payload }) => {
-      try {
-        const result = await getClient().updateRate(id, payload)
         return {
           content: [
             {
@@ -960,7 +966,7 @@ Example response:
       description:
         'Update access key codes for a booking to provide guests with property entry information. Used for smart locks, keypad codes, or other access control systems. Essential for self-check-in processes and property access management.',
       inputSchema: {
-        id: z.string().min(1).describe('Booking ID to update key codes for'),
+        id: z.number().int().describe('Booking ID to update key codes for'),
         payload: z
           .object({
             keyCodes: z
@@ -973,7 +979,7 @@ Example response:
     },
     async ({ id, payload }) => {
       try {
-        const result = await getClient().updateKeyCodes(id, payload)
+        const result = await getClient().updateKeyCodes(id.toString(), payload)
         return {
           content: [
             {
@@ -990,39 +996,22 @@ Example response:
 
   registerToolWithDeprecation(
     server,
-    'lodgify_create_booking',
+    'lodgify_checkin_booking',
     {
-      title: 'Create New Booking',
+      title: 'Check-in Booking',
       description:
-        'Create a new booking/reservation in the system. This will check availability, calculate pricing, and create a confirmed reservation. Ensure availability is checked first using availability tools before creating bookings to avoid conflicts.',
+        'Mark a booking as checked in. Updates the booking status to reflect that the guest has arrived and checked into the property. Essential for tracking guest arrivals and property occupancy.',
       inputSchema: {
-        payload: z
-          .object({
-            propertyId: z.string().min(1).describe('Property ID to book'),
-            from: z.string().min(1).describe('Check-in date (YYYY-MM-DD)'),
-            to: z.string().min(1).describe('Check-out date (YYYY-MM-DD)'),
-            guestBreakdown: z
-              .object({
-                adults: z.number().min(1).describe('Number of adult guests'),
-                children: z.number().min(0).optional().describe('Number of children'),
-                infants: z.number().min(0).optional().describe('Number of infants'),
-              })
-              .describe('Guest count breakdown'),
-            roomTypes: z
-              .array(
-                z.object({
-                  id: z.string().min(1).describe('Room type ID'),
-                  quantity: z.number().min(1).optional().describe('Number of rooms (default: 1)'),
-                }),
-              )
-              .describe('Room types and quantities to book'),
-          })
-          .describe('Complete booking details - property, dates, guests, and rooms'),
+        id: z.number().int().describe('Booking ID to check in'),
+        time: z
+          .string()
+          .datetime()
+          .describe('Check-in time in ISO 8601 date-time format (required)'),
       },
     },
-    async ({ payload }) => {
+    async ({ id, time }) => {
       try {
-        const result = await getClient().createBooking(payload)
+        const result = await getClient().checkinBooking(id.toString(), time)
         return {
           content: [
             {
@@ -1039,36 +1028,50 @@ Example response:
 
   registerToolWithDeprecation(
     server,
-    'lodgify_update_booking',
+    'lodgify_checkout_booking',
     {
-      title: 'Update Existing Booking',
+      title: 'Check-out Booking',
       description:
-        'Modify an existing booking including dates, guest count, status, or other booking details. Use this for handling booking modifications, extensions, guest count changes, or status updates. Availability will be rechecked for date changes.',
+        'Mark a booking as checked out. Updates the booking status to reflect that the guest has departed from the property. Essential for tracking guest departures and property availability.',
       inputSchema: {
-        id: z.string().min(1).describe('Booking ID to update'),
-        payload: z
-          .object({
-            status: z
-              .string()
-              .optional()
-              .describe('New booking status (confirmed, cancelled, etc.)'),
-            guestBreakdown: z
-              .object({
-                adults: z.number().min(1).optional().describe('Updated number of adult guests'),
-                children: z.number().min(0).optional().describe('Updated number of children'),
-                infants: z.number().min(0).optional().describe('Updated number of infants'),
-              })
-              .optional()
-              .describe('Updated guest count breakdown'),
-            from: z.string().optional().describe('New check-in date (YYYY-MM-DD)'),
-            to: z.string().optional().describe('New check-out date (YYYY-MM-DD)'),
-          })
-          .describe('Updated booking details - only provided fields will be changed'),
+        id: z.number().int().describe('Booking ID to check out'),
+        time: z
+          .string()
+          .datetime()
+          .describe('Check-out time in ISO 8601 date-time format (required)'),
       },
     },
-    async ({ id, payload }) => {
+    async ({ id, time }) => {
       try {
-        const result = await getClient().updateBooking(id, payload)
+        const result = await getClient().checkoutBooking(id.toString(), time)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        }
+      } catch (error) {
+        handleToolError(error)
+      }
+    },
+  )
+
+  registerToolWithDeprecation(
+    server,
+    'lodgify_get_external_bookings',
+    {
+      title: 'Get External Bookings',
+      description:
+        'Retrieve external bookings associated with a property. These are bookings made through external channels (OTAs like Booking.com, Airbnb, etc.) that are synchronized with Lodgify. Useful for understanding the full booking picture across all channels.',
+      inputSchema: {
+        id: z.string().min(1).describe('Property ID to get external bookings for'),
+      },
+    },
+    async ({ id }) => {
+      try {
+        const result = await getClient().getExternalBookings(id)
         return {
           content: [
             {
@@ -1086,77 +1089,33 @@ Example response:
   // Availability Tools
   registerToolWithDeprecation(
     server,
-    'lodgify_availability_room',
+    'lodgify_availability_all',
     {
-      title: 'Get Raw Availability (Room)',
+      title: 'Get All Availabilities',
       description:
-        'Get raw availability data for a specific room type (GET /v2/availability/{propertyId}/{roomTypeId}). Note: This returns technical availability data. For easier availability checking, use lodgify_check_next_availability or lodgify_get_availability_calendar instead.',
+        'Get all availabilities for the calling user. Returns availability information for all properties for a given period.',
       inputSchema: {
-        propertyId: z.string().min(1).describe('Property ID'),
-        roomTypeId: z.string().min(1).describe('Room Type ID'),
         params: z
           .object({
-            from: z
+            start: z
               .string()
-              .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+              .datetime()
               .optional()
-              .describe('Start date (YYYY-MM-DD)'),
-            to: z
+              .describe('Calendar start date (ISO 8601 date-time)'),
+            end: z
               .string()
-              .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+              .datetime()
               .optional()
-              .describe('End date (YYYY-MM-DD)'),
+              .describe('Calendar end date (ISO 8601 date-time)'),
+            includeDetails: z.boolean().optional().describe('Include booking status details'),
           })
           .optional()
-          .describe('Optional query parameters including from/to dates (YYYY-MM-DD format)'),
+          .describe('Optional query parameters for filtering availabilities'),
       },
     },
-    async ({ propertyId, roomTypeId, params }) => {
+    async ({ params }) => {
       try {
-        const result = await getClient().getAvailabilityRoom(propertyId, roomTypeId, params)
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        }
-      } catch (error) {
-        handleToolError(error)
-      }
-    },
-  )
-
-  registerToolWithDeprecation(
-    server,
-    'lodgify_availability_property',
-    {
-      title: 'Get Raw Availability (Property)',
-      description:
-        'Get raw availability data for a property (GET /v2/availability/{propertyId}). Note: This returns technical availability data. For easier availability checking, use lodgify_check_next_availability or lodgify_get_availability_calendar instead.',
-      inputSchema: {
-        propertyId: z.string().min(1).describe('Property ID'),
-        params: z
-          .object({
-            from: z
-              .string()
-              .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
-              .optional()
-              .describe('Start date (YYYY-MM-DD)'),
-            to: z
-              .string()
-              .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
-              .optional()
-              .describe('End date (YYYY-MM-DD)'),
-          })
-          .optional()
-          .describe('Optional query parameters including from/to dates (YYYY-MM-DD format)'),
-      },
-    },
-    async ({ propertyId, params }) => {
-      try {
-        const result = await getClient().getAvailabilityProperty(propertyId, params)
+        const result = await getClient().getAvailabilityAll(params)
         return {
           content: [
             {
@@ -1378,33 +1337,36 @@ Example response:
   )
 
   // Property Management Tools
+
+  // ============================================================================
+  // Webhook Management Tools (v1 API)
+  // ============================================================================
   registerToolWithDeprecation(
     server,
-    'lodgify_update_property_availability',
+    'lodgify_list_webhooks',
     {
-      title: 'Update Property Availability Rules',
-      description:
-        'Modify property availability settings including blocking/opening dates, minimum stay requirements, and maximum stay limits. Use this to set maintenance periods, seasonal restrictions, or special booking rules for specific date ranges.',
-      inputSchema: {
-        propertyId: z.string().min(1).describe('Property ID to update availability for'),
-        payload: z
-          .object({
-            from: z.string().min(1).describe('Start date for availability change (YYYY-MM-DD)'),
-            to: z.string().min(1).describe('End date for availability change (YYYY-MM-DD)'),
-            available: z
-              .boolean()
-              .describe('Whether property is available for booking in this period'),
-            minStay: z.number().min(0).optional().describe('Minimum stay requirement in nights'),
-            maxStay: z.number().min(0).optional().describe('Maximum stay limit in nights'),
-          })
-          .describe(
-            'Availability update configuration including dates, availability status, and stay restrictions',
-          ),
-      },
+      title: 'List Webhooks',
+      description: `[${TOOL_CATEGORIES.WEBHOOKS}] List all webhook subscriptions configured for the account. Returns webhook details including event types, target URLs, status, and last triggered timestamps. Essential for monitoring and managing webhook integrations.
+      
+Example response:
+{
+  "webhooks": [
+    {
+      "id": "webhook_123",
+      "event": "booking_new_status_booked",
+      "target_url": "https://example.com/webhooks/lodgify",
+      "created_at": "2024-01-15T10:00:00Z",
+      "last_triggered_at": "2024-03-20T14:30:00Z",
+      "status": "active"
+    }
+  ],
+  "total": 5
+}`,
+      inputSchema: {},
     },
-    async ({ propertyId, payload }) => {
+    async () => {
       try {
-        const result = await getClient().updatePropertyAvailability(propertyId, payload)
+        const result = await getClient().listWebhooks()
         return {
           content: [
             {
@@ -1419,32 +1381,54 @@ Example response:
     },
   )
 
-  // Webhook Management Tools
   registerToolWithDeprecation(
     server,
     'lodgify_subscribe_webhook',
     {
       title: 'Subscribe to Webhook Events',
-      description:
-        'Set up webhook subscriptions to receive real-time notifications for booking events, property changes, and other system updates. Essential for integrating external systems and automating workflows based on Lodgify events.',
+      description: `[${TOOL_CATEGORIES.WEBHOOKS}] Subscribe to webhook events to receive real-time notifications when specific events occur in Lodgify. Supports various event types including booking changes, rate updates, and guest messages.
+      
+Available event types:
+- rate_change: Rate or pricing changes
+- availability_change: Availability updates
+- booking_new_any_status: Any new booking created
+- booking_new_status_booked: New confirmed bookings only
+- booking_change: Any booking modification
+- booking_status_change_booked: Booking status changed to booked
+- booking_status_change_tentative: Booking status changed to tentative
+- booking_status_change_open: Booking status changed to open
+- booking_status_change_declined: Booking status changed to declined
+- guest_message_received: New guest message received
+
+Example request:
+{
+  "event": "booking_new_status_booked",
+  "target_url": "https://example.com/webhooks/lodgify"
+}`,
       inputSchema: {
-        payload: z
-          .object({
-            event: z
-              .string()
-              .min(1)
-              .describe('Event type to subscribe to (e.g., booking.created, booking.updated)'),
-            targetUrl: z
-              .string()
-              .url()
-              .describe('HTTPS URL endpoint to receive webhook notifications'),
-          })
-          .describe('Webhook subscription configuration - event type and notification endpoint'),
+        event: z
+          .enum([
+            'rate_change',
+            'availability_change',
+            'booking_new_any_status',
+            'booking_new_status_booked',
+            'booking_change',
+            'booking_status_change_booked',
+            'booking_status_change_tentative',
+            'booking_status_change_open',
+            'booking_status_change_declined',
+            'guest_message_received',
+          ])
+          .describe('Event type to subscribe to'),
+        target_url: z
+          .string()
+          .url()
+          .describe('HTTPS URL endpoint to receive webhook notifications'),
       },
     },
-    async ({ payload }) => {
+    async ({ event, target_url }) => {
       try {
-        const result = await getClient().subscribeWebhook(payload)
+        const result = await getClient().subscribeWebhook({ event, target_url })
         return {
           content: [
             {
@@ -1461,55 +1445,239 @@ Example response:
 
   registerToolWithDeprecation(
     server,
-    'lodgify_list_webhooks',
+    'lodgify_unsubscribe_webhook',
     {
-      title: 'List Active Webhook Subscriptions',
-      description:
-        'Retrieve all active webhook subscriptions including event types, target URLs, and subscription status. Use this to audit existing integrations, troubleshoot webhook delivery issues, or manage webhook configurations.',
+      title: 'Unsubscribe from Webhook',
+      description: `[${TOOL_CATEGORIES.WEBHOOKS}] Remove a webhook subscription to stop receiving event notifications. This is a permanent action that cannot be undone. Use the webhook ID obtained from lodgify_list_webhooks.
+      
+Example request:
+{
+  "id": "webhook_123"
+}`,
       inputSchema: {
-        params: z
-          .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-          .optional()
-          .describe('Optional query parameters for filtering webhooks by status, event type, etc.'),
-      },
-    },
-    async ({ params }) => {
-      try {
-        const result = await getClient().listWebhooks(params)
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        }
-      } catch (error) {
-        handleToolError(error)
-      }
-    },
-  )
-
-  // Store handle for dangerous tool - can be disabled at runtime
-  registerToolWithDeprecation(
-    server,
-    'lodgify_delete_webhook',
-    {
-      title: 'Delete Webhook Subscription',
-      description:
-        'Permanently remove a webhook subscription and stop receiving event notifications. This is a destructive operation that cannot be undone. Use this to clean up unused integrations or when changing webhook configurations.',
-      inputSchema: {
-        id: z.string().min(1).describe('Webhook subscription ID to delete'),
+        id: z.string().min(1).describe('Webhook subscription ID to remove'),
       },
     },
     async ({ id }) => {
       try {
-        const result = await getClient().deleteWebhook(id)
+        await getClient().unsubscribeWebhook({ id })
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Successfully unsubscribed from webhook: ${id}`,
+            },
+          ],
+        }
+      } catch (error) {
+        handleToolError(error)
+      }
+    },
+  )
+
+  // ============================================================================
+  // Booking CRUD Tools (v1 API)
+  // ============================================================================
+  registerToolWithDeprecation(
+    server,
+    'lodgify_create_booking',
+    {
+      title: 'Create New Booking',
+      description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Create a new booking in the system. This v1 endpoint provides direct booking creation functionality that is not available in v2. Essential for programmatic booking creation and channel management.
+      
+Example request:
+{
+  "property_id": 123,
+  "room_type_id": 456,
+  "arrival": "2024-06-15",
+  "departure": "2024-06-20",
+  "guest_name": "John Smith",
+  "guest_email": "john@example.com",
+  "guest_phone": "+1234567890",
+  "adults": 2,
+  "children": 0,
+  "status": "booked",
+  "notes": "Late arrival expected",
+  "source": "Direct Website"
+}`,
+      inputSchema: {
+        property_id: z.number().int().describe('Property ID for the booking'),
+        room_type_id: z.number().int().optional().describe('Specific room type ID (optional)'),
+        arrival: z.string().describe('Arrival date (YYYY-MM-DD)'),
+        departure: z.string().describe('Departure date (YYYY-MM-DD)'),
+        guest_name: z.string().min(1).describe('Primary guest name'),
+        guest_email: z.string().email().optional().describe('Guest email address'),
+        guest_phone: z.string().optional().describe('Guest phone number'),
+        adults: z.number().int().min(1).describe('Number of adult guests'),
+        children: z.number().int().min(0).default(0).describe('Number of children'),
+        infants: z.number().int().min(0).optional().describe('Number of infants'),
+        status: z
+          .enum(['booked', 'tentative', 'open', 'declined'])
+          .optional()
+          .describe('Booking status'),
+        notes: z.string().optional().describe('Internal notes or special requests'),
+        source: z.string().optional().describe('Booking source or channel'),
+      },
+    },
+    async (params) => {
+      try {
+        const result = await getClient().createBooking(params as CreateBookingRequest)
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify(result, null, 2),
+            },
+          ],
+        }
+      } catch (error) {
+        handleToolError(error)
+      }
+    },
+  )
+
+  registerToolWithDeprecation(
+    server,
+    'lodgify_update_booking',
+    {
+      title: 'Update Existing Booking',
+      description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Update an existing booking's details. This v1 endpoint provides comprehensive booking modification capabilities not available in v2. Use for modifying dates, guest counts, status, or other booking attributes.
+      
+Example request:
+{
+  "id": 789,
+  "arrival": "2024-06-16",
+  "departure": "2024-06-21",
+  "adults": 3,
+  "status": "tentative",
+  "notes": "Room upgrade requested"
+}`,
+      inputSchema: {
+        id: z.number().int().describe('Booking ID to update'),
+        property_id: z.number().int().optional().describe('New property ID'),
+        room_type_id: z.number().int().optional().describe('New room type ID'),
+        arrival: z.string().optional().describe('New arrival date (YYYY-MM-DD)'),
+        departure: z.string().optional().describe('New departure date (YYYY-MM-DD)'),
+        guest_name: z.string().optional().describe('Updated guest name'),
+        guest_email: z.string().email().optional().describe('Updated guest email'),
+        guest_phone: z.string().optional().describe('Updated guest phone'),
+        adults: z.number().int().min(1).optional().describe('Updated number of adults'),
+        children: z.number().int().min(0).optional().describe('Updated number of children'),
+        infants: z.number().int().min(0).optional().describe('Updated number of infants'),
+        status: z
+          .enum(['booked', 'tentative', 'open', 'declined'])
+          .optional()
+          .describe('Updated booking status'),
+        notes: z.string().optional().describe('Updated notes'),
+        source: z.string().optional().describe('Updated booking source'),
+      },
+    },
+    async ({ id, ...updateData }) => {
+      try {
+        const result = await getClient().updateBooking(id.toString(), updateData)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        }
+      } catch (error) {
+        handleToolError(error)
+      }
+    },
+  )
+
+  registerToolWithDeprecation(
+    server,
+    'lodgify_delete_booking',
+    {
+      title: 'Delete Booking',
+      description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Permanently delete a booking from the system. This v1 endpoint provides deletion capability not available in v2. Use with caution as this action cannot be undone. Consider updating status to 'declined' instead of deletion when possible.
+      
+Example request:
+{
+  "id": 789
+}`,
+      inputSchema: {
+        id: z.number().int().describe('Booking ID to delete permanently'),
+      },
+    },
+    async ({ id }) => {
+      try {
+        await getClient().deleteBooking(id.toString())
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Successfully deleted booking: ${id}`,
+            },
+          ],
+        }
+      } catch (error) {
+        handleToolError(error)
+      }
+    },
+  )
+
+  // ============================================================================
+  // Rate Management Tools (v1 API)
+  // ============================================================================
+  registerToolWithDeprecation(
+    server,
+    'lodgify_update_rates',
+    {
+      title: 'Update Property Rates',
+      description: `[${TOOL_CATEGORIES.RATES_PRICING}] Update rates for properties and room types. This v1 endpoint provides direct rate modification capability not available in v2. Essential for dynamic pricing strategies and rate management across seasons.
+      
+Example request:
+{
+  "property_id": 123,
+  "rates": [
+    {
+      "room_type_id": 456,
+      "date_from": "2024-06-01",
+      "date_to": "2024-08-31",
+      "price": 150.00,
+      "min_stay": 3,
+      "currency": "USD"
+    },
+    {
+      "room_type_id": 457,
+      "date_from": "2024-06-01",
+      "date_to": "2024-08-31",
+      "price": 200.00,
+      "min_stay": 2,
+      "currency": "USD"
+    }
+  ]
+}`,
+      inputSchema: {
+        property_id: z.number().int().describe('Property ID to update rates for'),
+        rates: z
+          .array(
+            z.object({
+              room_type_id: z.number().int().describe('Room type ID'),
+              date_from: z.string().describe('Start date for rate period (YYYY-MM-DD)'),
+              date_to: z.string().describe('End date for rate period (YYYY-MM-DD)'),
+              price: z.number().positive().describe('Rate amount per night'),
+              min_stay: z.number().int().min(1).optional().describe('Minimum stay requirement'),
+              currency: z.string().length(3).optional().describe('Currency code (e.g., USD, EUR)'),
+            }),
+          )
+          .min(1)
+          .describe('Array of rate updates to apply'),
+      },
+    },
+    async (params) => {
+      try {
+        await getClient().updateRates(params as RateUpdateRequest)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Successfully updated rates',
             },
           ],
         }
@@ -1549,12 +1717,14 @@ function sanitizeErrorMessage(message: string): string {
  * @param errorDetails - Raw error details object
  * @returns Sanitized error details safe for client consumption
  */
-function sanitizeErrorDetails(errorDetails: any): any {
+function sanitizeErrorDetails(errorDetails: unknown): unknown {
   if (!errorDetails || typeof errorDetails !== 'object') {
     return errorDetails
   }
 
-  const sanitized = { ...errorDetails }
+  // Type guard to ensure errorDetails is a proper object
+  const errorObj = errorDetails as Record<string, unknown>
+  const sanitized: Record<string, unknown> = { ...errorObj }
 
   // Remove sensitive fields
   const sensitiveFields = [
@@ -1574,10 +1744,11 @@ function sanitizeErrorDetails(errorDetails: any): any {
 
   // Sanitize nested objects
   Object.keys(sanitized).forEach((key) => {
-    if (typeof sanitized[key] === 'string') {
-      sanitized[key] = sanitizeErrorMessage(sanitized[key])
-    } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
-      sanitized[key] = sanitizeErrorDetails(sanitized[key])
+    const value = sanitized[key]
+    if (typeof value === 'string') {
+      sanitized[key] = sanitizeErrorMessage(value)
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeErrorDetails(value)
     }
   })
 
@@ -1631,7 +1802,7 @@ function handleToolError(error: unknown): never {
     if (message.includes('429') || message.includes('rate limit')) {
       throw new McpError(ErrorCode.RequestTimeout, 'Rate limit exceeded. Please try again later.', {
         originalError: sanitizedMessage,
-        retryAfter: (error as any).retryAfter,
+        retryAfter: (error as { retryAfter?: number }).retryAfter,
       })
     }
 
@@ -1679,7 +1850,9 @@ function handleToolError(error: unknown): never {
     }
 
     // Generic API errors with details
-    const errorDetails = (error as any)?.detail || (error as any)?.response?.data
+    const errorObj = error as unknown as Record<string, unknown>
+    const errorDetails =
+      errorObj?.detail || (errorObj as { response?: { data?: unknown } })?.response?.data
     if (errorDetails) {
       throw new McpError(
         ErrorCode.InternalError,
@@ -1718,7 +1891,16 @@ async function checkDependencies(client: LodgifyClient): Promise<
     }
   >
 > {
-  const dependencies: Record<string, any> = {}
+  const dependencies: Record<
+    string,
+    {
+      status: 'healthy' | 'unhealthy' | 'degraded'
+      responseTime?: number
+      lastChecked: string
+      error?: string
+      details?: string
+    }
+  > = {}
 
   // Check Lodgify API connectivity
   try {

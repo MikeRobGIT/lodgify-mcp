@@ -1,0 +1,84 @@
+# Task ID: 19
+# Title: Implement v1 Webhook endpoints with TypeScript types, client methods, and MCP tool registration
+# Status: pending
+# Dependencies: 3, 5, 7
+# Priority: high
+# Description: Create MCP tool implementations for webhook management operations including listing webhooks, subscribing to events, and unsubscribing from events with proper TypeScript typing and validation
+# Details:
+Add to lodgify.ts:
+1. listWebhooks(params?: Record<string, any>):
+   - GET /v2/webhooks
+   - Support filtering by status, event type
+   - Return list of active webhook subscriptions
+
+2. subscribeWebhook(payload: WebhookSubscription):
+   - POST /v2/webhooks/subscribe
+   - Required fields: event, targetUrl
+   - TypeScript interface:
+   ```typescript
+   interface WebhookSubscription {
+     event: string; // e.g., 'booking.created', 'booking.updated'
+     targetUrl: string; // HTTPS endpoint URL
+   }
+   ```
+   - Validate HTTPS URL format
+   - Return webhook ID and confirmation
+
+3. deleteWebhook(id: string):
+   - DELETE /v2/webhooks/{id}
+   - Path parameter for webhook ID
+   - Return success/failure status
+
+In server.ts, register tools:
+1. lodgify.list_webhooks:
+   - Description: 'List all active webhook subscriptions'
+   - Optional params for filtering
+
+2. lodgify.subscribe_webhook:
+   - Description: 'Subscribe to webhook events'
+   - Zod schema:
+   ```typescript
+   z.object({
+     payload: z.object({
+       event: z.string().min(1),
+       targetUrl: z.string().url().startsWith('https://')
+     })
+   })
+   ```
+
+3. lodgify.delete_webhook:
+   - Description: 'Unsubscribe from webhook events'
+   - Zod schema: z.object({ id: z.string().min(1) })
+
+Error handling:
+- Validate HTTPS requirement for targetUrl
+- Handle duplicate subscription attempts
+- Provide clear error for invalid webhook IDs
+- Return structured errors for failed subscriptions
+
+# Test Strategy:
+Test scenarios:
+1. List webhooks with no filters and verify response structure
+2. List webhooks with event type filter (e.g., only 'booking.created' events)
+3. Subscribe to a valid webhook event with HTTPS URL and verify returned webhook ID
+4. Attempt to subscribe with HTTP URL and verify rejection with appropriate error
+5. Attempt to subscribe with invalid event type and verify validation error
+6. Delete webhook with valid ID and verify success response
+7. Delete webhook with non-existent ID and verify 404 error handling
+8. Test Zod validation for missing required fields in subscribe payload
+9. Verify POST body serialization for webhook subscription
+10. Test DELETE path parameter substitution for webhook ID
+
+# Subtasks:
+## 1. Define TypeScript types for webhook endpoints [pending]
+### Dependencies: None
+### Description: Create interfaces for webhook subscription, webhook list response, and event types
+### Details:
+
+
+## 2. Implement webhook client methods in lodgify.ts [pending]
+### Dependencies: None
+### Description: Add listWebhooks(), subscribeWebhook(), and unsubscribeWebhook() methods to LodgifyClient
+### Details:
+
+

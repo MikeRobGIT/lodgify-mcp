@@ -1,10 +1,54 @@
+import type { Mock } from 'bun:test'
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import type { TestServer } from './test-server.js'
 import { createTestServer } from './test-server.js'
 import { fixtures } from './utils.js'
 
+interface MockFunction extends Mock<() => Promise<unknown>> {
+  mockResolvedValue(value: unknown): void
+  mockRejectedValue(error: Error): void
+}
+
+interface MockClient {
+  [key: string]: MockFunction | unknown
+  listProperties: MockFunction
+  getProperty: MockFunction
+  listPropertyRooms: MockFunction
+  listDeletedProperties: MockFunction
+  getDailyRates: MockFunction
+  getRateSettings: MockFunction
+  listBookings: MockFunction
+  getBooking: MockFunction
+  getBookingPaymentLink: MockFunction
+  createBookingPaymentLink: MockFunction
+  updateKeyCodes: MockFunction
+  getQuote: MockFunction
+  getThread: MockFunction
+  // v1 Webhook endpoints
+  listWebhooks: MockFunction
+  subscribeWebhook: MockFunction
+  unsubscribeWebhook: MockFunction
+  // v1 Booking CRUD endpoints
+  createBooking: MockFunction
+  updateBooking: MockFunction
+  deleteBooking: MockFunction
+  // v1 Rate management
+  updateRates: MockFunction
+  // Missing v2 endpoints
+  availabilityAll: MockFunction
+  checkinBooking: MockFunction
+  checkoutBooking: MockFunction
+  getExternalBookings: MockFunction
+  // Helper methods
+  getNextAvailableDate: MockFunction
+  checkDateRangeAvailability: MockFunction
+  getAvailabilityCalendar: MockFunction
+  findProperties: MockFunction
+}
+
 describe('MCP Server Integration Tests', () => {
-  let testServer: any
-  let mockClient: any
+  let testServer: TestServer
+  let mockClient: MockClient
 
   beforeEach(async () => {
     // Create a mock LodgifyClient
@@ -20,10 +64,23 @@ describe('MCP Server Integration Tests', () => {
       getBookingPaymentLink: mock(() => Promise.resolve()),
       createBookingPaymentLink: mock(() => Promise.resolve()),
       updateKeyCodes: mock(() => Promise.resolve()),
-      getAvailabilityRoom: mock(() => Promise.resolve()),
-      getAvailabilityProperty: mock(() => Promise.resolve()),
       getQuote: mock(() => Promise.resolve()),
       getThread: mock(() => Promise.resolve()),
+      // v1 Webhook endpoints
+      listWebhooks: mock(() => Promise.resolve()),
+      subscribeWebhook: mock(() => Promise.resolve()),
+      unsubscribeWebhook: mock(() => Promise.resolve()),
+      // v1 Booking CRUD endpoints
+      createBooking: mock(() => Promise.resolve()),
+      updateBooking: mock(() => Promise.resolve()),
+      deleteBooking: mock(() => Promise.resolve()),
+      // v1 Rate management
+      updateRates: mock(() => Promise.resolve()),
+      // Missing v2 endpoints
+      availabilityAll: mock(() => Promise.resolve()),
+      checkinBooking: mock(() => Promise.resolve()),
+      checkoutBooking: mock(() => Promise.resolve()),
+      getExternalBookings: mock(() => Promise.resolve()),
     }
 
     // Create test server with mock client
@@ -34,7 +91,7 @@ describe('MCP Server Integration Tests', () => {
     // Clear all mocks
     Object.values(mockClient).forEach((mockFn) => {
       if (typeof mockFn === 'function' && 'mockClear' in mockFn) {
-        ;(mockFn as any).mockClear()
+        ;(mockFn as MockFunction).mockClear()
       }
     })
   })
@@ -43,33 +100,58 @@ describe('MCP Server Integration Tests', () => {
     test('should register all Lodgify tools', async () => {
       const response = await testServer.listTools()
 
-      expect(response.tools).toHaveLength(16)
+      expect(response.tools).toHaveLength(28)
 
-      const toolNames = response.tools.map((t: any) => t.name)
-      expect(toolNames).toContain('lodgify.list_properties')
-      expect(toolNames).toContain('lodgify.get_property')
-      expect(toolNames).toContain('lodgify.list_property_rooms')
-      expect(toolNames).toContain('lodgify.list_deleted_properties')
-      expect(toolNames).toContain('lodgify.daily_rates')
-      expect(toolNames).toContain('lodgify.rate_settings')
-      expect(toolNames).toContain('lodgify.list_bookings')
-      expect(toolNames).toContain('lodgify.get_booking')
-      expect(toolNames).toContain('lodgify.get_booking_payment_link')
-      expect(toolNames).toContain('lodgify.create_booking_payment_link')
-      expect(toolNames).toContain('lodgify.update_key_codes')
-      expect(toolNames).toContain('lodgify.availability_room')
-      expect(toolNames).toContain('lodgify.availability_property')
-      expect(toolNames).toContain('lodgify.get_quote')
-      expect(toolNames).toContain('lodgify.get_thread')
-      expect(toolNames).toContain('lodgify.find_properties')
+      const toolNames = response.tools.map((t: { name: string }) => t.name)
+      expect(toolNames).toContain('lodgify_list_properties')
+      expect(toolNames).toContain('lodgify_get_property')
+      expect(toolNames).toContain('lodgify_list_property_rooms')
+      expect(toolNames).toContain('lodgify_list_deleted_properties')
+      expect(toolNames).toContain('lodgify_daily_rates')
+      expect(toolNames).toContain('lodgify_rate_settings')
+      expect(toolNames).toContain('lodgify_list_bookings')
+      expect(toolNames).toContain('lodgify_get_booking')
+      expect(toolNames).toContain('lodgify_get_booking_payment_link')
+      expect(toolNames).toContain('lodgify_create_booking_payment_link')
+      expect(toolNames).toContain('lodgify_update_key_codes')
+      expect(toolNames).toContain('lodgify_get_quote')
+      expect(toolNames).toContain('lodgify_get_thread')
+      expect(toolNames).toContain('lodgify_find_properties')
+
+      // v1 Webhook endpoints
+      expect(toolNames).toContain('lodgify_list_webhooks')
+      expect(toolNames).toContain('lodgify_subscribe_webhook')
+      expect(toolNames).toContain('lodgify_unsubscribe_webhook')
+
+      // v1 Booking CRUD endpoints
+      expect(toolNames).toContain('lodgify_create_booking')
+      expect(toolNames).toContain('lodgify_update_booking')
+      expect(toolNames).toContain('lodgify_delete_booking')
+
+      // v1 Rate management
+      expect(toolNames).toContain('lodgify_update_rates')
+
+      // Missing v2 endpoints
+      expect(toolNames).toContain('lodgify_availability_all')
+      expect(toolNames).toContain('lodgify_checkin_booking')
+      expect(toolNames).toContain('lodgify_checkout_booking')
+      expect(toolNames).toContain('lodgify_get_external_bookings')
+
+      // Availability helper tools
+      expect(toolNames).toContain('lodgify_check_next_availability')
+      expect(toolNames).toContain('lodgify_check_date_range_availability')
+      expect(toolNames).toContain('lodgify_get_availability_calendar')
     })
 
     test('should include proper descriptions for each tool', async () => {
       const response = await testServer.listTools()
 
-      const propertyTool = response.tools.find((t: any) => t.name === 'lodgify.list_properties')
+      const propertyTool = response.tools.find(
+        (t: { name: string; description: string; inputSchema: unknown }) =>
+          t.name === 'lodgify_list_properties',
+      )
       expect(propertyTool).toBeDefined()
-      expect(propertyTool.description).toContain('GET /v2/properties')
+      expect(propertyTool.description).toContain('List all properties')
       expect(propertyTool.inputSchema).toBeDefined()
     })
   })
@@ -78,7 +160,7 @@ describe('MCP Server Integration Tests', () => {
     test('should handle list_properties tool', async () => {
       mockClient.listProperties.mockResolvedValue([fixtures.property])
 
-      const response = await testServer.callTool('lodgify.list_properties', {
+      const response = await testServer.callTool('lodgify_list_properties', {
         params: { page: 1, limit: 10 },
       })
 
@@ -89,7 +171,7 @@ describe('MCP Server Integration Tests', () => {
     test('should handle get_property tool', async () => {
       mockClient.getProperty.mockResolvedValue(fixtures.property)
 
-      const response = await testServer.callTool('lodgify.get_property', {
+      const response = await testServer.callTool('lodgify_get_property', {
         id: 'prop-123',
       })
 
@@ -101,7 +183,7 @@ describe('MCP Server Integration Tests', () => {
       const rooms = [{ id: 'room-1', name: 'Master Suite' }]
       mockClient.listPropertyRooms.mockResolvedValue(rooms)
 
-      const response = await testServer.callTool('lodgify.list_property_rooms', {
+      const response = await testServer.callTool('lodgify_list_property_rooms', {
         propertyId: 'prop-123',
       })
 
@@ -114,7 +196,7 @@ describe('MCP Server Integration Tests', () => {
     test('should handle list_bookings tool', async () => {
       mockClient.listBookings.mockResolvedValue([fixtures.booking])
 
-      const response = await testServer.callTool('lodgify.list_bookings', {
+      const response = await testServer.callTool('lodgify_list_bookings', {
         params: { from: '2025-11-01', to: '2025-11-30' },
       })
 
@@ -125,7 +207,7 @@ describe('MCP Server Integration Tests', () => {
     test('should handle get_booking tool', async () => {
       mockClient.getBooking.mockResolvedValue(fixtures.booking)
 
-      const response = await testServer.callTool('lodgify.get_booking', {
+      const response = await testServer.callTool('lodgify_get_booking', {
         id: 'book-456',
       })
 
@@ -137,7 +219,7 @@ describe('MCP Server Integration Tests', () => {
       const paymentLink = { url: 'https://pay.lodgify.com/xyz', amount: 1000 }
       mockClient.createBookingPaymentLink.mockResolvedValue(paymentLink)
 
-      const response = await testServer.callTool('lodgify.create_booking_payment_link', {
+      const response = await testServer.callTool('lodgify_create_booking_payment_link', {
         id: 'book-456',
         payload: { amount: 1000, currency: 'USD' },
       })
@@ -150,44 +232,11 @@ describe('MCP Server Integration Tests', () => {
     })
   })
 
-  describe('Availability Tools', () => {
-    test('should handle availability_room tool', async () => {
-      mockClient.getAvailabilityRoom.mockResolvedValue(fixtures.availability)
-
-      const response = await testServer.callTool('lodgify.availability_room', {
-        propertyId: 'prop-123',
-        roomTypeId: 'room-456',
-        params: { from: '2025-11-20', to: '2025-11-25' },
-      })
-
-      expect(mockClient.getAvailabilityRoom).toHaveBeenCalledWith('prop-123', 'room-456', {
-        from: '2025-11-20',
-        to: '2025-11-25',
-      })
-      expect(response.content[0].text).toContain('available')
-    })
-
-    test('should handle availability_property tool', async () => {
-      mockClient.getAvailabilityProperty.mockResolvedValue(fixtures.availability)
-
-      const response = await testServer.callTool('lodgify.availability_property', {
-        propertyId: 'prop-123',
-        params: { from: '2025-11-20', to: '2025-11-25' },
-      })
-
-      expect(mockClient.getAvailabilityProperty).toHaveBeenCalledWith('prop-123', {
-        from: '2025-11-20',
-        to: '2025-11-25',
-      })
-      expect(response.content[0].text).toContain('available')
-    })
-  })
-
   describe('Quote & Messaging Tools', () => {
     test('should handle get_quote tool with complex parameters', async () => {
       mockClient.getQuote.mockResolvedValue(fixtures.quote)
 
-      const response = await testServer.callTool('lodgify.get_quote', {
+      const response = await testServer.callTool('lodgify_get_quote', {
         propertyId: 'prop-123',
         params: {
           from: '2025-11-20',
@@ -209,7 +258,7 @@ describe('MCP Server Integration Tests', () => {
     test('should handle get_thread tool', async () => {
       mockClient.getThread.mockResolvedValue(fixtures.thread)
 
-      const response = await testServer.callTool('lodgify.get_thread', {
+      const response = await testServer.callTool('lodgify_get_thread', {
         threadGuid: '550e8400-e29b-41d4-a716-446655440000',
       })
 
@@ -235,7 +284,7 @@ describe('MCP Server Integration Tests', () => {
         ],
       })
 
-      const response = await testServer.callTool('lodgify.find_properties', {
+      const response = await testServer.callTool('lodgify_find_properties', {
         limit: 5,
       })
 
@@ -279,6 +328,259 @@ describe('MCP Server Integration Tests', () => {
 
     test('should return error for unknown resource', async () => {
       await expect(testServer.readResource('lodgify://unknown')).rejects.toThrow('Unknown resource')
+    })
+  })
+
+  describe('Webhook Management Tools (v1)', () => {
+    test('should handle list_webhooks tool', async () => {
+      const webhooks = {
+        data: [
+          {
+            id: 'webhook_123',
+            event: 'booking_new_status_booked',
+            target_url: 'https://example.com/webhook',
+            status: 'active',
+            created_at: '2024-01-15T10:00:00Z',
+          },
+        ],
+        total: 1,
+      }
+      mockClient.listWebhooks.mockResolvedValue(webhooks)
+
+      const response = await testServer.callTool('lodgify_list_webhooks', {})
+
+      expect(mockClient.listWebhooks).toHaveBeenCalled()
+      expect(response.content[0].text).toContain('webhook_123')
+      expect(response.content[0].text).toContain('booking_new_status_booked')
+    })
+
+    test('should handle subscribe_webhook tool', async () => {
+      const webhook = {
+        id: 'webhook_456',
+        event: 'booking_new_status_booked',
+        target_url: 'https://example.com/webhook',
+        status: 'active',
+        created_at: '2024-01-15T10:00:00Z',
+      }
+      mockClient.subscribeWebhook.mockResolvedValue(webhook)
+
+      const response = await testServer.callTool('lodgify_subscribe_webhook', {
+        event: 'booking_new_status_booked',
+        target_url: 'https://example.com/webhook',
+      })
+
+      expect(mockClient.subscribeWebhook).toHaveBeenCalledWith({
+        event: 'booking_new_status_booked',
+        target_url: 'https://example.com/webhook',
+      })
+      expect(response.content[0].text).toContain('webhook_456')
+    })
+
+    test('should handle unsubscribe_webhook tool', async () => {
+      mockClient.unsubscribeWebhook.mockResolvedValue({
+        message: 'Successfully unsubscribed from webhook: webhook_123',
+      })
+
+      const response = await testServer.callTool('lodgify_unsubscribe_webhook', {
+        id: 'webhook_123',
+      })
+
+      expect(mockClient.unsubscribeWebhook).toHaveBeenCalledWith({ id: 'webhook_123' })
+      expect(response.content[0].text).toContain(
+        'Successfully unsubscribed from webhook: webhook_123',
+      )
+    })
+  })
+
+  describe('Booking CRUD Tools (v1)', () => {
+    test('should handle create_booking tool', async () => {
+      const newBooking = {
+        id: 'booking_789',
+        property_id: 123,
+        arrival: '2024-06-15',
+        departure: '2024-06-20',
+        guest_name: 'John Smith',
+        adults: 2,
+        status: 'booked',
+      }
+      mockClient.createBooking.mockResolvedValue(newBooking)
+
+      const response = await testServer.callTool('lodgify_create_booking', {
+        property_id: 123,
+        arrival: '2024-06-15',
+        departure: '2024-06-20',
+        guest_name: 'John Smith',
+        adults: 2,
+        status: 'booked',
+      })
+
+      expect(mockClient.createBooking).toHaveBeenCalledWith({
+        property_id: 123,
+        arrival: '2024-06-15',
+        departure: '2024-06-20',
+        guest_name: 'John Smith',
+        adults: 2,
+        status: 'booked',
+      })
+      expect(response.content[0].text).toContain('booking_789')
+      expect(response.content[0].text).toContain('John Smith')
+    })
+
+    test('should handle update_booking tool', async () => {
+      const updatedBooking = {
+        id: 'booking_789',
+        property_id: 123,
+        arrival: '2024-06-16',
+        departure: '2024-06-21',
+        guest_name: 'John Smith',
+        adults: 3,
+        status: 'booked',
+      }
+      mockClient.updateBooking.mockResolvedValue(updatedBooking)
+
+      const response = await testServer.callTool('lodgify_update_booking', {
+        id: 789,
+        arrival: '2024-06-16',
+        departure: '2024-06-21',
+        adults: 3,
+      })
+
+      expect(mockClient.updateBooking).toHaveBeenCalledWith('789', {
+        arrival: '2024-06-16',
+        departure: '2024-06-21',
+        adults: 3,
+      })
+      expect(response.content[0].text).toContain('booking_789')
+      expect(response.content[0].text).toContain('2024-06-16')
+    })
+
+    test('should handle delete_booking tool', async () => {
+      mockClient.deleteBooking.mockResolvedValue({ message: 'Successfully deleted booking: 789' })
+
+      const response = await testServer.callTool('lodgify_delete_booking', {
+        id: 789,
+      })
+
+      expect(mockClient.deleteBooking).toHaveBeenCalledWith('789')
+      expect(response.content[0].text).toContain('Successfully deleted booking: 789')
+    })
+  })
+
+  describe('Rate Management Tools (v1)', () => {
+    test('should handle update_rates tool', async () => {
+      mockClient.updateRates.mockResolvedValue({ message: 'Successfully updated rates' })
+
+      const response = await testServer.callTool('lodgify_update_rates', {
+        property_id: 123,
+        rates: [
+          {
+            room_type_id: 456,
+            date_from: '2024-06-01',
+            date_to: '2024-08-31',
+            price: 150.0,
+            min_stay: 3,
+            currency: 'USD',
+          },
+        ],
+      })
+
+      expect(mockClient.updateRates).toHaveBeenCalledWith({
+        property_id: 123,
+        rates: [
+          {
+            room_type_id: 456,
+            date_from: '2024-06-01',
+            date_to: '2024-08-31',
+            price: 150.0,
+            min_stay: 3,
+            currency: 'USD',
+          },
+        ],
+      })
+      expect(response.content[0].text).toContain('Successfully updated rates')
+    })
+  })
+
+  describe('Missing v2 Endpoint Tools', () => {
+    test('should handle availability_all tool', async () => {
+      const availability = {
+        data: [
+          {
+            property_id: 123,
+            date: '2024-06-15',
+            available: true,
+          },
+        ],
+      }
+      mockClient.availabilityAll.mockResolvedValue(availability)
+
+      const response = await testServer.callTool('lodgify_availability_all', {
+        from: '2024-06-01',
+        to: '2024-06-30',
+      })
+
+      expect(mockClient.availabilityAll).toHaveBeenCalledWith({
+        from: '2024-06-01',
+        to: '2024-06-30',
+      })
+      expect(response.content[0].text).toContain('property_id')
+    })
+
+    test('should handle checkin_booking tool', async () => {
+      const checkedInBooking = {
+        id: 'booking_123',
+        status: 'checked_in',
+        checkin_date: '2024-06-15T15:00:00Z',
+      }
+      mockClient.checkinBooking.mockResolvedValue(checkedInBooking)
+
+      const response = await testServer.callTool('lodgify_checkin_booking', {
+        id: 123,
+      })
+
+      expect(mockClient.checkinBooking).toHaveBeenCalledWith('123')
+      expect(response.content[0].text).toContain('booking_123')
+      expect(response.content[0].text).toContain('checked_in')
+    })
+
+    test('should handle checkout_booking tool', async () => {
+      const checkedOutBooking = {
+        id: 'booking_123',
+        status: 'checked_out',
+        checkout_date: '2024-06-20T11:00:00Z',
+      }
+      mockClient.checkoutBooking.mockResolvedValue(checkedOutBooking)
+
+      const response = await testServer.callTool('lodgify_checkout_booking', {
+        id: 123,
+      })
+
+      expect(mockClient.checkoutBooking).toHaveBeenCalledWith('123')
+      expect(response.content[0].text).toContain('booking_123')
+      expect(response.content[0].text).toContain('checked_out')
+    })
+
+    test('should handle get_external_bookings tool', async () => {
+      const externalBookings = {
+        data: [
+          {
+            id: 'ext_booking_456',
+            source: 'Booking.com',
+            property_id: 123,
+            arrival: '2024-06-15',
+            departure: '2024-06-20',
+          },
+        ],
+      }
+      mockClient.getExternalBookings.mockResolvedValue(externalBookings)
+
+      const response = await testServer.callTool('lodgify_get_external_bookings', {
+        id: '123',
+      })
+
+      expect(mockClient.getExternalBookings).toHaveBeenCalledWith('123')
+      expect(response.content[0].text).toContain('ext_booking_456')
+      expect(response.content[0].text).toContain('Booking.com')
     })
   })
 })

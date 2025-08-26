@@ -1,0 +1,39 @@
+# Task ID: 15
+# Title: Create MCPO Configuration File for Claude Desktop Integration
+# Status: done
+# Dependencies: 7, 14
+# Priority: medium
+# Description: Define and implement the mcpo.config.json file to configure the lodgify-mcp server for use with Claude Desktop, specifying the command, arguments, and environment variables required to expose the MCP server as an OpenAPI endpoint.
+# Details:
+Create a JSON configuration file named mcpo.config.json that follows the standard MCP server configuration schema recognized by Claude Desktop and other MCP-compatible clients. The file must include a top-level "mcpServers" object, with a key representing the Lodgify MCP server (e.g., "lodgify-mcp"). Under this key, specify:
+
+- "command": The executable to launch the MCP server (e.g., "node" or "npx").
+- "args": An array of command-line arguments to start the server, such as the entry point (e.g., "src/server.js" or the package name) and any required flags (e.g., "--openapi").
+- "env": An object mapping environment variable names to values, including at minimum the Lodgify API key (e.g., "LODGIFY_API_KEY"), and any other required variables for server operation or OpenAPI exposure.
+
+Ensure the configuration is compatible with the Claude Desktop format (see ~/.claude/claude_desktop_config.json or %APPDATA%\Claude\claude_desktop_config.json). Document the meaning of each field in comments or accompanying documentation. Example structure:
+
+```json
+{
+  "mcpServers": {
+    "lodgify-mcp": {
+      "command": "npx",
+      "args": ["-y", "@yourorg/lodgify-mcp-server", "--openapi"],
+      "env": {
+        "LODGIFY_API_KEY": "your-api-key",
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}
+```
+
+Consider cross-platform compatibility (Windows, macOS, Linux) and ensure that all paths and commands are valid for the intended environments. Reference the latest MCP configuration standards and Claude Desktop documentation for any required or optional fields. If the server supports additional configuration (such as port selection or logging), expose these as environment variables or arguments as appropriate.
+
+# Test Strategy:
+1. Validate that mcpo.config.json is syntactically correct JSON and conforms to the MCP server configuration schema used by Claude Desktop.
+2. Place the configuration file in the appropriate location (e.g., ~/.claude/claude_desktop_config.json) and verify that Claude Desktop detects and lists the lodgify-mcp server.
+3. Start Claude Desktop and confirm that it can launch the lodgify-mcp server using the specified command, arguments, and environment variables.
+4. Verify that the MCP server is accessible and exposes the OpenAPI endpoint as intended.
+5. Test with both valid and invalid configurations to ensure error handling and clear diagnostics.
+6. Confirm that all required environment variables are documented and that missing variables result in clear startup errors.

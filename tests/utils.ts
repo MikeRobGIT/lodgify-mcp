@@ -127,6 +127,161 @@ export const fixtures = {
       },
     ],
   },
+
+  // v1 API fixtures
+  webhook: {
+    id: 'webhook_123',
+    event: 'booking_new_status_booked',
+    target_url: 'https://example.com/webhook',
+    status: 'active',
+    created_at: '2024-01-15T10:00:00Z',
+    last_triggered_at: '2024-03-20T14:30:00Z',
+  },
+
+  webhookList: {
+    data: [
+      {
+        id: 'webhook_123',
+        event: 'booking_new_status_booked',
+        target_url: 'https://example.com/webhook',
+        status: 'active',
+        created_at: '2024-01-15T10:00:00Z',
+        last_triggered_at: '2024-03-20T14:30:00Z',
+      },
+      {
+        id: 'webhook_456',
+        event: 'booking_change',
+        target_url: 'https://example.com/webhook2',
+        status: 'active',
+        created_at: '2024-02-01T10:00:00Z',
+      },
+    ],
+    total: 2,
+  },
+
+  createBookingRequest: {
+    property_id: 123,
+    room_type_id: 456,
+    arrival: '2024-06-15',
+    departure: '2024-06-20',
+    guest_name: 'John Smith',
+    guest_email: 'john@example.com',
+    guest_phone: '+1234567890',
+    adults: 2,
+    children: 0,
+    status: 'booked',
+    notes: 'Late arrival expected',
+    source: 'Direct Website',
+  },
+
+  createBookingResponse: {
+    id: 'booking_789',
+    property_id: 123,
+    room_type_id: 456,
+    arrival: '2024-06-15',
+    departure: '2024-06-20',
+    guest_name: 'John Smith',
+    guest_email: 'john@example.com',
+    guest_phone: '+1234567890',
+    adults: 2,
+    children: 0,
+    status: 'booked',
+    notes: 'Late arrival expected',
+    source: 'Direct Website',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z',
+  },
+
+  updateBookingRequest: {
+    arrival: '2024-06-16',
+    departure: '2024-06-21',
+    adults: 3,
+    status: 'tentative',
+    notes: 'Room upgrade requested',
+  },
+
+  rateUpdateRequest: {
+    property_id: 123,
+    rates: [
+      {
+        room_type_id: 456,
+        date_from: '2024-06-01',
+        date_to: '2024-08-31',
+        price: 150.0,
+        min_stay: 3,
+        currency: 'USD',
+      },
+      {
+        room_type_id: 457,
+        date_from: '2024-06-01',
+        date_to: '2024-08-31',
+        price: 200.0,
+        min_stay: 2,
+        currency: 'USD',
+      },
+    ],
+  },
+
+  // v2 missing endpoints fixtures
+  availabilityAll: {
+    data: [
+      {
+        property_id: 123,
+        date: '2024-06-15',
+        available: true,
+        rooms_available: 5,
+      },
+      {
+        property_id: 123,
+        date: '2024-06-16',
+        available: true,
+        rooms_available: 3,
+      },
+    ],
+    total: 2,
+  },
+
+  checkedInBooking: {
+    id: 'booking_123',
+    status: 'checked_in',
+    checkin_date: '2024-06-15T15:00:00Z',
+    guest_name: 'John Smith',
+    property_id: 123,
+  },
+
+  checkedOutBooking: {
+    id: 'booking_123',
+    status: 'checked_out',
+    checkout_date: '2024-06-20T11:00:00Z',
+    guest_name: 'John Smith',
+    property_id: 123,
+  },
+
+  externalBookings: {
+    data: [
+      {
+        id: 'ext_booking_456',
+        source: 'Booking.com',
+        property_id: 123,
+        arrival: '2024-06-15',
+        departure: '2024-06-20',
+        guest_name: 'Jane Doe',
+        status: 'confirmed',
+        commission: 15.0,
+      },
+      {
+        id: 'ext_booking_789',
+        source: 'Airbnb',
+        property_id: 123,
+        arrival: '2024-07-01',
+        departure: '2024-07-05',
+        guest_name: 'Bob Johnson',
+        status: 'confirmed',
+        commission: 12.0,
+      },
+    ],
+    total: 2,
+  },
 }
 
 /**
@@ -145,14 +300,14 @@ export const mockTimers = {
   setup() {
     // Store original setTimeout
     const originalSetTimeout = globalThis.setTimeout
-    const timers: Array<{ callback: Function; delay: number; time: number }> = []
+    const timers: Array<{ callback: () => void | Promise<void>; delay: number; time: number }> = []
     let currentTime = 0
 
     // Mock setTimeout
-    globalThis.setTimeout = ((callback: Function, delay: number = 0) => {
+    globalThis.setTimeout = ((callback: () => void | Promise<void>, delay: number = 0) => {
       timers.push({ callback, delay, time: currentTime + delay })
       return timers.length - 1
-    }) as any
+    }) as typeof setTimeout
 
     return {
       advance: async (ms: number) => {
@@ -166,9 +321,11 @@ export const mockTimers = {
       },
       runAll: async () => {
         while (timers.length > 0) {
-          const timer = timers.shift()!
-          currentTime = timer.time
-          await timer.callback()
+          const timer = timers.shift()
+          if (timer) {
+            currentTime = timer.time
+            await timer.callback()
+          }
         }
       },
       restore: () => {

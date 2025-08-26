@@ -1,0 +1,7 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": ["modelcontextprotocol", "checkin", "lodgify", "bun", "bunx", "biome", "zod", "stdio"],
+  "ignoreWords": [],
+  "ignorePaths": ["node_modules/**", "dist/**", ".git/**", "*.log", "*.lock"]
+}

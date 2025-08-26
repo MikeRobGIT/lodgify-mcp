@@ -1,25 +1,19 @@
-/**
- * Test server that wraps the actual McpServer implementation
- * For now, this is a simplified test helper until we can properly
- * test the MCP protocol integration
- */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { setupServer } from '../src/server.js'
+import type {
+  ErrorResponse,
+  ExpectFunction,
+  MockLodgifyClient,
+  TestMcpServer as TestMcpServerType,
+  ToolMetadata,
+} from './types.js'
 
-export interface TestMcpServer {
-  server: McpServer
-  client: any
-  // For now, return server instance info
-  getServerInstance(): McpServer
-  getClientInstance(): any
-  // Cleanup
-  close(): Promise<void>
-}
+// Using TestMcpServer from types.ts
+export type TestMcpServer = TestMcpServerType
 
 /**
  * Create a test server instance using the actual McpServer
  */
-export function createMcpTestServer(mockClient?: any): TestMcpServer {
+export function createMcpTestServer(mockClient?: MockLodgifyClient): TestMcpServer {
   // For tests, always pass a mock client to avoid environment validation
   const testClient = mockClient || {
     listProperties: () => Promise.resolve([]),
@@ -46,8 +40,12 @@ export function createMcpTestServer(mockClient?: any): TestMcpServer {
 
     async close() {
       // Cleanup if needed
-      if (server && typeof (server as any).close === 'function') {
-        await (server as any).close()
+      if (
+        server &&
+        'close' in server &&
+        typeof (server as { close?: () => Promise<void> }).close === 'function'
+      ) {
+        await (server as { close: () => Promise<void> }).close()
       }
     },
   }
@@ -56,7 +54,7 @@ export function createMcpTestServer(mockClient?: any): TestMcpServer {
 /**
  * Helper function to test tool schemas and metadata
  */
-export function validateToolMetadata(tool: any, expect: any) {
+export function validateToolMetadata(tool: ToolMetadata, expect: ExpectFunction) {
   // Check required metadata fields
   expect(tool.name).toBeDefined()
   expect(typeof tool.name).toBe('string')
@@ -82,7 +80,7 @@ export function validateToolMetadata(tool: any, expect: any) {
 /**
  * Helper function to validate error responses
  */
-export function validateErrorResponse(error: any, expect: any) {
+export function validateErrorResponse(error: ErrorResponse, expect: ExpectFunction) {
   expect(error).toBeDefined()
   expect(error.message).toBeDefined()
   expect(typeof error.message).toBe('string')

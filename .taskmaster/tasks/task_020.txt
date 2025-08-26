@@ -1,0 +1,107 @@
+# Task ID: 20
+# Title: Implement v1 Booking CRUD endpoints with TypeScript types, client methods, and MCP tool registration
+# Status: pending
+# Dependencies: 3, 5, 7, 9
+# Priority: high
+# Description: Create MCP tool implementations for booking creation, update, and deletion operations with proper TypeScript typing, validation, and comprehensive error handling
+# Details:
+Add to lodgify.ts:
+1. createBooking(payload: CreateBookingPayload):
+   - POST /v2/reservations/bookings
+   - TypeScript interface:
+   ```typescript
+   interface CreateBookingPayload {
+     propertyId: string;
+     from: string; // YYYY-MM-DD
+     to: string; // YYYY-MM-DD
+     guestBreakdown: {
+       adults: number;
+       children?: number;
+       infants?: number;
+     };
+     roomTypes: Array<{
+       id: string;
+       quantity?: number;
+     }>;
+     guest?: {
+       name?: string;
+       email?: string;
+       phone?: string;
+     };
+     specialRequests?: string;
+   }
+   ```
+   - Validate dates are in correct format
+   - Ensure from date is before to date
+   - Return created booking with ID
+
+2. updateBooking(id: string, payload: UpdateBookingPayload):
+   - PUT /v2/reservations/bookings/{id}
+   - TypeScript interface:
+   ```typescript
+   interface UpdateBookingPayload {
+     from?: string;
+     to?: string;
+     guestBreakdown?: {
+       adults?: number;
+       children?: number;
+       infants?: number;
+     };
+     status?: 'confirmed' | 'cancelled' | 'pending';
+     specialRequests?: string;
+   }
+   ```
+   - All fields optional for partial updates
+   - Validate date format if provided
+   - Return updated booking details
+
+3. deleteBooking(id: string):
+   - DELETE /v2/reservations/bookings/{id}
+   - Confirm booking exists before deletion
+   - Return success/failure status
+   - Consider soft vs hard delete based on API behavior
+
+In server.ts:
+1. Add Zod schemas for each operation:
+   ```typescript
+   const CreateBookingSchema = z.object({
+     propertyId: z.string(),
+     from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+     to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+     guestBreakdown: z.object({
+       adults: z.number().min(1),
+       children: z.number().optional(),
+       infants: z.number().optional()
+     }),
+     roomTypes: z.array(z.object({
+       id: z.string(),
+       quantity: z.number().optional()
+     }))
+   });
+   ```
+
+2. Register tools:
+   - lodgify.create_booking
+   - lodgify.update_booking
+   - lodgify.delete_booking
+
+3. Implement proper error handling:
+   - Date validation errors
+   - Availability conflicts
+   - Invalid booking IDs
+   - Missing required fields
+
+# Test Strategy:
+Test scenarios:
+1. Create a valid booking with all required fields and verify returned booking ID and details
+2. Create booking with invalid date format and verify validation error
+3. Create booking with from date after to date and verify logical validation error
+4. Update existing booking with partial payload (only status) and verify other fields unchanged
+5. Update booking dates and verify availability is rechecked
+6. Delete existing booking and verify success response
+7. Attempt to delete non-existent booking and verify appropriate error
+8. Test Zod validation for missing required fields in create operation
+9. Test optional fields handling in update operation
+10. Verify proper URL encoding for path parameters in update/delete
+11. Test error response formatting for 409 conflicts (double booking)
+12. Verify TypeScript types prevent invalid field usage at compile time

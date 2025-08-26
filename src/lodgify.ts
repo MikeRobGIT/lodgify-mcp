@@ -1,5 +1,6 @@
 import { config } from 'dotenv'
 import { safeLogger } from './logger.js'
+import type { Booking, BookingsListResponse } from './types/lodgify.js'
 
 // Load environment variables
 config()
@@ -28,6 +29,90 @@ export interface LodgifyError {
   status: number
   path: string
   detail?: unknown
+}
+
+// Webhook Types (v1 API)
+export interface WebhookEvent {
+  id: string
+  event:
+    | 'rate_change'
+    | 'availability_change'
+    | 'booking_new_any_status'
+    | 'booking_new_status_booked'
+    | 'booking_change'
+    | 'booking_status_change_booked'
+    | 'booking_status_change_tentative'
+    | 'booking_status_change_open'
+    | 'booking_status_change_declined'
+    | 'guest_message_received'
+  target_url: string
+  created_at?: string
+  last_triggered_at?: string
+  status?: 'active' | 'failed' | 'paused'
+}
+
+export interface WebhookSubscribeRequest {
+  target_url: string
+  event: WebhookEvent['event']
+}
+
+export interface WebhookSubscribeResponse {
+  id: string
+  secret: string
+  event: WebhookEvent['event']
+  target_url: string
+}
+
+export interface WebhookListResponse {
+  webhooks: WebhookEvent[]
+  count: number
+}
+
+export interface WebhookUnsubscribeRequest {
+  id: string
+}
+
+// Booking CRUD Types (v1 API)
+export interface CreateBookingRequest {
+  property_id: number
+  room_type_id?: number
+  arrival: string
+  departure: string
+  guest_name: string
+  guest_email?: string
+  guest_phone?: string
+  adults: number
+  children?: number
+  infants?: number
+  status?: 'booked' | 'tentative' | 'open' | 'declined'
+  notes?: string
+  source?: string
+}
+
+export interface UpdateBookingRequest {
+  arrival?: string
+  departure?: string
+  guest_name?: string
+  guest_email?: string
+  guest_phone?: string
+  adults?: number
+  children?: number
+  infants?: number
+  status?: 'booked' | 'tentative' | 'open' | 'declined'
+  notes?: string
+}
+
+// Rate Management Types (v1 API)
+export interface RateUpdateRequest {
+  property_id: number
+  rates: Array<{
+    room_type_id: number
+    date_from: string
+    date_to: string
+    price: number
+    min_stay?: number
+    currency?: string
+  }>
 }
 
 // Availability and Booking Types
@@ -486,31 +571,41 @@ export class LodgifyClient {
    * Get a single property by ID
    * GET /v2/properties/{id}
    */
-  public async getProperty<T = unknown>(id: string): Promise<T> {
+  public async getProperty<T = unknown>(id: string, params?: Record<string, unknown>): Promise<T> {
     const validation = this.validatePathParam(id, 'Property ID')
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
 
-    this.log('debug', 'getProperty called', { id: validation.sanitized })
-    return this.request<T>('GET', `/v2/properties/${encodeURIComponent(validation.sanitized!)}`)
+    this.log('debug', 'getProperty called', { id: validation.sanitized, params })
+    const sanitizedId = validation.sanitized
+    if (!sanitizedId) {
+      throw new Error('Property ID is required')
+    }
+    return this.request<T>('GET', `/v2/properties/${encodeURIComponent(sanitizedId)}`, { params })
   }
 
   /**
    * List rooms for a specific property
    * GET /v2/properties/{propertyId}/rooms
    */
-  public async listPropertyRooms<T = unknown>(propertyId: string): Promise<T> {
+  public async listPropertyRooms<T = unknown>(
+    propertyId: string,
+    params?: Record<string, unknown>,
+  ): Promise<T> {
     const validation = this.validatePathParam(propertyId, 'Property ID')
     if (!validation.isValid) {
       throw new Error(validation.error)
     }
 
-    this.log('debug', 'listPropertyRooms called', { propertyId: validation.sanitized })
-    return this.request<T>(
-      'GET',
-      `/v2/properties/${encodeURIComponent(validation.sanitized!)}/rooms`,
-    )
+    this.log('debug', 'listPropertyRooms called', { propertyId: validation.sanitized, params })
+    const sanitizedId = validation.sanitized
+    if (!sanitizedId) {
+      throw new Error('Property ID is required')
+    }
+    return this.request<T>('GET', `/v2/properties/${encodeURIComponent(sanitizedId)}/rooms`, {
+      params,
+    })
   }
 
   /**
@@ -574,10 +669,11 @@ export class LodgifyClient {
     }
 
     this.log('debug', 'getBooking called', { id: validation.sanitized })
-    return this.request<T>(
-      'GET',
-      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`,
-    )
+    const sanitizedId = validation.sanitized
+    if (!sanitizedId) {
+      throw new Error('Booking ID is required')
+    }
+    return this.request<T>('GET', `/v2/reservations/bookings/${encodeURIComponent(sanitizedId)}`)
   }
 
   /**
@@ -591,9 +687,13 @@ export class LodgifyClient {
     }
 
     this.log('debug', 'getBookingPaymentLink called', { id: validation.sanitized })
+    const sanitizedId = validation.sanitized
+    if (!sanitizedId) {
+      throw new Error('Booking ID is required')
+    }
     return this.request<T>(
       'GET',
-      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/quote/paymentLink`,
+      `/v2/reservations/bookings/${encodeURIComponent(sanitizedId)}/quote/paymentLink`,
     )
   }
 
@@ -614,9 +714,13 @@ export class LodgifyClient {
     }
 
     this.log('debug', 'createBookingPaymentLink called', { id: validation.sanitized, payload })
+    const sanitizedId = validation.sanitized
+    if (!sanitizedId) {
+      throw new Error('Booking ID is required')
+    }
     return this.request<T>(
       'POST',
-      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/quote/paymentLink`,
+      `/v2/reservations/bookings/${encodeURIComponent(sanitizedId)}/quote/paymentLink`,
       {
         body: payload,
       },
@@ -640,9 +744,13 @@ export class LodgifyClient {
     }
 
     this.log('debug', 'updateKeyCodes called', { id: validation.sanitized, payload })
+    const sanitizedId = validation.sanitized
+    if (!sanitizedId) {
+      throw new Error('Booking ID is required')
+    }
     return this.request<T>(
       'PUT',
-      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}/keyCodes`,
+      `/v2/reservations/bookings/${encodeURIComponent(sanitizedId)}/keyCodes`,
       {
         body: payload,
       },
@@ -654,56 +762,12 @@ export class LodgifyClient {
   // ============================================================================
 
   /**
-   * Get availability for a specific room type
-   * GET /v2/availability/{propertyId}/{roomTypeId}
+   * Get all availabilities for the calling user
+   * GET /v2/availability
    */
-  public async getAvailabilityRoom<T = unknown>(
-    propertyId: string,
-    roomTypeId: string,
-    params?: Record<string, unknown>,
-  ): Promise<T> {
-    const propertyValidation = this.validatePathParam(propertyId, 'Property ID')
-    if (!propertyValidation.isValid) {
-      throw new Error(propertyValidation.error)
-    }
-
-    const roomValidation = this.validatePathParam(roomTypeId, 'Room Type ID')
-    if (!roomValidation.isValid) {
-      throw new Error(roomValidation.error)
-    }
-
-    this.log('debug', 'getAvailabilityRoom called', {
-      propertyId: propertyValidation.sanitized,
-      roomTypeId: roomValidation.sanitized,
-      params,
-    })
-    return this.request<T>(
-      'GET',
-      `/v2/availability/${encodeURIComponent(propertyValidation.sanitized!)}/${encodeURIComponent(roomValidation.sanitized!)}`,
-      { params },
-    )
-  }
-
-  /**
-   * Get availability for a property
-   * GET /v2/availability/{propertyId}
-   */
-  public async getAvailabilityProperty<T = unknown>(
-    propertyId: string,
-    params?: Record<string, unknown>,
-  ): Promise<T> {
-    const validation = this.validatePathParam(propertyId, 'Property ID')
-    if (!validation.isValid) {
-      throw new Error(validation.error)
-    }
-
-    this.log('debug', 'getAvailabilityProperty called', {
-      propertyId: validation.sanitized,
-      params,
-    })
-    return this.request<T>('GET', `/v2/availability/${encodeURIComponent(validation.sanitized!)}`, {
-      params,
-    })
+  public async getAvailabilityAll<T = unknown>(params?: Record<string, unknown>): Promise<T> {
+    this.log('debug', 'getAvailabilityAll called', { params })
+    return this.request<T>('GET', '/v2/availability', { params })
   }
 
   // ============================================================================
@@ -727,7 +791,11 @@ export class LodgifyClient {
     }
 
     this.log('debug', 'getQuote called', { propertyId: validation.sanitized, params })
-    return this.request<T>('GET', `/v2/quote/${encodeURIComponent(validation.sanitized!)}`, {
+    const sanitizedId = validation.sanitized
+    if (!sanitizedId) {
+      throw new Error('Property ID is required')
+    }
+    return this.request<T>('GET', `/v2/quote/${encodeURIComponent(sanitizedId)}`, {
       params,
     })
   }
@@ -757,170 +825,17 @@ export class LodgifyClient {
   // New Booking Management Methods
   // ============================================================================
 
-  /**
-   * Create a new booking
-   * POST /v2/bookings
-   */
-  public async createBooking<T = unknown>(payload: Record<string, unknown>): Promise<T> {
-    if (!payload || typeof payload !== 'object') {
-      throw new Error('Payload is required')
-    }
-
-    this.log('debug', 'createBooking called', { payload })
-    return this.request<T>('POST', '/v2/bookings', { body: payload })
-  }
-
-  /**
-   * Update an existing booking
-   * PUT /v2/reservations/bookings/{id}
-   */
-  public async updateBooking<T = unknown>(
-    id: string,
-    payload: Record<string, unknown>,
-  ): Promise<T> {
-    const validation = this.validatePathParam(id, 'Booking ID')
-    if (!validation.isValid) {
-      throw new Error(validation.error)
-    }
-    if (!payload || typeof payload !== 'object') {
-      throw new Error('Payload is required')
-    }
-
-    this.log('debug', 'updateBooking called', { id: validation.sanitized, payload })
-    return this.request<T>(
-      'PUT',
-      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`,
-      {
-        body: payload,
-      },
-    )
-  }
-
-  /**
-   * Delete/cancel a booking
-   * DELETE /v2/reservations/bookings/{id}
-   */
-  public async deleteBooking<T = unknown>(id: string): Promise<T> {
-    const validation = this.validatePathParam(id, 'Booking ID')
-    if (!validation.isValid) {
-      throw new Error(validation.error)
-    }
-
-    this.log('debug', 'deleteBooking called', { id: validation.sanitized })
-    return this.request<T>(
-      'DELETE',
-      `/v2/reservations/bookings/${encodeURIComponent(validation.sanitized!)}`,
-    )
-  }
-
   // ============================================================================
   // Property Availability Methods
   // ============================================================================
-
-  /**
-   * Update availability for a property
-   * PUT /v2/properties/{propertyId}/availability
-   */
-  public async updatePropertyAvailability<T = unknown>(
-    propertyId: string,
-    payload: Record<string, unknown>,
-  ): Promise<T> {
-    const validation = this.validatePathParam(propertyId, 'Property ID')
-    if (!validation.isValid) {
-      throw new Error(validation.error)
-    }
-    if (!payload || typeof payload !== 'object') {
-      throw new Error('Payload is required')
-    }
-
-    this.log('debug', 'updatePropertyAvailability called', {
-      propertyId: validation.sanitized,
-      payload,
-    })
-    return this.request<T>(
-      'PUT',
-      `/v2/properties/${encodeURIComponent(validation.sanitized!)}/availability`,
-      {
-        body: payload,
-      },
-    )
-  }
 
   // ============================================================================
   // Webhook Management Methods
   // ============================================================================
 
-  /**
-   * Subscribe to a webhook event
-   * POST /v2/webhooks/subscribe
-   */
-  public async subscribeWebhook<T = unknown>(payload: Record<string, unknown>): Promise<T> {
-    if (!payload || typeof payload !== 'object') {
-      throw new Error('Payload is required')
-    }
-
-    this.log('debug', 'subscribeWebhook called', { payload })
-    return this.request<T>('POST', '/v2/webhooks/subscribe', { body: payload })
-  }
-
-  /**
-   * List all webhooks
-   * GET /v2/webhooks
-   */
-  public async listWebhooks<T = unknown>(params?: Record<string, unknown>): Promise<T> {
-    this.log('debug', 'listWebhooks called', { params })
-    return this.request<T>('GET', '/v2/webhooks', { params })
-  }
-
-  /**
-   * Unsubscribe/delete a webhook
-   * DELETE /v2/webhooks/{id}
-   */
-  public async deleteWebhook<T = unknown>(id: string): Promise<T> {
-    const validation = this.validatePathParam(id, 'Webhook ID')
-    if (!validation.isValid) {
-      throw new Error(validation.error)
-    }
-
-    this.log('debug', 'deleteWebhook called', { id: validation.sanitized })
-    return this.request<T>('DELETE', `/v2/webhooks/${encodeURIComponent(validation.sanitized!)}`)
-  }
-
   // ============================================================================
   // Rate Management Methods
   // ============================================================================
-
-  /**
-   * Create/update rates
-   * POST /v2/rates
-   */
-  public async createRate<T = unknown>(payload: Record<string, unknown>): Promise<T> {
-    if (!payload || typeof payload !== 'object') {
-      throw new Error('Payload is required')
-    }
-
-    this.log('debug', 'createRate called', { payload })
-    return this.request<T>('POST', '/v2/rates', { body: payload })
-  }
-
-  /**
-   * Update a specific rate
-   * PUT /v2/rates/{id}
-   */
-  public async updateRate<T = unknown>(id: string, payload: Record<string, unknown>): Promise<T> {
-    const validation = this.validatePathParam(id, 'Rate ID')
-    if (!validation.isValid) {
-      throw new Error(validation.error)
-    }
-    if (!payload || typeof payload !== 'object') {
-      throw new Error('Payload is required')
-    }
-
-    this.log('debug', 'updateRate called', { id: validation.sanitized, payload })
-    return this.request<T>('PUT', `/v2/rates/${encodeURIComponent(validation.sanitized!)}`, {
-      body: payload,
-    })
-  }
 
   // ============================================================================
   // Availability Helper Methods
@@ -950,24 +865,24 @@ export class LodgifyClient {
       const bookingsData = (await this.listBookings({
         from: startDate,
         to: endDate,
-      })) as any
+      })) as BookingsListResponse
 
-      const bookings = bookingsData?.items || []
+      const bookings: Booking[] = bookingsData?.items || []
 
       // Filter and sort bookings for this property
       const propertyBookings = bookings
         .filter(
-          (booking: any) =>
+          (booking) =>
             booking.property_id?.toString() === propertyId.toString() &&
-            booking.status !== 'Cancelled' &&
+            booking.status !== 'Declined' &&
             booking.arrival &&
             booking.departure,
         )
-        .map((booking: any) => ({
+        .map((booking) => ({
           arrival: booking.arrival,
           departure: booking.departure,
-          status: booking.status,
-          isBlocked: ['Booked', 'Confirmed', 'Tentative'].includes(booking.status),
+          status: booking.status as string,
+          isBlocked: ['Booked', 'Tentative'].includes(booking.status),
         }))
         .sort((a: BookingPeriod, b: BookingPeriod) => compareDates(a.arrival, b.arrival))
 
@@ -982,7 +897,7 @@ export class LodgifyClient {
         // Only check property existence if there are other bookings in the system
         if (bookings.length > 0) {
           const propertyExists = bookings.some(
-            (booking: any) => booking.property_id?.toString() === propertyId.toString(),
+            (booking) => booking.property_id?.toString() === propertyId.toString(),
           )
 
           this.log('debug', 'Property existence check', {
@@ -990,7 +905,7 @@ export class LodgifyClient {
             propertyExists,
             totalBookingsInRange: bookings.length,
             propertyBookingsFound: propertyBookings.length,
-            samplePropertyIds: bookings.slice(0, 3).map((b: any) => b.property_id),
+            samplePropertyIds: bookings.slice(0, 3).map((b) => b.property_id),
           })
 
           if (!propertyExists) {
@@ -1104,21 +1019,21 @@ export class LodgifyClient {
         propertyId,
         from: addDays(checkInDate, -1), // Check one day before to catch overlaps
         to: addDays(checkOutDate, 1), // Check one day after to catch overlaps
-      })) as any
+      })) as BookingsListResponse
 
-      const bookings = bookingsData?.items || []
+      const bookings: Booking[] = bookingsData?.items || []
 
       // Find conflicting bookings
       const conflictingBookings = bookings
         .filter(
-          (booking: any) =>
+          (booking) =>
             booking.property_id?.toString() === propertyId.toString() &&
-            booking.status !== 'Cancelled' &&
+            booking.status !== 'Declined' &&
             booking.arrival &&
             booking.departure &&
-            ['Booked', 'Confirmed', 'Tentative'].includes(booking.status),
+            ['Booked', 'Tentative'].includes(booking.status),
         )
-        .map((booking: any) => ({
+        .map((booking) => ({
           arrival: booking.arrival,
           departure: booking.departure,
           status: booking.status,
@@ -1191,9 +1106,9 @@ export class LodgifyClient {
         propertyId,
         from: startDate,
         to: endDate,
-      })) as any
+      })) as BookingsListResponse
 
-      const bookings = bookingsData?.items || []
+      const bookings: Booking[] = bookingsData?.items || []
 
       // Create calendar array
       const calendar = []
@@ -1204,9 +1119,9 @@ export class LodgifyClient {
 
         // Find if this date is blocked by any booking
         const blockingBooking = bookings.find(
-          (booking: any) =>
+          (booking) =>
             booking.property_id?.toString() === propertyId.toString() &&
-            booking.status !== 'Cancelled' &&
+            booking.status !== 'Declined' &&
             booking.arrival &&
             booking.departure &&
             ['Booked', 'Confirmed', 'Tentative'].includes(booking.status) &&
@@ -1280,5 +1195,101 @@ export class LodgifyClient {
       resetTime,
       utilizationPercent,
     }
+  }
+
+  /**
+   * Check-in a booking
+   * PUT /v2/reservations/bookings/{id}/checkin
+   */
+  public async checkinBooking<T = unknown>(id: string, time?: string): Promise<T> {
+    const url = `/v2/reservations/bookings/${id}/checkin`
+    const body = time ? { time } : undefined
+    return await this.request<T>('PUT', url, { body })
+  }
+
+  /**
+   * Check-out a booking
+   * PUT /v2/reservations/bookings/{id}/checkout
+   */
+  public async checkoutBooking<T = unknown>(id: string, time?: string): Promise<T> {
+    const url = `/v2/reservations/bookings/${id}/checkout`
+    const body = time ? { time } : undefined
+    return await this.request<T>('PUT', url, { body })
+  }
+
+  /**
+   * Get external bookings for a property
+   * GET /v2/reservations/bookings/{id}/externalBookings
+   */
+  public async getExternalBookings<T = unknown>(id: string): Promise<T> {
+    const url = `/v2/reservations/bookings/${id}/externalBookings`
+    return await this.request<T>('GET', url)
+  }
+
+  // ============================================================================
+  // v1 API ENDPOINTS - Critical functionality not available in v2
+  // ============================================================================
+
+  /**
+   * List all webhooks (v1 API)
+   * GET /webhooks/v1/list
+   */
+  public async listWebhooks(): Promise<WebhookListResponse> {
+    const url = '/webhooks/v1/list'
+    return await this.request<WebhookListResponse>('GET', url)
+  }
+
+  /**
+   * Subscribe to a webhook event (v1 API)
+   * POST /webhooks/v1/subscribe
+   */
+  public async subscribeWebhook(data: WebhookSubscribeRequest): Promise<WebhookSubscribeResponse> {
+    const url = '/webhooks/v1/subscribe'
+    return await this.request<WebhookSubscribeResponse>('POST', url, { body: data })
+  }
+
+  /**
+   * Unsubscribe from a webhook (v1 API)
+   * DELETE /webhooks/v1/unsubscribe
+   */
+  public async unsubscribeWebhook(data: WebhookUnsubscribeRequest): Promise<void> {
+    const url = '/webhooks/v1/unsubscribe'
+    return await this.request<void>('DELETE', url, { body: data })
+  }
+
+  /**
+   * Create a new booking (v1 API)
+   * POST /v1/reservation/booking
+   */
+  public async createBooking(data: CreateBookingRequest): Promise<Booking> {
+    const url = '/v1/reservation/booking'
+    return await this.request<Booking>('POST', url, { body: data })
+  }
+
+  /**
+   * Update an existing booking (v1 API)
+   * PUT /v1/reservation/booking/{id}
+   */
+  public async updateBooking(id: string, data: UpdateBookingRequest): Promise<Booking> {
+    const url = `/v1/reservation/booking/${id}`
+    return await this.request<Booking>('PUT', url, { body: data })
+  }
+
+  /**
+   * Delete a booking (v1 API)
+   * DELETE /v1/reservation/booking/{id}
+   */
+  public async deleteBooking(id: string): Promise<void> {
+    const url = `/v1/reservation/booking/${id}`
+    return await this.request<void>('DELETE', url)
+  }
+
+  /**
+   * Update rates without availability (v1 API)
+   * POST /v1/rates/savewithoutavailability
+   */
+  public async updateRates(data: RateUpdateRequest): Promise<void> {
+    const url = '/v1/rates/savewithoutavailability'
+    return await this.request<void>('POST', url, { body: data })
   }
 }

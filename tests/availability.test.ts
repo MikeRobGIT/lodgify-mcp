@@ -91,7 +91,7 @@ describe('LodgifyClient Availability Helper Methods', () => {
             property_id: 123,
             arrival: '2025-08-20',
             departure: '2025-08-22',
-            status: 'Confirmed',
+            status: 'Booked',
           },
         ],
       }

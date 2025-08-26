@@ -1,263 +1,237 @@
+import type { ToolHandlerArgs } from './types.js'
+
+export interface TestServer {
+  tools: Array<{
+    name: string
+    description: string
+    inputSchema: Record<string, unknown>
+  }>
+  listTools: () => { tools: Array<{ name: string; description: string; inputSchema: unknown }> }
+  listResources: () => { resources: Array<{ uri: string; name: string; description: string }> }
+  readResource: (args: { uri: string }) => {
+    contents: Array<{ uri: string; mimeType: string; text: string }>
+  }
+}
+
 /**
  * Create a test server with a mock client
  * This is a simplified version of the main server for testing
  */
-export function createTestServer(mockClient: any) {
+export function createTestServer(mockClient: unknown): TestServer {
   const tools = [
+    // Property Management Tools
     {
-      name: 'lodgify.list_properties',
-      description:
-        'List all properties with optional filtering and pagination (GET /v2/properties)',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          params: {
-            type: 'object',
-            description: 'Optional query parameters for filtering',
-          },
-        },
-      },
+      name: 'lodgify_list_properties',
+      description: 'List all properties',
+      inputSchema: { type: 'object' },
     },
     {
-      name: 'lodgify.get_property',
-      description: 'Get a single property by ID (GET /v2/properties/{id})',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Property ID',
-          },
-        },
-        required: ['id'],
-      },
+      name: 'lodgify_get_property',
+      description: 'Get property by ID',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     },
     {
-      name: 'lodgify.list_property_rooms',
-      description: 'List all rooms for a specific property (GET /v2/properties/{propertyId}/rooms)',
+      name: 'lodgify_list_property_rooms',
+      description: 'List property rooms',
       inputSchema: {
         type: 'object',
-        properties: {
-          propertyId: {
-            type: 'string',
-            description: 'Property ID',
-          },
-        },
+        properties: { propertyId: { type: 'string' } },
         required: ['propertyId'],
       },
     },
     {
-      name: 'lodgify.find_properties',
-      description: "Find properties in the system when you don't know the exact property ID",
-      inputSchema: {
-        type: 'object',
-        properties: {
-          searchTerm: {
-            type: 'string',
-            description: 'Optional search term to filter properties by name',
-          },
-          includePropertyIds: {
-            type: 'boolean',
-            description: 'Include property IDs found in recent bookings',
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of properties to return',
-          },
-        },
-      },
+      name: 'lodgify_find_properties',
+      description: 'Find properties',
+      inputSchema: { type: 'object' },
     },
     {
-      name: 'lodgify.list_deleted_properties',
-      description: 'List deleted properties (GET /v2/deletedProperties)',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          params: {
-            type: 'object',
-            description: 'Optional query parameters for filtering',
-          },
-        },
-      },
+      name: 'lodgify_list_deleted_properties',
+      description: 'List deleted properties',
+      inputSchema: { type: 'object' },
+    },
+
+    // Booking Management Tools
+    {
+      name: 'lodgify_list_bookings',
+      description: 'List bookings',
+      inputSchema: { type: 'object' },
     },
     {
-      name: 'lodgify.daily_rates',
-      description: 'Get daily rates calendar (GET /v2/rates/calendar)',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          params: {
-            type: 'object',
-            description: 'Query parameters including propertyId, from, to dates',
-          },
-        },
-        required: ['params'],
-      },
+      name: 'lodgify_get_booking',
+      description: 'Get booking by ID',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     },
     {
-      name: 'lodgify.rate_settings',
-      description: 'Get rate settings (GET /v2/rates/settings)',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          params: {
-            type: 'object',
-            description: 'Query parameters for rate settings',
-          },
-        },
-        required: ['params'],
-      },
+      name: 'lodgify_get_booking_payment_link',
+      description: 'Get booking payment link',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     },
     {
-      name: 'lodgify.list_bookings',
-      description: 'List bookings with optional filtering (GET /v2/reservations/bookings)',
+      name: 'lodgify_create_booking_payment_link',
+      description: 'Create booking payment link',
       inputSchema: {
         type: 'object',
-        properties: {
-          params: {
-            type: 'object',
-            description: 'Optional query parameters for filtering (date range, status, etc.)',
-          },
-        },
-      },
-    },
-    {
-      name: 'lodgify.get_booking',
-      description: 'Get a single booking by ID (GET /v2/reservations/bookings/{id})',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Booking ID',
-          },
-        },
-        required: ['id'],
-      },
-    },
-    {
-      name: 'lodgify.get_booking_payment_link',
-      description:
-        'Get payment link for a booking (GET /v2/reservations/bookings/{id}/quote/paymentLink)',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Booking ID',
-          },
-        },
-        required: ['id'],
-      },
-    },
-    {
-      name: 'lodgify.create_booking_payment_link',
-      description:
-        'Create payment link for a booking (POST /v2/reservations/bookings/{id}/quote/paymentLink)',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Booking ID',
-          },
-          payload: {
-            type: 'object',
-            description: 'Payment link configuration',
-          },
-        },
+        properties: { id: { type: 'string' }, payload: { type: 'object' } },
         required: ['id', 'payload'],
       },
     },
     {
-      name: 'lodgify.update_key_codes',
-      description: 'Update key codes for a booking (PUT /v2/reservations/bookings/{id}/keyCodes)',
+      name: 'lodgify_update_key_codes',
+      description: 'Update key codes',
       inputSchema: {
         type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Booking ID',
-          },
-          payload: {
-            type: 'object',
-            description: 'Key codes data',
-          },
-        },
+        properties: { id: { type: 'string' }, payload: { type: 'object' } },
         required: ['id', 'payload'],
       },
     },
     {
-      name: 'lodgify.availability_room',
-      description:
-        'Check availability for a specific room type (GET /v2/availability/{propertyId}/{roomTypeId})',
+      name: 'lodgify_checkin_booking',
+      description: 'Check-in booking',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
+    {
+      name: 'lodgify_checkout_booking',
+      description: 'Check-out booking',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
+    {
+      name: 'lodgify_get_external_bookings',
+      description: 'Get external bookings',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
+
+    // Rates Management Tools
+    {
+      name: 'lodgify_daily_rates',
+      description: 'Get daily rates',
       inputSchema: {
         type: 'object',
-        properties: {
-          propertyId: {
-            type: 'string',
-            description: 'Property ID',
-          },
-          roomTypeId: {
-            type: 'string',
-            description: 'Room Type ID',
-          },
-          params: {
-            type: 'object',
-            description: 'Optional query parameters',
-          },
-        },
-        required: ['propertyId', 'roomTypeId'],
+        properties: { params: { type: 'object' } },
+        required: ['params'],
       },
     },
     {
-      name: 'lodgify.availability_property',
-      description: 'Check availability for an entire property (GET /v2/availability/{propertyId})',
+      name: 'lodgify_rate_settings',
+      description: 'Get rate settings',
       inputSchema: {
         type: 'object',
-        properties: {
-          propertyId: {
-            type: 'string',
-            description: 'Property ID',
-          },
-          params: {
-            type: 'object',
-            description: 'Optional query parameters',
-          },
-        },
+        properties: { params: { type: 'object' } },
+        required: ['params'],
+      },
+    },
+
+    // Availability Tools
+    {
+      name: 'lodgify_availability_all',
+      description: 'Get all availability',
+      inputSchema: { type: 'object' },
+    },
+    {
+      name: 'lodgify_check_next_availability',
+      description: 'Check next availability',
+      inputSchema: {
+        type: 'object',
+        properties: { propertyId: { type: 'string' } },
         required: ['propertyId'],
       },
     },
     {
-      name: 'lodgify.get_quote',
-      description: 'Get a quote for a property stay (GET /v2/quote/{propertyId})',
+      name: 'lodgify_check_date_range_availability',
+      description: 'Check date range availability',
       inputSchema: {
         type: 'object',
         properties: {
-          propertyId: {
-            type: 'string',
-            description: 'Property ID',
-          },
-          params: {
-            type: 'object',
-            description: 'Quote parameters',
-          },
+          propertyId: { type: 'string' },
+          checkInDate: { type: 'string' },
+          checkOutDate: { type: 'string' },
         },
+        required: ['propertyId', 'checkInDate', 'checkOutDate'],
+      },
+    },
+    {
+      name: 'lodgify_get_availability_calendar',
+      description: 'Get availability calendar',
+      inputSchema: {
+        type: 'object',
+        properties: { propertyId: { type: 'string' } },
+        required: ['propertyId'],
+      },
+    },
+
+    // Quote and Messaging Tools
+    {
+      name: 'lodgify_get_quote',
+      description: 'Get quote',
+      inputSchema: {
+        type: 'object',
+        properties: { propertyId: { type: 'string' }, params: { type: 'object' } },
         required: ['propertyId', 'params'],
       },
     },
     {
-      name: 'lodgify.get_thread',
-      description: 'Get a messaging thread (GET /v2/messaging/{threadGuid})',
+      name: 'lodgify_get_thread',
+      description: 'Get messaging thread',
       inputSchema: {
         type: 'object',
-        properties: {
-          threadGuid: {
-            type: 'string',
-            description: 'Thread GUID',
-          },
-        },
+        properties: { threadGuid: { type: 'string' } },
         required: ['threadGuid'],
+      },
+    },
+
+    // v1 Webhook Management Tools
+    {
+      name: 'lodgify_list_webhooks',
+      description: 'List webhooks',
+      inputSchema: { type: 'object' },
+    },
+    {
+      name: 'lodgify_subscribe_webhook',
+      description: 'Subscribe to webhook',
+      inputSchema: {
+        type: 'object',
+        properties: { payload: { type: 'object' } },
+        required: ['payload'],
+      },
+    },
+    {
+      name: 'lodgify_unsubscribe_webhook',
+      description: 'Unsubscribe from webhook',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
+
+    // v1 Booking CRUD Tools
+    {
+      name: 'lodgify_create_booking',
+      description: 'Create booking',
+      inputSchema: {
+        type: 'object',
+        properties: { payload: { type: 'object' } },
+        required: ['payload'],
+      },
+    },
+    {
+      name: 'lodgify_update_booking',
+      description: 'Update booking',
+      inputSchema: {
+        type: 'object',
+        properties: { id: { type: 'string' }, payload: { type: 'object' } },
+        required: ['id', 'payload'],
+      },
+    },
+    {
+      name: 'lodgify_delete_booking',
+      description: 'Delete booking',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    },
+
+    // v1 Rate Management Tools
+    {
+      name: 'lodgify_update_rates',
+      description: 'Update rates',
+      inputSchema: {
+        type: 'object',
+        properties: { payload: { type: 'object' } },
+        required: ['payload'],
       },
     },
   ]
@@ -278,76 +252,22 @@ export function createTestServer(mockClient: any) {
     },
 
     // Call tool handler
-    async callTool(name: string, args: any) {
+    async callTool(name: string, args: ToolHandlerArgs) {
       try {
         let result: unknown
 
         switch (name) {
-          case 'lodgify.list_properties':
+          // Property Management Tools
+          case 'lodgify_list_properties':
             result = await mockClient.listProperties(args.params)
             break
-
-          case 'lodgify.get_property':
+          case 'lodgify_get_property':
             result = await mockClient.getProperty(args.id)
             break
-
-          case 'lodgify.list_property_rooms':
+          case 'lodgify_list_property_rooms':
             result = await mockClient.listPropertyRooms(args.propertyId)
             break
-
-          case 'lodgify.list_deleted_properties':
-            result = await mockClient.listDeletedProperties(args.params)
-            break
-
-          case 'lodgify.daily_rates':
-            result = await mockClient.getDailyRates(args.params)
-            break
-
-          case 'lodgify.rate_settings':
-            result = await mockClient.getRateSettings(args.params)
-            break
-
-          case 'lodgify.list_bookings':
-            result = await mockClient.listBookings(args.params)
-            break
-
-          case 'lodgify.get_booking':
-            result = await mockClient.getBooking(args.id)
-            break
-
-          case 'lodgify.get_booking_payment_link':
-            result = await mockClient.getBookingPaymentLink(args.id)
-            break
-
-          case 'lodgify.create_booking_payment_link':
-            result = await mockClient.createBookingPaymentLink(args.id, args.payload)
-            break
-
-          case 'lodgify.update_key_codes':
-            result = await mockClient.updateKeyCodes(args.id, args.payload)
-            break
-
-          case 'lodgify.availability_room':
-            result = await mockClient.getAvailabilityRoom(
-              args.propertyId,
-              args.roomTypeId,
-              args.params,
-            )
-            break
-
-          case 'lodgify.availability_property':
-            result = await mockClient.getAvailabilityProperty(args.propertyId, args.params)
-            break
-
-          case 'lodgify.get_quote':
-            result = await mockClient.getQuote(args.propertyId, args.params)
-            break
-
-          case 'lodgify.get_thread':
-            result = await mockClient.getThread(args.threadGuid)
-            break
-
-          case 'lodgify.find_properties': {
+          case 'lodgify_find_properties': {
             // Mock implementation for find_properties
             const properties = []
             const propertyIds = new Set()
@@ -389,6 +309,106 @@ export function createTestServer(mockClient: any) {
             }
             break
           }
+          case 'lodgify_list_deleted_properties':
+            result = await mockClient.listDeletedProperties(args.params)
+            break
+
+          // Booking Management Tools
+          case 'lodgify_list_bookings':
+            result = await mockClient.listBookings(args.params)
+            break
+          case 'lodgify_get_booking':
+            result = await mockClient.getBooking(args.id)
+            break
+          case 'lodgify_get_booking_payment_link':
+            result = await mockClient.getBookingPaymentLink(args.id)
+            break
+          case 'lodgify_create_booking_payment_link':
+            result = await mockClient.createBookingPaymentLink(args.id, args.payload)
+            break
+          case 'lodgify_update_key_codes':
+            result = await mockClient.updateKeyCodes(args.id, args.payload)
+            break
+          case 'lodgify_checkin_booking':
+            result = await mockClient.checkinBooking(String(args.id))
+            break
+          case 'lodgify_checkout_booking':
+            result = await mockClient.checkoutBooking(String(args.id))
+            break
+          case 'lodgify_get_external_bookings':
+            result = await mockClient.getExternalBookings(args.id)
+            break
+
+          // Rates Management Tools
+          case 'lodgify_daily_rates':
+            result = await mockClient.getDailyRates(args.params)
+            break
+          case 'lodgify_rate_settings':
+            result = await mockClient.getRateSettings(args.params)
+            break
+
+          // Availability Tools
+          case 'lodgify_availability_all':
+            result = await mockClient.availabilityAll(args.params || args)
+            break
+          case 'lodgify_check_next_availability':
+            result = await mockClient.getNextAvailableDate(
+              args.propertyId,
+              args.fromDate,
+              args.daysToCheck,
+            )
+            break
+          case 'lodgify_check_date_range_availability':
+            result = await mockClient.checkDateRangeAvailability(
+              args.propertyId,
+              args.checkInDate,
+              args.checkOutDate,
+            )
+            break
+          case 'lodgify_get_availability_calendar':
+            result = await mockClient.getAvailabilityCalendar(
+              args.propertyId,
+              args.fromDate,
+              args.daysToShow,
+            )
+            break
+
+          // Quote and Messaging Tools
+          case 'lodgify_get_quote':
+            result = await mockClient.getQuote(args.propertyId, args.params)
+            break
+          case 'lodgify_get_thread':
+            result = await mockClient.getThread(args.threadGuid)
+            break
+
+          // v1 Webhook Management Tools
+          case 'lodgify_list_webhooks':
+            result = await mockClient.listWebhooks(args.params)
+            break
+          case 'lodgify_subscribe_webhook':
+            result = await mockClient.subscribeWebhook(args.payload || args)
+            break
+          case 'lodgify_unsubscribe_webhook':
+            result = await mockClient.unsubscribeWebhook({ id: args.id })
+            break
+
+          // v1 Booking CRUD Tools
+          case 'lodgify_create_booking':
+            result = await mockClient.createBooking(args.payload || args)
+            break
+          case 'lodgify_update_booking': {
+            const { id, ...updateData } = args
+            result = await mockClient.updateBooking(String(id), args.payload || updateData)
+            break
+          }
+          case 'lodgify_delete_booking':
+            result = await mockClient.deleteBooking(String(args.id))
+            break
+
+          // v1 Rate Management Tools
+          case 'lodgify_update_rates':
+            result = await mockClient.updateRates(args.payload || args)
+            break
 
           default:
             throw new Error(`Unknown tool: ${name}`)

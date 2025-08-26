@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 
 describe('Tool Deprecation System', () => {
   describe('Deprecation Warning Generation', () => {
@@ -75,14 +75,13 @@ describe('Tool Deprecation System', () => {
 
     test('should validate deprecation entry structure', () => {
       const mockDeprecationEntry = {
-        tool: 'lodgify_availability_room',
+        tool: 'lodgify_example_tool',
         deprecatedSince: '0.1.1',
         removeIn: '1.0.0',
-        reason:
-          'Raw availability data is complex. Use availability helper tools for better results',
-        replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
+        reason: 'Example deprecation reason for testing',
+        replacement: 'lodgify_replacement_tool',
         warning:
-          "⚠️ **DEPRECATED** (since v0.1.1): Raw availability data is complex. Please use 'lodgify_check_next_availability, lodgify_get_availability_calendar' instead. This tool will be removed in v1.0.0.",
+          "⚠️ **DEPRECATED** (since v0.1.1): Example deprecation reason for testing. Please use 'lodgify_replacement_tool' instead. This tool will be removed in v1.0.0.",
       }
 
       // Validate individual deprecation entry structure
@@ -99,8 +98,7 @@ describe('Tool Deprecation System', () => {
     test('should correctly identify deprecated availability tools', () => {
       // Test the actual deprecations configured in the server
       const deprecatedAvailabilityTools = [
-        'lodgify_availability_room',
-        'lodgify_availability_property',
+        // No deprecated tools currently
       ]
 
       const expectedReplacements = [
@@ -132,12 +130,11 @@ describe('Tool Deprecation System', () => {
   describe('Logging Integration', () => {
     test('should structure deprecation log entries correctly', () => {
       const expectedLogEntry = {
-        tool: 'lodgify_availability_room',
+        tool: 'lodgify_example_tool',
         deprecatedSince: '0.1.1',
         removeIn: '1.0.0',
-        replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
-        reason:
-          'Raw availability data is complex. Use availability helper tools for better results',
+        replacement: 'lodgify_replacement_tool',
+        reason: 'Example deprecation reason for testing',
       }
 
       // Log entry should contain all necessary information for monitoring

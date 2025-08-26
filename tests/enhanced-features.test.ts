@@ -1,5 +1,12 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
+import type { TestError } from './types.js'
+
+interface McpErrorData {
+  originalStatus?: number
+  retryAfter?: number
+  endpoint?: string
+}
 
 describe('Enhanced McpServer Features', () => {
   describe('Error Handling with JSON-RPC Compliance', () => {
@@ -11,27 +18,27 @@ describe('Enhanced McpServer Features', () => {
         if (validationError.message.includes('Missing required')) {
           throw new McpError(ErrorCode.InvalidParams, validationError.message)
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(McpError)
-        expect(error.code).toBe(ErrorCode.InvalidParams)
-        expect(error.message).toContain('Missing required field')
+        expect((error as McpError).code).toBe(ErrorCode.InvalidParams)
+        expect((error as McpError).message).toContain('Missing required field')
       }
     })
 
     test('should create McpError for API errors', () => {
       const apiError = new Error('Lodgify 404: Property not found')
-      ;(apiError as any).status = 404
+      ;(apiError as TestError).status = 404
 
       try {
         // Simulate API error handling
-        if ((apiError as any).status === 404) {
+        if ((apiError as TestError).status === 404) {
           throw new McpError(ErrorCode.InternalError, `API Error: ${apiError.message}`)
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(McpError)
-        expect(error.code).toBe(ErrorCode.InternalError)
-        expect(error.message).toContain('API Error')
-        expect(error.message).toContain('not found')
+        expect((error as McpError).code).toBe(ErrorCode.InternalError)
+        expect((error as McpError).message).toContain('API Error')
+        expect((error as McpError).message).toContain('not found')
       }
     })
 
@@ -41,31 +48,31 @@ describe('Enhanced McpServer Features', () => {
       try {
         // Simulate internal error handling
         throw new McpError(ErrorCode.InternalError, `Internal error: ${internalError.message}`)
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(McpError)
-        expect(error.code).toBe(ErrorCode.InternalError)
-        expect(error.message).toContain('Internal error')
+        expect((error as McpError).code).toBe(ErrorCode.InternalError)
+        expect((error as McpError).message).toContain('Internal error')
       }
     })
 
     test('should preserve error context and details', () => {
       const detailedError = new Error('Rate limit exceeded')
-      ;(detailedError as any).status = 429
-      ;(detailedError as any).retryAfter = 60
+      ;(detailedError as TestError).status = 429
+      ;(detailedError as TestError).retryAfter = 60
 
       try {
         throw new McpError(ErrorCode.InternalError, 'Rate limited by Lodgify API', {
-          originalStatus: (detailedError as any).status,
-          retryAfter: (detailedError as any).retryAfter,
+          originalStatus: (detailedError as TestError).status,
+          retryAfter: (detailedError as TestError).retryAfter,
           endpoint: '/v2/properties',
         })
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(McpError)
-        expect(error.code).toBe(ErrorCode.InternalError)
-        expect(error.data).toBeDefined()
-        expect(error.data.originalStatus).toBe(429)
-        expect(error.data.retryAfter).toBe(60)
-        expect(error.data.endpoint).toBe('/v2/properties')
+        expect((error as McpError).code).toBe(ErrorCode.InternalError)
+        expect((error as McpError).data).toBeDefined()
+        expect(((error as McpError).data as McpErrorData).originalStatus).toBe(429)
+        expect(((error as McpError).data as McpErrorData).retryAfter).toBe(60)
+        expect(((error as McpError).data as McpErrorData).endpoint).toBe('/v2/properties')
       }
     })
   })
@@ -93,140 +100,27 @@ describe('Enhanced McpServer Features', () => {
       // Tool names should follow lodgify_ convention
       expect(enhancedToolMetadata.name).toMatch(/^lodgify_/)
     })
-
-    test('should validate dangerous tool metadata', () => {
-      const dangerousToolMetadata = {
-        name: 'lodgify_delete_booking',
-        title: 'Cancel/Delete Booking',
-        description:
-          'Permanently cancel and delete a booking from the system. This is a destructive operation that cannot be undone. Use with extreme caution and ensure proper authorization. Consider using booking modification instead of deletion when possible.',
-        inputSchema: {
-          id: expect.any(Object),
-        },
-      }
-
-      // Dangerous tools should have clear warnings in description
-      expect(dangerousToolMetadata.description).toContain('destructive')
-      expect(dangerousToolMetadata.description).toContain('cannot be undone')
-      expect(dangerousToolMetadata.description).toContain('caution')
-    })
-
-    test('should validate helper tool metadata', () => {
-      const helperToolMetadata = {
-        name: 'lodgify_find_properties',
-        title: 'Find Properties',
-        description:
-          "Find properties in the system when you don't know the exact property ID. Searches properties by name, gets property IDs from bookings, or lists all properties.",
-        inputSchema: {
-          searchTerm: expect.any(Object),
-          includePropertyIds: expect.any(Object),
-          limit: expect.any(Object),
-        },
-      }
-
-      // Helper tools should explain their purpose clearly
-      expect(helperToolMetadata.description).toContain("when you don't know")
-      expect(helperToolMetadata.description).toContain('Find properties')
-    })
   })
 
-  describe('Notification Debouncing Configuration', () => {
-    test('should have debouncing configuration for tools notifications', () => {
-      const expectedDebouncedMethods = [
-        'notifications/tools/list_changed',
-        'notifications/resources/list_changed',
-      ]
-
-      // Our server should be configured with these debounced notification methods
-      expectedDebouncedMethods.forEach((method) => {
-        expect(method).toMatch(/^notifications\//)
-        expect(method).toContain('list_changed')
-      })
-    })
-
-    test('should validate debouncing reduces notification noise', () => {
-      // Simulation of how debouncing would work
-      const notifications: string[] = []
-      let debounceTimer: any = null
-
-      const debouncedNotify = (method: string) => {
-        if (debounceTimer) clearTimeout(debounceTimer)
-        debounceTimer = setTimeout(() => {
-          notifications.push(method)
-        }, 100) // 100ms debounce
-      }
-
-      // Simulate rapid notifications
-      debouncedNotify('tools/list_changed')
-      debouncedNotify('tools/list_changed')
-      debouncedNotify('tools/list_changed')
-
-      // Before debounce timer fires
-      expect(notifications).toHaveLength(0)
-
-      // After debounce delay (simulated)
-      setTimeout(() => {
-        expect(notifications).toHaveLength(1)
-        expect(notifications[0]).toBe('tools/list_changed')
-      }, 150)
-    })
-  })
-
-  describe('Server Capabilities Declaration', () => {
-    test('should declare comprehensive server capabilities', () => {
-      const expectedCapabilities = {
-        tools: {
-          listChanged: true, // Tool list can change
-        },
-        resources: {
-          subscribe: true, // Can subscribe to resource changes
-          listChanged: true, // Resource list can change
-        },
-        logging: {}, // Supports logging
-        completions: {}, // May support completions
-      }
-
-      // Validate capability structure
-      expect(expectedCapabilities.tools).toBeDefined()
-      expect(expectedCapabilities.resources).toBeDefined()
-      expect(expectedCapabilities.logging).toBeDefined()
-
-      // Check specific capabilities
-      expect(expectedCapabilities.tools.listChanged).toBe(true)
-      expect(expectedCapabilities.resources.subscribe).toBe(true)
-      expect(expectedCapabilities.resources.listChanged).toBe(true)
-    })
-
-    test('should declare server information', () => {
-      const expectedServerInfo = {
-        name: 'lodgify-mcp',
-        version: '0.1.0',
-      }
-
-      expect(expectedServerInfo.name).toBe('lodgify-mcp')
-      expect(expectedServerInfo.version).toMatch(/^\d+\.\d+\.\d+$/) // Semantic versioning
-    })
-  })
-
-  describe('Resource Management Enhancement', () => {
-    test('should provide comprehensive health check information', () => {
-      const healthCheckResource = {
+  describe('Resource Management', () => {
+    test('should provide health check resource', () => {
+      const healthResource = {
         uri: 'lodgify://health',
         name: 'Health Check',
-        description: 'Check the health status of the Lodgify MCP server and API connectivity',
+        description: 'Check the health status of the Lodgify MCP server',
         mimeType: 'application/json',
       }
 
-      expect(healthCheckResource.uri).toBe('lodgify://health')
-      expect(healthCheckResource.name).toBe('Health Check')
-      expect(healthCheckResource.mimeType).toBe('application/json')
-      expect(healthCheckResource.description).toContain('health status')
+      expect(healthResource.uri).toBe('lodgify://health')
+      expect(healthResource.name).toBe('Health Check')
+      expect(healthResource.description).toContain('health')
+      expect(healthResource.mimeType).toBe('application/json')
     })
 
-    test('should validate health check data structure', () => {
+    test('should validate health check response structure', () => {
       const expectedHealthData = {
         ok: true,
-        timestamp: expect.any(String),
+        timestamp: new Date().toISOString(),
         version: '0.1.0',
         baseUrl: 'https://api.lodgify.com',
         apiKeyConfigured: true,
@@ -253,8 +147,6 @@ describe('Enhanced McpServer Features', () => {
         'lodgify_get_booking_payment_link',
         'lodgify_create_booking_payment_link',
         'lodgify_update_key_codes',
-        'lodgify_availability_room',
-        'lodgify_availability_property',
         'lodgify_get_quote',
         'lodgify_get_thread',
       ]
@@ -272,15 +164,6 @@ describe('Enhanced McpServer Features', () => {
         'lodgify_check_next_availability',
         'lodgify_check_date_range_availability',
         'lodgify_get_availability_calendar',
-        'lodgify_create_booking',
-        'lodgify_update_booking',
-        'lodgify_delete_booking',
-        'lodgify_subscribe_webhook',
-        'lodgify_list_webhooks',
-        'lodgify_delete_webhook',
-        'lodgify_create_rate',
-        'lodgify_update_rate',
-        'lodgify_update_property_availability',
       ]
 
       // All enhanced tools should be available
@@ -290,8 +173,8 @@ describe('Enhanced McpServer Features', () => {
       })
 
       // Should have both original and enhanced tools
-      const totalExpectedTools = 15 + 13 // Original + Enhanced
-      expect(totalExpectedTools).toBe(28) // We should have about 28 tools total
+      const totalExpectedTools = 13 + 4 // Original + Enhanced
+      expect(totalExpectedTools).toBe(17) // We should have about 17 tools total
     })
   })
 })
