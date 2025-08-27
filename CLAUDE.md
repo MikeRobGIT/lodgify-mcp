@@ -149,6 +149,10 @@ params = {
 - Integration tests for all MCP tools
 - Clear separation between MCP server and HTTP client layers
 
+## Debugging
+
+If you need to test the MCP Server, stop and allow the user to restart it after you have made your changes.
+
 ## Task Master AI Instructions
 
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**

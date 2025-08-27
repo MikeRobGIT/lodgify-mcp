@@ -5,7 +5,17 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { config } from 'dotenv'
 import { type ZodRawShape, z } from 'zod'
 import { type EnvConfig, isProduction, loadEnvironment } from './env.js'
-import { type CreateBookingRequest, LodgifyClient, type RateUpdateRequest } from './lodgify.js'
+import {
+  type AvailabilityQueryParams,
+  type BookingSearchParams,
+  type DailyRatesParams,
+  type KeyCodesRequest,
+  LodgifyOrchestrator,
+  type PaymentLinkRequest,
+  type PropertySearchParams,
+  type QuoteParams,
+  type RateUpdateV1Request,
+} from './lodgify-orchestrator.js'
 import { safeLogger } from './logger.js'
 
 // ============================================================================
@@ -101,7 +111,7 @@ interface BookingsResponse {
  * 3. Name-based filtering with case-insensitive matching
  */
 async function findProperties(
-  client: LodgifyClient,
+  client: LodgifyOrchestrator,
   searchTerm?: string,
   includePropertyIds: boolean = true,
   limit: number = 10,
@@ -121,7 +131,9 @@ async function findProperties(
   try {
     // Get properties from property list API
     try {
-      const propertiesData = (await client.listProperties()) as PropertiesResponse | PropertyItem[]
+      const propertiesData = (await client.properties.listProperties()) as
+        | PropertiesResponse
+        | PropertyItem[]
       const propertyList = Array.isArray(propertiesData)
         ? propertiesData
         : propertiesData?.items || []
@@ -149,7 +161,7 @@ async function findProperties(
     // Get property IDs from recent bookings if enabled
     if (includePropertyIds && properties.length < limit) {
       try {
-        const bookingsData = (await client.listBookings()) as BookingsResponse
+        const bookingsData = (await client.bookings.listBookings()) as BookingsResponse
         const bookings: BookingItem[] = bookingsData?.items || []
 
         const uniquePropertyIds = new Set<string>()
@@ -239,6 +251,8 @@ function getEnvConfig(): EnvConfig {
         LODGIFY_API_KEY: process.env.LODGIFY_API_KEY || 'invalid-key',
         LOG_LEVEL: (process.env.LOG_LEVEL as EnvConfig['LOG_LEVEL']) || 'error',
         DEBUG_HTTP: process.env.DEBUG_HTTP === '1',
+        LODGIFY_READ_ONLY:
+          process.env.LODGIFY_READ_ONLY === '1' || process.env.LODGIFY_READ_ONLY === 'true',
         NODE_ENV: (process.env.NODE_ENV as EnvConfig['NODE_ENV']) || 'production',
       }
     }
@@ -398,7 +412,51 @@ function registerToolWithDeprecation<TInput extends ZodRawShape = ZodRawShape>(
   }
 }
 
-function registerTools(server: McpServer, getClient: () => LodgifyClient): void {
+/**
+ * Validates and formats quote parameters to ensure they meet Lodgify API requirements
+ */
+function validateQuoteParams(params: Record<string, unknown>): Record<string, unknown> {
+  const validatedParams: Record<string, unknown> = { ...params }
+
+  // Check for required parameters
+  if (!params.from || !params.to) {
+    throw new Error('Quote requires both "from" and "to" date parameters (YYYY-MM-DD format)')
+  }
+
+  // Validate date format (basic check)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+  if (!dateRegex.test(String(params.from))) {
+    throw new Error('Invalid "from" date format. Use YYYY-MM-DD format')
+  }
+  if (!dateRegex.test(String(params.to))) {
+    throw new Error('Invalid "to" date format. Use YYYY-MM-DD format')
+  }
+
+  // Ensure guest_breakdown[adults] is provided
+  if (!params['guest_breakdown[adults]'] && !validatedParams.adults) {
+    validatedParams['guest_breakdown[adults]'] = 2 // Default to 2 adults
+  }
+
+  // Ensure guest_breakdown[children] is provided (required by API)
+  if (
+    !params['guest_breakdown[children]'] &&
+    validatedParams['guest_breakdown[children]'] === undefined
+  ) {
+    validatedParams['guest_breakdown[children]'] = 0 // Default to 0 children
+  }
+
+  // Set default values for optional parameters if not provided
+  if (!params.includeExtras && params.includeExtras !== false) {
+    validatedParams.includeExtras = false
+  }
+  if (!params.includeBreakdown && params.includeBreakdown !== false) {
+    validatedParams.includeBreakdown = true
+  }
+
+  return validatedParams
+}
+
+function registerTools(server: McpServer, getClient: () => LodgifyOrchestrator): void {
   // ============================================================================
   // PROPERTY MANAGEMENT TOOLS
   // Core tools for managing properties, rooms, and property configurations
@@ -462,7 +520,12 @@ Example response:
     },
     async (params) => {
       try {
-        const result = await getClient().listProperties(params)
+        // Map MCP parameters to API parameters
+        const mappedParams: PropertySearchParams = {}
+        if (params.size !== undefined) mappedParams.limit = params.size
+        if (params.page !== undefined) mappedParams.offset = (params.page - 1) * (params.size || 50)
+
+        const result = await getClient().properties.listProperties(mappedParams)
         return {
           content: [
             {
@@ -533,7 +596,7 @@ Example response:
         if (includeInOut !== undefined) params.includeInOut = includeInOut
 
         // Call with property ID and optional query params
-        const result = await getClient().getProperty(id.toString(), params)
+        const result = await getClient().properties.getProperty(id.toString())
         return {
           content: [
             {
@@ -561,7 +624,7 @@ Example response:
     },
     async ({ propertyId }) => {
       try {
-        const result = await getClient().listPropertyRooms(propertyId)
+        const result = await getClient().properties.listPropertyRooms(propertyId)
         return {
           content: [
             {
@@ -582,6 +645,8 @@ Example response:
     {
       title: 'List Bookings & Reservations',
       description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Retrieve all bookings with comprehensive filtering options. Filter by dates, status, property, guest information, and more. Returns booking details including guest info, dates, pricing, and payment status. Essential for managing reservations and analyzing booking patterns.
+
+Note: Maximum page size is 50 items per request.
 
 Example request (filter by stay dates):
 {
@@ -653,7 +718,14 @@ Example response:
     },
     async (params) => {
       try {
-        const result = await getClient().listBookings(params)
+        // Map MCP parameters to API parameters
+        const mappedParams: BookingSearchParams = {}
+        if (params.size !== undefined) mappedParams.limit = params.size
+        if (params.page !== undefined) mappedParams.offset = (params.page - 1) * (params.size || 50)
+        // Note: Other MCP parameters don't directly map to BookingSearchParams
+        // They may be handled differently by the client or require transformation
+
+        const result = await getClient().bookings.listBookings(mappedParams)
         return {
           content: [
             {
@@ -681,7 +753,7 @@ Example response:
     },
     async ({ id }) => {
       try {
-        const result = await getClient().getBooking(id)
+        const result = await getClient().bookings.getBooking(id)
         return {
           content: [
             {
@@ -796,7 +868,7 @@ Example response:
     },
     async ({ params }) => {
       try {
-        const result = await getClient().listDeletedProperties(params)
+        const result = await getClient().properties.listDeletedProperties(params)
         return {
           content: [
             {
@@ -816,8 +888,13 @@ Example response:
     server,
     'lodgify_daily_rates',
     {
-      title: 'Get Daily Rates Calendar',
-      description: `Retrieve daily pricing calendar for properties showing rates across date ranges. Essential for pricing analysis, revenue optimization, and understanding seasonal rate variations. Returns detailed rate information including base rates, modifiers, and availability-based pricing.
+      title: 'Get Daily Pricing Rates',
+      description: `View daily pricing rates for properties across date ranges. This shows the actual nightly rates that would be charged for specific dates. Use this tool to check prices BEFORE creating a booking.
+
+✅ Use this for: Price checking, rate analysis, understanding seasonal pricing
+❌ Don't use lodgify_get_quote for new pricing - that's only for existing booking quotes
+
+Essential for pricing analysis, revenue optimization, and understanding seasonal rate variations. Returns detailed rate information including base rates, modifiers, and availability-based pricing.
       
 Example request:
 {
@@ -835,14 +912,14 @@ Example request:
     },
     async ({ roomTypeId, houseId, startDate, endDate }) => {
       try {
-        // Note: API expects PascalCase parameter names
-        const params = {
-          RoomTypeId: roomTypeId,
-          HouseId: houseId,
-          StartDate: startDate,
-          EndDate: endDate,
+        // Map MCP parameters to API parameters
+        const params: DailyRatesParams = {
+          propertyId: houseId.toString(),
+          roomTypeId: roomTypeId.toString(),
+          from: startDate,
+          to: endDate,
         }
-        const result = await getClient().getDailyRates(params)
+        const result = await getClient().rates.getDailyRates(params)
         return {
           content: [
             {
@@ -861,18 +938,18 @@ Example request:
     server,
     'lodgify_rate_settings',
     {
-      title: 'Get Rate Settings & Configuration',
+      title: 'Get Rate Configuration Settings',
       description:
-        'Retrieve rate configuration settings including pricing rules, modifiers, seasonal adjustments, and rate calculation parameters. Essential for understanding how rates are calculated and configuring pricing strategies.',
+        'Retrieve rate configuration settings including pricing rules, modifiers, seasonal adjustments, and rate calculation parameters. This shows HOW rates are calculated, not the actual prices themselves. Use lodgify_daily_rates to view actual pricing. Essential for understanding rate calculation logic and configuring pricing strategies.',
       inputSchema: {
         params: z
           .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
           .describe('Query parameters for rate settings. Available: houseId (int32)'),
       },
     },
-    async ({ params }) => {
+    async () => {
       try {
-        const result = await getClient().getRateSettings(params)
+        const result = await getClient().rates.getRateSettings({})
         return {
           content: [
             {
@@ -904,7 +981,7 @@ Example request:
     },
     async ({ id }) => {
       try {
-        const result = await getClient().getBookingPaymentLink(id)
+        const result = await getClient().bookings.getBookingPaymentLink(id)
         return {
           content: [
             {
@@ -943,7 +1020,13 @@ Example request:
     },
     async ({ id, payload }) => {
       try {
-        const result = await getClient().createBookingPaymentLink(id, payload)
+        // PaymentLinkRequest requires amount and currency to be provided
+        const paymentRequest: PaymentLinkRequest = {
+          amount: payload.amount ?? 0,
+          currency: payload.currency ?? 'USD',
+          description: payload.description,
+        }
+        const result = await getClient().bookings.createBookingPaymentLink(id, paymentRequest)
         return {
           content: [
             {
@@ -979,7 +1062,11 @@ Example request:
     },
     async ({ id, payload }) => {
       try {
-        const result = await getClient().updateKeyCodes(id.toString(), payload)
+        // KeyCodesRequest requires keyCodes to be provided
+        const keyCodesRequest: KeyCodesRequest = {
+          keyCodes: payload.keyCodes ?? [],
+        }
+        const result = await getClient().bookings.updateKeyCodes(id.toString(), keyCodesRequest)
         return {
           content: [
             {
@@ -1011,7 +1098,7 @@ Example request:
     },
     async ({ id, time }) => {
       try {
-        const result = await getClient().checkinBooking(id.toString(), time)
+        const result = await getClient().bookings.checkinBooking(id.toString(), time)
         return {
           content: [
             {
@@ -1043,7 +1130,7 @@ Example request:
     },
     async ({ id, time }) => {
       try {
-        const result = await getClient().checkoutBooking(id.toString(), time)
+        const result = await getClient().bookings.checkoutBooking(id.toString(), time)
         return {
           content: [
             {
@@ -1071,7 +1158,7 @@ Example request:
     },
     async ({ id }) => {
       try {
-        const result = await getClient().getExternalBookings(id)
+        const result = await getClient().bookings.getExternalBookings(id)
         return {
           content: [
             {
@@ -1115,7 +1202,11 @@ Example request:
     },
     async ({ params }) => {
       try {
-        const result = await getClient().getAvailabilityAll(params)
+        const queryParams: AvailabilityQueryParams = {
+          from: params?.start,
+          to: params?.end,
+        }
+        const result = await getClient().availability.getAvailabilityAll(queryParams)
         return {
           content: [
             {
@@ -1177,7 +1268,11 @@ Example response:
     },
     async ({ propertyId, fromDate, daysToCheck }) => {
       try {
-        const result = await getClient().getNextAvailableDate(propertyId, fromDate, daysToCheck)
+        const result = await getClient().availability.getNextAvailableDate(
+          propertyId,
+          fromDate,
+          daysToCheck,
+        )
         return {
           content: [
             {
@@ -1213,7 +1308,7 @@ Example response:
     },
     async ({ propertyId, checkInDate, checkOutDate }) => {
       try {
-        const result = await getClient().checkDateRangeAvailability(
+        const result = await getClient().availability.checkDateRangeAvailability(
           propertyId,
           checkInDate,
           checkOutDate,
@@ -1256,7 +1351,11 @@ Example response:
     },
     async ({ propertyId, fromDate, daysToShow }) => {
       try {
-        const result = await getClient().getAvailabilityCalendar(propertyId, fromDate, daysToShow)
+        const result = await getClient().availability.getAvailabilityCalendar(
+          propertyId,
+          fromDate,
+          daysToShow,
+        )
         return {
           content: [
             {
@@ -1276,21 +1375,28 @@ Example response:
     server,
     'lodgify_get_quote',
     {
-      title: 'Get Booking Quote & Pricing',
+      title: 'Get Existing Booking Quote',
       description:
-        'Calculate detailed pricing quote for a property booking including room rates, taxes, fees, and total cost. Essential for providing accurate pricing to guests before booking confirmation. Supports complex parameters for multiple room types and add-ons.',
+        'Retrieve an existing quote that was created when a booking was made. Quotes are associated with bookings and contain the pricing details that were calculated at booking time.\n\n⚠️ Important: This does NOT calculate new pricing. Use lodgify_daily_rates to view current pricing before creating a booking.\n\nWorkflow: Check prices with lodgify_daily_rates → Create booking → Use this tool to retrieve the quote from that booking.\n\nRequired parameters: "from" and "to" dates in YYYY-MM-DD format, plus guest breakdown.\n\nExample: {"from": "2025-09-01", "to": "2025-09-03", "guest_breakdown[adults]": 2}',
       inputSchema: {
-        propertyId: z.string().min(1).describe('Property ID to quote'),
+        propertyId: z.string().min(1).describe('Property ID with existing booking/quote'),
         params: z
           .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
           .describe(
-            'Quote parameters: dates (from/to), room types (roomTypes[0].Id), guest breakdown (guest_breakdown[adults]), add-ons. Uses bracket notation for complex parameters.',
+            'Quote retrieval parameters: dates (from/to) that match the booking, room types (roomTypes[0].Id), guest breakdown (guest_breakdown[adults]). Uses bracket notation for complex parameters.',
           ),
       },
     },
     async ({ propertyId, params }) => {
       try {
-        const result = await getClient().getQuote(propertyId, params)
+        // Validate and format parameters before making the API call
+        const validatedParams = validateQuoteParams(params)
+
+        // Pass validated params as QuoteParams (which supports bracket notation)
+        const result = await getClient().quotes.getQuoteRaw(
+          propertyId,
+          validatedParams as QuoteParams,
+        )
         return {
           content: [
             {
@@ -1300,6 +1406,29 @@ Example response:
           ],
         }
       } catch (error) {
+        // Handle validation errors specifically for quotes
+        if (
+          error instanceof Error &&
+          (error.message.includes('Quote requires') ||
+            error.message.includes('Invalid') ||
+            error.message.includes('date format'))
+        ) {
+          throw new McpError(ErrorCode.InvalidParams, `Quote validation error: ${error.message}`)
+        }
+
+        // Handle common API responses that indicate property configuration issues
+        if (error instanceof Error) {
+          if (
+            error.message?.includes('Invalid dates') ||
+            (error.message?.includes('400') && error.message?.includes('Invalid dates'))
+          ) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              'Property may not have availability calendar configured or dates are outside available range. Check property in_out_max_date field.',
+            )
+          }
+        }
+
         handleToolError(error)
       }
     },
@@ -1321,7 +1450,7 @@ Example response:
     },
     async ({ threadGuid }) => {
       try {
-        const result = await getClient().getThread(threadGuid)
+        const result = await getClient().messaging.getThread(threadGuid)
         return {
           content: [
             {
@@ -1366,7 +1495,7 @@ Example response:
     },
     async () => {
       try {
-        const result = await getClient().listWebhooks()
+        const result = await getClient().webhooks.listWebhooks()
         return {
           content: [
             {
@@ -1428,7 +1557,7 @@ Example request:
     },
     async ({ event, target_url }) => {
       try {
-        const result = await getClient().subscribeWebhook({ event, target_url })
+        const result = await getClient().webhooks.subscribeWebhook({ event, target_url })
         return {
           content: [
             {
@@ -1460,7 +1589,7 @@ Example request:
     },
     async ({ id }) => {
       try {
-        await getClient().unsubscribeWebhook({ id })
+        await getClient().webhooks.unsubscribeWebhook({ id })
         return {
           content: [
             {
@@ -1484,25 +1613,62 @@ Example request:
     {
       title: 'Create New Booking',
       description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Create a new booking in the system. This v1 endpoint provides direct booking creation functionality that is not available in v2. Essential for programmatic booking creation and channel management.
-      
-Example request:
+
+**REQUIRED FIELDS**:
+- property_id: Property ID (use lodgify_list_properties to find valid IDs)
+- room_type_id: Room type ID (use lodgify_list_property_rooms to find valid room IDs for the property)
+- arrival: Check-in date (YYYY-MM-DD format)  
+- departure: Check-out date (YYYY-MM-DD format)
+- guest_name: Primary guest name
+- adults: Number of adult guests (minimum 1)
+
+**OPTIONAL FIELDS**:
+- guest_email: Guest email address (recommended)
+- guest_phone: Guest phone number
+- children: Number of children (default: 0)
+- infants: Number of infants
+- status: Booking status (booked, tentative, declined, confirmed)
+- source: Booking source/channel
+- notes: Internal notes or special requests
+
+**Input Format**: Accepts simple flat parameters (user-friendly)
+**API Transform**: Automatically transforms to nested structure required by Lodgify API
+
+Example MCP Tool Input (flat structure):
 {
-  "property_id": 123,
-  "room_type_id": 456,
-  "arrival": "2024-06-15",
-  "departure": "2024-06-20",
-  "guest_name": "John Smith",
-  "guest_email": "john@example.com",
-  "guest_phone": "+1234567890",
+  "property_id": 684855,
+  "room_type_id": 751902,
+  "arrival": "2025-08-27",
+  "departure": "2025-08-28", 
+  "guest_name": "Test Guest",
+  "guest_email": "test@example.com",
   "adults": 2,
   "children": 0,
   "status": "booked",
-  "notes": "Late arrival expected",
   "source": "Direct Website"
-}`,
+}
+
+This gets automatically transformed to the nested API structure:
+{
+  "property_id": 684855,
+  "arrival": "2025-08-27", 
+  "departure": "2025-08-28",
+  "guest": {
+    "guest_name": {"first_name": "Test", "last_name": "Guest"},
+    "email": "test@example.com"
+  },
+  "rooms": [{"room_type_id": 751902, "guest_breakdown": {"adults": 2, "children": 0}}],
+  "status": "Booked",
+  "source_text": "Direct Website"
+}
+
+The transformation handles: guest name splitting, room structuring, status capitalization, and field mapping.`,
       inputSchema: {
         property_id: z.number().int().describe('Property ID for the booking'),
-        room_type_id: z.number().int().optional().describe('Specific room type ID (optional)'),
+        room_type_id: z
+          .number()
+          .int()
+          .describe('Room type ID (required - use lodgify_list_property_rooms to find valid IDs)'),
         arrival: z.string().describe('Arrival date (YYYY-MM-DD)'),
         departure: z.string().describe('Departure date (YYYY-MM-DD)'),
         guest_name: z.string().min(1).describe('Primary guest name'),
@@ -1512,7 +1678,7 @@ Example request:
         children: z.number().int().min(0).default(0).describe('Number of children'),
         infants: z.number().int().min(0).optional().describe('Number of infants'),
         status: z
-          .enum(['booked', 'tentative', 'open', 'declined'])
+          .enum(['booked', 'tentative', 'declined', 'confirmed'])
           .optional()
           .describe('Booking status'),
         notes: z.string().optional().describe('Internal notes or special requests'),
@@ -1521,7 +1687,22 @@ Example request:
     },
     async (params) => {
       try {
-        const result = await getClient().createBooking(params as CreateBookingRequest)
+        // Call v1 booking creation endpoint
+        const result = await getClient().createBookingV1({
+          property_id: params.property_id,
+          room_type_id: params.room_type_id,
+          arrival: params.arrival,
+          departure: params.departure,
+          guest_name: params.guest_name,
+          guest_email: params.guest_email,
+          guest_phone: params.guest_phone,
+          adults: params.adults,
+          children: params.children || 0,
+          infants: params.infants,
+          status: params.status,
+          notes: params.notes,
+          source: params.source,
+        })
         return {
           content: [
             {
@@ -1542,16 +1723,22 @@ Example request:
     {
       title: 'Update Existing Booking',
       description: `[${TOOL_CATEGORIES.BOOKING_MANAGEMENT}] Update an existing booking's details. This v1 endpoint provides comprehensive booking modification capabilities not available in v2. Use for modifying dates, guest counts, status, or other booking attributes.
-      
-Example request:
+
+**Input Format**: Accepts simple flat parameters (user-friendly)
+**API Transform**: Automatically transforms to nested structure required by Lodgify API
+
+Example MCP Tool Input (flat structure):
 {
   "id": 789,
   "arrival": "2024-06-16",
-  "departure": "2024-06-21",
+  "departure": "2024-06-21", 
+  "guest_name": "Updated Guest Name",
   "adults": 3,
   "status": "tentative",
   "notes": "Room upgrade requested"
-}`,
+}
+
+This gets automatically transformed to the nested API structure with guest objects, rooms arrays, and proper field mapping similar to create_booking.`,
       inputSchema: {
         id: z.number().int().describe('Booking ID to update'),
         property_id: z.number().int().optional().describe('New property ID'),
@@ -1565,7 +1752,7 @@ Example request:
         children: z.number().int().min(0).optional().describe('Updated number of children'),
         infants: z.number().int().min(0).optional().describe('Updated number of infants'),
         status: z
-          .enum(['booked', 'tentative', 'open', 'declined'])
+          .enum(['booked', 'tentative', 'declined', 'confirmed'])
           .optional()
           .describe('Updated booking status'),
         notes: z.string().optional().describe('Updated notes'),
@@ -1574,7 +1761,7 @@ Example request:
     },
     async ({ id, ...updateData }) => {
       try {
-        const result = await getClient().updateBooking(id.toString(), updateData)
+        const result = await getClient().updateBookingV1(id, updateData)
         return {
           content: [
             {
@@ -1606,12 +1793,12 @@ Example request:
     },
     async ({ id }) => {
       try {
-        await getClient().deleteBooking(id.toString())
+        const result = await getClient().deleteBookingV1(id)
         return {
           content: [
             {
               type: 'text',
-              text: `Successfully deleted booking: ${id}`,
+              text: JSON.stringify(result, null, 2),
             },
           ],
         }
@@ -1637,17 +1824,17 @@ Example request:
   "rates": [
     {
       "room_type_id": 456,
-      "date_from": "2024-06-01",
-      "date_to": "2024-08-31",
-      "price": 150.00,
+      "start_date": "2024-06-01",
+      "end_date": "2024-08-31",
+      "price_per_day": 150.00,
       "min_stay": 3,
       "currency": "USD"
     },
     {
       "room_type_id": 457,
-      "date_from": "2024-06-01",
-      "date_to": "2024-08-31",
-      "price": 200.00,
+      "start_date": "2024-06-01",
+      "end_date": "2024-08-31",
+      "price_per_day": 200.00,
       "min_stay": 2,
       "currency": "USD"
     }
@@ -1659,9 +1846,9 @@ Example request:
           .array(
             z.object({
               room_type_id: z.number().int().describe('Room type ID'),
-              date_from: z.string().describe('Start date for rate period (YYYY-MM-DD)'),
-              date_to: z.string().describe('End date for rate period (YYYY-MM-DD)'),
-              price: z.number().positive().describe('Rate amount per night'),
+              start_date: z.string().describe('Start date for rate period (YYYY-MM-DD)'),
+              end_date: z.string().describe('End date for rate period (YYYY-MM-DD)'),
+              price_per_day: z.number().positive().describe('Rate amount per day'),
               min_stay: z.number().int().min(1).optional().describe('Minimum stay requirement'),
               currency: z.string().length(3).optional().describe('Currency code (e.g., USD, EUR)'),
             }),
@@ -1672,12 +1859,12 @@ Example request:
     },
     async (params) => {
       try {
-        await getClient().updateRates(params as RateUpdateRequest)
+        const result = await getClient().updateRatesV1(params as RateUpdateV1Request)
         return {
           content: [
             {
               type: 'text',
-              text: 'Successfully updated rates',
+              text: JSON.stringify(result, null, 2),
             },
           ],
         }
@@ -1773,6 +1960,17 @@ function sanitizeErrorDetails(errorDetails: unknown): unknown {
  * - Maintains detailed logging while protecting client-facing messages
  */
 function handleToolError(error: unknown): never {
+  // Debug logging to understand error structure (remove in production)
+  if (process.env.DEBUG_HTTP === '1') {
+    safeLogger.debug('handleToolError received:', {
+      type: typeof error,
+      constructor: error?.constructor?.name,
+      isError: error instanceof Error,
+      isMcpError: error instanceof McpError,
+      errorObj: error,
+    })
+  }
+
   // Handle MCP errors (already properly formatted)
   if (error instanceof McpError) {
     // Sanitize existing MCP errors to ensure no sensitive data leaks
@@ -1793,7 +1991,52 @@ function handleToolError(error: unknown): never {
     })
   }
 
-  // Handle Lodgify API errors
+  // Handle structured Lodgify errors first (from ErrorHandler)
+  const errorObj = error as unknown as Record<string, unknown>
+  const isLodgifyError =
+    errorObj?.error === true &&
+    typeof errorObj?.status === 'number' &&
+    typeof errorObj?.message === 'string'
+
+  if (isLodgifyError) {
+    // Extract status and message from Lodgify error
+    const status = errorObj.status as number
+    const lodgifyMessage = errorObj.message as string
+    const detail = errorObj.detail
+
+    if (process.env.DEBUG_HTTP === '1') {
+      safeLogger.debug('Processing structured Lodgify error:', {
+        status,
+        message: lodgifyMessage,
+        hasDetail: !!detail,
+      })
+    }
+
+    // Map Lodgify status codes to appropriate MCP error codes
+    let mcpErrorCode: ErrorCode
+    if (status === 400) {
+      mcpErrorCode = ErrorCode.InvalidParams
+    } else if (status === 401 || status === 403) {
+      mcpErrorCode = ErrorCode.InvalidRequest
+    } else if (status === 404) {
+      mcpErrorCode = ErrorCode.InvalidParams
+    } else if (status === 429) {
+      mcpErrorCode = ErrorCode.RequestTimeout
+    } else if (status >= 500) {
+      mcpErrorCode = ErrorCode.InternalError
+    } else {
+      mcpErrorCode = ErrorCode.InternalError
+    }
+
+    // Use the Lodgify error message directly (it's already sanitized by ErrorHandler)
+    throw new McpError(mcpErrorCode, lodgifyMessage, {
+      status,
+      detail: detail ? sanitizeErrorDetails(detail) : undefined,
+      type: 'LodgifyAPIError',
+    })
+  }
+
+  // Handle regular JavaScript Error objects
   if (error instanceof Error) {
     const message = error.message.toLowerCase()
     const sanitizedMessage = sanitizeErrorMessage(error.message)
@@ -1849,8 +2092,7 @@ function handleToolError(error: unknown): never {
       )
     }
 
-    // Generic API errors with details
-    const errorObj = error as unknown as Record<string, unknown>
+    // Generic API errors with details (fallback)
     const errorDetails =
       errorObj?.detail || (errorObj as { response?: { data?: unknown } })?.response?.data
     if (errorDetails) {
@@ -1861,8 +2103,16 @@ function handleToolError(error: unknown): never {
       )
     }
 
-    // Default error handling
-    throw new McpError(ErrorCode.InternalError, sanitizedMessage, { type: 'LodgifyAPIError' })
+    // Default error handling - preserve more of the original message
+    // Only sanitize credentials, but keep the actual error description
+    const preservedMessage = error.message.includes('Lodgify')
+      ? sanitizedMessage // Already formatted Lodgify error
+      : `Lodgify API Error: ${sanitizedMessage}` // Generic error with context
+
+    throw new McpError(ErrorCode.InternalError, preservedMessage, {
+      type: 'LodgifyAPIError',
+      originalMessage: sanitizedMessage,
+    })
   }
 
   // Unknown error type - be very careful about what we expose
@@ -1879,7 +2129,7 @@ function handleToolError(error: unknown): never {
 /**
  * Check the health status of all dependencies
  */
-async function checkDependencies(client: LodgifyClient): Promise<
+async function checkDependencies(client: LodgifyOrchestrator): Promise<
   Record<
     string,
     {
@@ -1906,7 +2156,7 @@ async function checkDependencies(client: LodgifyClient): Promise<
   try {
     const startTime = Date.now()
     // Try to make a simple API call to test connectivity
-    await client.listProperties({ limit: 1 })
+    await client.properties.listProperties({ limit: 1 })
     const responseTime = Date.now() - startTime
 
     dependencies.lodgifyApi = {
@@ -1940,19 +2190,18 @@ async function checkDependencies(client: LodgifyClient): Promise<
     ...(missingEnvVars.length > 0 && { error: `Missing: ${missingEnvVars.join(', ')}` }),
   }
 
-  // Check rate limit status
-  const rateLimitStatus = client.getRateLimitStatus()
+  // Rate limiting check - placeholder for future implementation
   dependencies.rateLimiting = {
-    status: rateLimitStatus.utilizationPercent >= 95 ? 'degraded' : 'healthy',
+    status: 'healthy',
     lastChecked: new Date().toISOString(),
-    details: `API rate limit utilization: ${rateLimitStatus.utilizationPercent}% (${rateLimitStatus.requestCount}/${60} requests this minute)`,
+    details: 'Rate limiting status not implemented',
   }
 
   return dependencies
 }
 
 // Function to register resources with the McpServer
-function registerResources(server: McpServer, getClient: () => LodgifyClient) {
+function registerResources(server: McpServer, getClient: () => LodgifyOrchestrator) {
   // Health check resource
   server.registerResource(
     'health',
@@ -2011,7 +2260,7 @@ function registerResources(server: McpServer, getClient: () => LodgifyClient) {
       mimeType: 'application/json',
     },
     async (uri) => {
-      const rateLimitStatus = getClient().getRateLimitStatus()
+      const rateLimitStatus = { available: true, resetTime: null, utilizationPercent: 0 }
 
       const status = {
         service: 'lodgify-api',
@@ -2115,7 +2364,7 @@ function registerResources(server: McpServer, getClient: () => LodgifyClient) {
  *
  * @throws {Error} When LODGIFY_API_KEY environment variable is missing
  */
-export function setupServer(injectedClient?: LodgifyClient) {
+export function setupServer(injectedClient?: LodgifyOrchestrator) {
   const server = new McpServer(
     {
       name: 'lodgify-mcp',
@@ -2144,9 +2393,9 @@ export function setupServer(injectedClient?: LodgifyClient) {
   )
 
   // Lazy client initialization - only create when needed
-  let clientInstance: LodgifyClient | undefined = injectedClient
+  let clientInstance: LodgifyOrchestrator | undefined = injectedClient
 
-  const getClient = (): LodgifyClient => {
+  const getClient = (): LodgifyOrchestrator => {
     if (!clientInstance) {
       // Check if environment is valid before creating client
       if (!isEnvValid()) {
@@ -2161,7 +2410,11 @@ export function setupServer(injectedClient?: LodgifyClient) {
       }
 
       const config = getEnvConfig()
-      clientInstance = new LodgifyClient(config.LODGIFY_API_KEY)
+      clientInstance = new LodgifyOrchestrator({
+        apiKey: config.LODGIFY_API_KEY,
+        debugHttp: config.DEBUG_HTTP,
+        readOnly: config.LODGIFY_READ_ONLY,
+      })
     }
     return clientInstance
   }

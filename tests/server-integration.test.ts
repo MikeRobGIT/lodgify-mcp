@@ -61,10 +61,48 @@ describe('McpServer Integration Tests', () => {
       listDeletedProperties: mock(() => Promise.resolve()),
 
       // Rates management
-      getDailyRates: mock(() => Promise.resolve()),
-      getRateSettings: mock(() => Promise.resolve()),
-      createRate: mock(() => Promise.resolve()),
-      updateRate: mock(() => Promise.resolve()),
+      getDailyRates: mock(() =>
+        Promise.resolve({
+          property_id: 123,
+          currency: 'USD',
+          rates: [
+            {
+              date: '2025-11-20',
+              rate: 150.0,
+              available: true,
+            },
+          ],
+        }),
+      ),
+      getRateSettings: mock(() =>
+        Promise.resolve({
+          property_id: 123,
+          currency: 'USD',
+          default_rate: 120.0,
+        }),
+      ),
+      createRate: mock(() =>
+        Promise.resolve({
+          rate_id: 'rate-789',
+          property_id: 123,
+          from: '2025-11-20',
+          to: '2025-11-25',
+          rate: 150.0,
+          currency: 'USD',
+          success: true,
+        }),
+      ),
+      updateRate: mock(() =>
+        Promise.resolve({
+          rate_id: 'rate-789',
+          property_id: 123,
+          from: '2025-11-20',
+          to: '2025-11-25',
+          rate: 160.0,
+          currency: 'USD',
+          success: true,
+        }),
+      ),
 
       // Booking management
       listBookings: mock(() => Promise.resolve()),

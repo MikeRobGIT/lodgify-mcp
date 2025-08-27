@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { LodgifyClient } from '../src/lodgify.js'
-import type { Booking, Property } from '../src/types/lodgify.js'
+import type { Booking } from '../src/api/v2/bookings/types.js'
+import type { Property } from '../src/api/v2/properties/types.js'
+import { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { createMockResponse, fixtures } from './utils.js'
 
 /**
@@ -8,13 +9,13 @@ import { createMockResponse, fixtures } from './utils.js'
  * Can be run with real API by setting TEST_MODE=live and TEST_API_KEY
  */
 describe('End-to-End Smoke Tests', () => {
-  let client: LodgifyClient
+  let client: LodgifyOrchestrator
   const testMode = process.env.TEST_MODE || 'mock'
   const testApiKey = process.env.TEST_API_KEY || 'test-api-key'
 
   beforeAll(() => {
     console.log(`Running smoke tests in ${testMode} mode`)
-    client = new LodgifyClient(testApiKey)
+    client = new LodgifyOrchestrator({ apiKey: testApiKey })
 
     if (testMode === 'mock') {
       // Set up mock responses for all endpoints
@@ -26,8 +27,17 @@ describe('End-to-End Smoke Tests', () => {
         createMockResponse(200, []),
 
         // Rates
-        createMockResponse(200, { rates: [{ date: '2025-11-20', rate: 200 }] }),
-        createMockResponse(200, { settings: { minStay: 2, maxStay: 30 } }),
+        createMockResponse(200, {
+          property_id: 123,
+          currency: 'USD',
+          rates: [{ date: '2025-11-20', rate: 200 }],
+        }),
+        createMockResponse(200, {
+          property_id: 123,
+          currency: 'USD',
+          minimum_stay: 2,
+          maximum_stay: 30,
+        }),
 
         // Quote
         createMockResponse(200, fixtures.quote),
@@ -76,11 +86,11 @@ describe('End-to-End Smoke Tests', () => {
     let bookingId: string
 
     test('1. Should list properties', async () => {
-      const result = await client.listProperties({ page: 1, limit: 10 })
+      const result = await client.properties.listProperties({ limit: 10, offset: 0 })
       expect(result).toBeDefined()
 
-      if (Array.isArray(result) && result.length > 0) {
-        propertyId = String((result[0] as Property).id) || 'prop-123'
+      if (result?.data && Array.isArray(result.data) && result.data.length > 0) {
+        propertyId = String((result.data[0] as Property).id) || 'prop-123'
       } else {
         propertyId = 'prop-123' // fallback for testing
       }
@@ -94,7 +104,7 @@ describe('End-to-End Smoke Tests', () => {
         return
       }
 
-      const result = await client.getProperty(propertyId)
+      const result = await client.properties.getProperty(propertyId)
       expect(result).toBeDefined()
       expect(result).toHaveProperty('id')
 
@@ -107,14 +117,14 @@ describe('End-to-End Smoke Tests', () => {
         return
       }
 
-      const result = await client.listPropertyRooms(propertyId)
+      const result = await client.properties.listPropertyRooms(propertyId)
       expect(result).toBeDefined()
 
       console.log(`✓ Listed rooms for property ${propertyId}`)
     }, 30000)
 
     test('4. Should check deleted properties', async () => {
-      const result = await client.listDeletedProperties()
+      const result = await client.properties.listDeletedProperties()
       expect(result).toBeDefined()
 
       console.log('✓ Checked deleted properties')
@@ -132,7 +142,7 @@ describe('End-to-End Smoke Tests', () => {
         to: '2025-11-25',
       }
 
-      const result = await client.getDailyRates(params)
+      const result = await client.rates.getDailyRates(params)
       expect(result).toBeDefined()
 
       console.log(`✓ Retrieved daily rates for property ${propertyId}`)
@@ -148,7 +158,7 @@ describe('End-to-End Smoke Tests', () => {
         propertyId,
       }
 
-      const result = await client.getRateSettings(params)
+      const result = await client.rates.getRateSettings(params)
       expect(result).toBeDefined()
 
       console.log(`✓ Retrieved rate settings for property ${propertyId}`)
@@ -168,7 +178,7 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.getQuote(propertyId, params)
+        const result = await client.quotes.getQuoteRaw(propertyId, params)
         expect(result).toBeDefined()
         console.log(`✓ Retrieved quote for property ${propertyId}`)
       } catch (error) {
@@ -186,11 +196,11 @@ describe('End-to-End Smoke Tests', () => {
         to: '2025-11-30',
       }
 
-      const result = await client.listBookings(params)
+      const result = await client.bookings.listBookings(params)
       expect(result).toBeDefined()
 
-      if (Array.isArray(result) && result.length > 0) {
-        bookingId = String((result[0] as Booking).id) || 'book-456'
+      if (result?.data && Array.isArray(result.data) && result.data.length > 0) {
+        bookingId = String((result.data[0] as Booking).id) || 'book-456'
       } else {
         bookingId = 'book-456' // fallback for testing
       }
@@ -205,7 +215,7 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.getBooking(bookingId)
+        const result = await client.bookings.getBooking(bookingId)
         expect(result).toBeDefined()
         console.log(`✓ Retrieved booking details for ${bookingId}`)
       } catch (error) {
@@ -224,7 +234,7 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.getBookingPaymentLink(bookingId)
+        const result = await client.bookings.getBookingPaymentLink(bookingId)
         expect(result).toBeDefined()
         console.log(`✓ Retrieved payment link for booking ${bookingId}`)
       } catch (error) {
@@ -239,23 +249,23 @@ describe('End-to-End Smoke Tests', () => {
 
     test('13. Should list webhooks (v1)', async () => {
       try {
-        const result = await client.listWebhooks()
+        const result = await client.webhooks.listWebhooks()
         expect(result).toBeDefined()
         console.log('✓ Listed webhooks')
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠ Webhooks not available, skipping')
       }
     }, 30000)
 
     test('14. Should subscribe to webhook (v1)', async () => {
       try {
-        const result = await client.subscribeWebhook({
+        const result = await client.webhooks.subscribeWebhook({
           event: 'booking_new_status_booked',
-          target_url: 'https://example.com/webhook',
+          targetUrl: 'https://example.com/webhook',
         })
         expect(result).toBeDefined()
         console.log('✓ Subscribed to webhook')
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠ Webhook subscription failed, skipping')
       }
     }, 30000)
@@ -267,8 +277,8 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.createBooking({
-          property_id: parseInt(propertyId),
+        const result = await client.bookings.createBookingV1({
+          property_id: parseInt(propertyId, 10),
           arrival: '2024-06-15',
           departure: '2024-06-20',
           guest_name: 'John Smith',
@@ -277,7 +287,7 @@ describe('End-to-End Smoke Tests', () => {
         })
         expect(result).toBeDefined()
         console.log('✓ Created booking via v1 API')
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠ Booking creation failed, skipping')
       }
     }, 30000)
@@ -289,13 +299,13 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.updateBooking(bookingId, {
+        const result = await client.bookings.updateBookingV1(bookingId, {
           adults: 3,
           status: 'tentative',
         })
         expect(result).toBeDefined()
         console.log(`✓ Updated booking ${bookingId} via v1 API`)
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠ Booking update failed, skipping')
       }
     }, 30000)
@@ -307,8 +317,8 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        await client.updateRates({
-          property_id: parseInt(propertyId),
+        await client.rates.updateRatesV1({
+          property_id: parseInt(propertyId, 10),
           rates: [
             {
               room_type_id: 456,
@@ -321,7 +331,7 @@ describe('End-to-End Smoke Tests', () => {
           ],
         })
         console.log(`✓ Updated rates for property ${propertyId} via v1 API`)
-      } catch (error) {
+      } catch (_error) {
         console.log('⚠ Rate update failed, skipping')
       }
     }, 30000)

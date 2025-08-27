@@ -57,8 +57,26 @@ describe('MCP Server Integration Tests', () => {
       getProperty: mock(() => Promise.resolve()),
       listPropertyRooms: mock(() => Promise.resolve()),
       listDeletedProperties: mock(() => Promise.resolve()),
-      getDailyRates: mock(() => Promise.resolve()),
-      getRateSettings: mock(() => Promise.resolve()),
+      getDailyRates: mock(() =>
+        Promise.resolve({
+          property_id: 123,
+          currency: 'USD',
+          rates: [
+            {
+              date: '2025-11-20',
+              rate: 150.0,
+              available: true,
+            },
+          ],
+        }),
+      ),
+      getRateSettings: mock(() =>
+        Promise.resolve({
+          property_id: 123,
+          currency: 'USD',
+          default_rate: 120.0,
+        }),
+      ),
       listBookings: mock(() => Promise.resolve()),
       getBooking: mock(() => Promise.resolve()),
       getBookingPaymentLink: mock(() => Promise.resolve()),

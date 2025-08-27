@@ -8,7 +8,10 @@ export function createMockResponse(
   data: unknown = {},
   headers: Record<string, string> = {},
 ): Response {
-  const mockHeaders = new Headers(headers)
+  const mockHeaders = new Headers({
+    'content-type': 'application/json',
+    ...headers,
+  })
 
   return {
     ok: status >= 200 && status < 300,

@@ -1,6 +1,6 @@
 # Task ID: 20
 # Title: Implement v1 Booking CRUD endpoints with TypeScript types, client methods, and MCP tool registration
-# Status: pending
+# Status: done
 # Dependencies: 3, 5, 7, 9
 # Priority: high
 # Description: Create MCP tool implementations for booking creation, update, and deletion operations with proper TypeScript typing, validation, and comprehensive error handling

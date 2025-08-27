@@ -1,0 +1,97 @@
+# Task ID: 22
+# Title: Refactor Architecture: Abstract Server and Lodgify Files
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Complete architectural refactoring to transform monolithic codebase into modular, scalable structure suitable for long-term maintenance and team collaboration
+# Details:
+Transform the current monolithic architecture (server.ts: 2250 lines, lodgify.ts: 1296 lines) into a modular, layered architecture following SOLID principles. This refactoring will improve maintainability, testability, and enable parallel development. The new architecture will separate concerns into: Core Infrastructure (HTTP client, rate limiting, error handling), API Layer (v1/v2 endpoints organized by domain), MCP Layer (modular tool registration), and Utilities (shared helpers).
+
+# Test Strategy:
+Comprehensive testing strategy: 1) Add tests for existing functionality before refactoring, 2) Unit tests for each new module (target 90% coverage), 3) Integration tests for API endpoints, 4) E2E tests for MCP tools, 5) Performance benchmarks to ensure no degradation, 6) Regression testing at each phase
+
+# Subtasks:
+## 1. Phase 1.1: Extract Core HTTP Infrastructure [pending]
+### Dependencies: None
+### Description: Extract HTTP client, retry logic, and rate limiting from lodgify.ts into core modules
+### Details:
+Create core/ directory structure and extract: 1) Base HTTP client class with authentication, 2) Retry logic with exponential backoff, 3) Rate limiter (60 req/min), 4) Generic request/response handling. Ensure backward compatibility and add comprehensive tests.
+
+## 2. Phase 1.2: Create Error Handling System [pending]
+### Dependencies: 22.1
+### Description: Extract and centralize error handling from lodgify.ts into dedicated error modules
+### Details:
+Create core/errors/ directory with: 1) Error handler class for consistent error formatting, 2) Custom error types (LodgifyError, ValidationError, RateLimitError), 3) Error sanitization for security, 4) Error recovery strategies. Maintain backward compatibility with existing error responses.
+
+## 3. Phase 1.3: Extract Utility Functions [pending]
+### Dependencies: 22.1
+### Description: Move date utilities and helper functions from lodgify.ts to dedicated utils modules
+### Details:
+Create utils/ directory and extract: 1) Date utilities (getTodayISO, addDays, compareDates, etc.), 2) Query parameter flattening logic, 3) Validation helpers, 4) Path parameter sanitization. Add unit tests for all utility functions.
+
+## 4. Phase 2.1: Create Base API Client Architecture [pending]
+### Dependencies: 22.1, 22.2, 22.3
+### Description: Design and implement base API client class with common functionality for all endpoints
+### Details:
+Create api/base-client.ts with: 1) Abstract base class extending core HTTP client, 2) Common API operations (list, get, create, update, delete patterns), 3) Version-specific URL builders, 4) Response type mappings, 5) Interface contracts for API modules. This will be the foundation for all API domain modules.
+
+## 5. Phase 2.2: Extract Properties API Module [pending]
+### Dependencies: 22.4
+### Description: Create dedicated Properties API client module from lodgify.ts property-related methods
+### Details:
+Create api/v2/properties/ directory with: 1) PropertiesClient class extending base API client, 2) Extract methods: listProperties, getProperty, listPropertyRooms, listDeletedProperties, 3) Property-specific types and interfaces, 4) Property helper functions (findProperties), 5) Comprehensive tests for all property operations.
+
+## 6. Phase 2.3: Extract Bookings API Module [pending]
+### Dependencies: 22.4
+### Description: Create dedicated Bookings API client module from lodgify.ts booking-related methods
+### Details:
+Create api/v2/bookings/ directory with: 1) BookingsClient class extending base API client, 2) Extract methods: listBookings, getBooking, createBooking, updateBooking, deleteBooking, payment links, key codes, check-in/out, 3) Booking-specific types and helpers, 4) Both v1 and v2 booking endpoints, 5) Integration tests for booking workflows.
+
+## 7. Phase 2.4: Extract Availability API Module [pending]
+### Dependencies: 22.4
+### Description: Create dedicated Availability API client module with helper methods
+### Details:
+Create api/v2/availability/ directory with: 1) AvailabilityClient class extending base API client, 2) Extract methods: getAvailabilityAll, getNextAvailableDate, checkDateRangeAvailability, getAvailabilityCalendar, 3) Complex availability calculation logic, 4) Date range validation and processing, 5) Performance optimizations for availability checks.
+
+## 8. Phase 2.5: Extract Rates & Other API Modules [pending]
+### Dependencies: 22.4
+### Description: Create Rates, Quote, and Messaging API client modules
+### Details:
+Create remaining API modules: 1) api/v2/rates/ - RatesClient with getDailyRates, getRateSettings, updateRates, 2) api/v2/quotes/ - QuoteClient with getQuote method, 3) api/v2/messaging/ - MessagingClient with getThread, 4) api/v1/ - Legacy v1 endpoints for webhooks and critical operations not in v2.
+
+## 9. Phase 3.1: Create MCP Tool Registry System [pending]
+### Dependencies: 22.5, 22.6, 22.7, 22.8
+### Description: Design and implement modular tool registration system for MCP server
+### Details:
+Create mcp/registry.ts with: 1) Tool discovery mechanism to auto-load tools from mcp/tools/ directory, 2) Tool factory pattern for dynamic registration, 3) Tool metadata management (names, descriptions, schemas), 4) Dependency injection for API clients into tools, 5) Plugin architecture for easy tool addition.
+
+## 10. Phase 3.2: Extract Property Tools [pending]
+### Dependencies: 22.9
+### Description: Move all property-related MCP tools from server.ts to dedicated tool modules
+### Details:
+Create mcp/tools/properties/ directory with individual tool files: 1) list-properties.tool.ts, 2) get-property.tool.ts, 3) list-property-rooms.tool.ts, 4) find-properties.tool.ts (helper), 5) Each tool with its own Zod schema, handler function, and metadata. Maintain exact same tool signatures for backward compatibility.
+
+## 11. Phase 3.3: Extract Booking & Availability Tools [pending]
+### Dependencies: 22.9
+### Description: Move booking and availability MCP tools from server.ts to dedicated modules
+### Details:
+Create mcp/tools/ subdirectories: 1) bookings/ - list-bookings.tool.ts, get-booking.tool.ts, create-booking.tool.ts, update-booking.tool.ts, delete-booking.tool.ts, payment-link tools, 2) availability/ - check-next-availability.tool.ts, check-date-range.tool.ts, get-calendar.tool.ts, 3) Each with schemas and handlers.
+
+## 12. Phase 3.4: Extract Remaining Tools & Create Lean Server [pending]
+### Dependencies: 22.9, 22.10, 22.11
+### Description: Move all remaining MCP tools and create streamlined server.ts
+### Details:
+Complete MCP refactoring: 1) Extract rates/, quotes/, webhooks/, messaging/ tools, 2) Move all Zod schemas to mcp/schemas/ directory, 3) Create lean mcp/server.ts (<200 lines) that only handles: server initialization, tool registration via registry, resource registration, main startup logic. Remove all business logic from server.ts.
+
+## 13. Phase 4.1: Comprehensive Testing Suite [pending]
+### Dependencies: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 22.7, 22.8, 22.9, 22.10, 22.11, 22.12
+### Description: Create comprehensive test coverage for all new modules
+### Details:
+Implement testing strategy: 1) Unit tests for each module (core, api, utils) targeting 90% coverage, 2) Integration tests for API endpoints verifying end-to-end flows, 3) E2E tests for MCP tools ensuring backward compatibility, 4) Performance benchmarks comparing old vs new architecture, 5) Mock fixtures and test utilities for consistent testing.
+
+## 14. Phase 4.2: Migration & Documentation [pending]
+### Dependencies: 22.13
+### Description: Create migration path and comprehensive documentation
+### Details:
+Final migration steps: 1) Update build process in package.json for new structure, 2) Create compatibility layer/facade for smooth transition, 3) Write architecture decision records (ADRs), 4) Update README with new structure and contribution guide, 5) Create migration guide for existing users, 6) Document all public APIs and interfaces, 7) Final cleanup removing old monolithic files.
+

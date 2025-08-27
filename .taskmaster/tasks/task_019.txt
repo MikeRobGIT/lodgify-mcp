@@ -1,6 +1,6 @@
 # Task ID: 19
 # Title: Implement v1 Webhook endpoints with TypeScript types, client methods, and MCP tool registration
-# Status: pending
+# Status: done
 # Dependencies: 3, 5, 7
 # Priority: high
 # Description: Create MCP tool implementations for webhook management operations including listing webhooks, subscribing to events, and unsubscribing from events with proper TypeScript typing and validation
@@ -70,13 +70,13 @@ Test scenarios:
 10. Test DELETE path parameter substitution for webhook ID
 
 # Subtasks:
-## 1. Define TypeScript types for webhook endpoints [pending]
+## 1. Define TypeScript types for webhook endpoints [done]
 ### Dependencies: None
 ### Description: Create interfaces for webhook subscription, webhook list response, and event types
 ### Details:
 
 
-## 2. Implement webhook client methods in lodgify.ts [pending]
+## 2. Implement webhook client methods in lodgify.ts [done]
 ### Dependencies: None
 ### Description: Add listWebhooks(), subscribeWebhook(), and unsubscribeWebhook() methods to LodgifyClient
 ### Details:

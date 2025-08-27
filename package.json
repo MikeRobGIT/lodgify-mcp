@@ -1,6 +1,6 @@
 {
   "name": "lodgify-mcp",
-  "version": "0.2.7",
+  "version": "0.2.9",
   "description": "Model Context Protocol server for Lodgify Public API v2 - Expose Lodgify endpoints as MCP tools for AI assistants",
   "type": "module",
   "main": "dist/server.js",
@@ -32,8 +32,9 @@
     "pre-commit": "(bun run lint:src || echo '⚠️  Linting warnings found but continuing...') && bun run format:src",
     "pre-push": "bun test && bun run build",
     "sync-version": "node scripts/sync-version.js",
-    "version": "node scripts/sync-version.js && git add README.md",
-    "postversion": "git push && git push --tags"
+    "version": "echo 'Version will be handled by /bump-version command'",
+    "postversion": "git push && git push --tags",
+    "docker:mcp:build": "docker build -f Dockerfile.mcp -t lodgify-mcp:mcp ."
   },
   "keywords": [
     "mcp",
