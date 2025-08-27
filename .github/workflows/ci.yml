@@ -45,8 +45,8 @@ jobs:
             echo "Build failed: dist/server.js not found"
             exit 1
           fi
-          if [ ! -f "dist/lodgify.js" ]; then
-            echo "Build failed: dist/lodgify.js not found"
+          if [ ! -f "dist/lodgify-orchestrator.js" ]; then
+            echo "Build failed: dist/lodgify-orchestrator.js not found"
             exit 1
           fi
       
