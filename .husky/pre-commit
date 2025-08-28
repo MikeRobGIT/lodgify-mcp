@@ -1,5 +1,12 @@
 #!/bin/sh
 . "$(dirname -- "$0")/_/husky.sh"
+set -euo pipefail
+
+# Check if Bun is installed
+if ! command -v bun >/dev/null 2>&1; then
+  echo "❌ Bun is not installed or not on PATH. Install Bun and retry."
+  exit 1
+fi
 
 echo "🔍 Running checks..."
 
