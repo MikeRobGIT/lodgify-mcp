@@ -4,7 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { config } from 'dotenv'
 import { type ZodRawShape, z } from 'zod'
-import pkg from '../package.json'
+import pkg from '../package.json' with { type: 'json' }
 import { type EnvConfig, isProduction, loadEnvironment } from './env.js'
 import {
   type AvailabilityQueryParams,
