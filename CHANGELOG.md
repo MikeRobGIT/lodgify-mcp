@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2025-08-27
+
+### Added
+- cspell configuration with a project-specific word list.
+- New `check` script in `package.json` for combined code-quality checks (linting, type-checking, formatting, building, and testing).
+- Additional README badges: CI status, npm downloads, bundle size, and Node.js compatibility.
+- Comprehensive Check Command documentation in `.claude/commands/check.md`.
+- Version synchronization script (`scripts/sync-version.js`) to maintain version consistency.
+
+### Changed  
+- Enhanced project scripts and documentation to improve development workflow
+- Streamlined command structure by removing outdated clear subtask commands
+- Improved project visibility with enhanced README badges and metadata
+
+### Technical Details
+- Major refactoring of server architecture with improved modularization
+- Enhanced test coverage and test infrastructure
+- Updated type definitions and error handling
+- Improved code organization and documentation
+
 ## [0.2.6] - 2025-08-25
 
 ### Fixed

@@ -35,12 +35,22 @@ const debugHttpSchema = z
   .transform((val) => val === '1' || val === 'true')
 
 /**
+ * Read-only mode validation schema
+ */
+const readOnlySchema = z
+  .string()
+  .optional()
+  .default('0')
+  .transform((val) => val === '1' || val === 'true')
+
+/**
  * Complete environment schema
  */
 const envSchema = z.object({
   LODGIFY_API_KEY: apiKeySchema,
   LOG_LEVEL: logLevelSchema,
   DEBUG_HTTP: debugHttpSchema,
+  LODGIFY_READ_ONLY: readOnlySchema,
   NODE_ENV: z.enum(['development', 'production', 'test']).optional().default('development'),
 })
 
@@ -153,6 +163,7 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
       LODGIFY_API_KEY: process.env.LODGIFY_API_KEY,
       LOG_LEVEL: process.env.LOG_LEVEL,
       DEBUG_HTTP: process.env.DEBUG_HTTP,
+      LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
       NODE_ENV: process.env.NODE_ENV,
     }
 
@@ -176,6 +187,7 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
     safeLogger.info('Environment configuration loaded successfully', {
       logLevel: config.LOG_LEVEL,
       debugHttp: config.DEBUG_HTTP,
+      readOnly: config.LODGIFY_READ_ONLY,
       nodeEnv: config.NODE_ENV,
       apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
       warnings: apiKeyValidation.warnings.length > 0 ? apiKeyValidation.warnings : undefined,
@@ -218,6 +230,15 @@ export function isTest(config: EnvConfig): boolean {
 }
 
 /**
+ * Checks if read-only mode is enabled
+ * @param config - Environment configuration
+ * @returns True if read-only mode is active
+ */
+export function isReadOnly(config: EnvConfig): boolean {
+  return config.LODGIFY_READ_ONLY === true
+}
+
+/**
  * Gets safe environment info for logging/debugging
  * @param config - Environment configuration
  * @returns Sanitized environment information
@@ -227,6 +248,7 @@ export function getSafeEnvInfo(config: EnvConfig): Record<string, unknown> {
     nodeEnv: config.NODE_ENV,
     logLevel: config.LOG_LEVEL,
     debugHttp: config.DEBUG_HTTP,
+    readOnly: config.LODGIFY_READ_ONLY,
     apiKeyPresent: !!config.LODGIFY_API_KEY,
     apiKeyLength: config.LODGIFY_API_KEY.length,
     apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
@@ -247,4 +269,4 @@ export class EnvironmentError extends Error {
 }
 
 // Export the schemas for testing
-export { apiKeySchema, logLevelSchema, debugHttpSchema, envSchema }
+export { apiKeySchema, logLevelSchema, debugHttpSchema, readOnlySchema, envSchema }

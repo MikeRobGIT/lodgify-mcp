@@ -23,11 +23,22 @@ This is a Model Context Protocol (MCP) server that exposes Lodgify Public API v2
    - Handles tool invocations and resource queries
    - Manages stdio communication with MCP clients
 
-2. **Lodgify HTTP Client** (`src/lodgify.ts`)
-   - Implements authenticated requests to Lodgify API v2
-   - Handles 429 rate limiting with exponential backoff
-   - Supports bracket notation for complex query parameters
-   - Always targets `https://api.lodgify.com`
+2. **Lodgify Orchestrator** (`src/lodgify-orchestrator.ts`)
+   - Unified API for all Lodgify endpoints (v1 and v2)
+   - Centralized authentication and configuration
+   - Read-only mode support for operational safety
+   - Health monitoring and status reporting
+
+3. **Core Modules** (`src/core/`)
+   - HTTP client (`src/core/http/`) with retry and rate limiting
+   - Error handling (`src/core/errors/`) with structured error types
+   - Rate limiter (`src/core/rate-limiter/`) with sliding window implementation
+   - Retry logic (`src/core/retry/`) with exponential backoff
+
+4. **API Modules** (`src/api/v1/`, `src/api/v2/`)
+   - Modular API client implementations
+   - TypeScript interfaces for all endpoints
+   - Specialized clients for bookings, properties, rates, webhooks, etc.
 
 ## Development Commands
 
@@ -149,7 +160,18 @@ params = {
 - Integration tests for all MCP tools
 - Clear separation between MCP server and HTTP client layers
 
+## Debugging
+
+When testing the MCP server during development:
+1) Stop the currently running server process (Ctrl+C).
+2) Restart locally via:
+   - `bun dev` (hot re-run) or
+   - `bun run build && bun start` (from `dist/`).
+3) If using an MCP client (e.g., Claude or VS Code), restart the MCP session after code changes. Hot-reload is not supported.
+4) For CLI testing, re-run `bin/lodgify-mcp.js` after each change.
+
 ## Task Master AI Instructions
 
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
+- The owner of the repository is mikerobgit. the repository name is lodgify-mcp

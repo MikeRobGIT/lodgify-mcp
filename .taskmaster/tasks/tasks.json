@@ -931,11 +931,329 @@
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Remove Non-Existent Lodgify API Endpoints from MCP Server and HTTP Client",
+        "description": "Audit and systematically remove all Lodgify API endpoints from server.ts and lodgify.ts that are not present in the official v2 API documentation, ensuring only supported endpoints remain registered and implemented.",
+        "details": "1. Obtain the latest Lodgify v2 API documentation from https://docs.lodgify.com and compile a definitive list of all officially supported endpoints, including their HTTP methods and paths.\n\n2. In src/server.ts (MCP tool registrations) and src/lodgify.ts (HTTP client methods), identify all currently implemented endpoints, focusing on availability, rate management, booking CRUD, availability updates, and webhook endpoints.\n\n3. For each implemented endpoint, cross-reference with the official documentation to verify its existence and support in v2. Mark any endpoints not present in the documentation for removal.\n\n4. Remove all code, tool registrations, and method implementations for the 11 non-existent endpoints from both files. Ensure that any related Zod schemas, input/output types, and handler logic are also deleted to prevent dead code.\n\n5. Refactor any code that references the removed endpoints to avoid runtime errors or broken tool dependencies. Update documentation and tool catalogs as needed to reflect the reduced set of supported endpoints.\n\n6. Follow best practices for API integration maintenance: use version control to track all removals, ensure all changes are atomic and well-documented in commit messages, and update any internal API catalogs or OpenAPI/Swagger specs if maintained.\n\n7. If possible, add comments or documentation indicating the audit date and the source of truth (API docs URL) for future maintainers.",
+        "testStrategy": "1. Manually verify that all endpoints remaining in server.ts and lodgify.ts are present in the official Lodgify v2 API documentation, with correct HTTP methods and paths.\n\n2. Run the MCP server and ensure it starts without errors, and that all removed endpoints are no longer registered or accessible via the MCP interface.\n\n3. Attempt to invoke each previously removed endpoint (via tests or manual calls) and confirm that they are not available and return appropriate errors (e.g., unregistered tool or 404).\n\n4. Run the full test suite to ensure no references to removed endpoints remain and that all existing functionality passes.\n\n5. Review documentation and tool catalogs to confirm they accurately reflect the current set of supported endpoints.",
+        "status": "done",
+        "dependencies": [
+          2,
+          7,
+          13,
+          14
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Compile Definitive List of Supported Lodgify v2 API Endpoints",
+            "description": "Obtain the latest Lodgify v2 API documentation and extract a comprehensive list of all officially supported endpoints, including their HTTP methods and paths.",
+            "dependencies": [],
+            "details": "Access https://docs.lodgify.com or equivalent authoritative sources to enumerate every endpoint, method, and path supported in Lodgify API v2. Organize this data for easy cross-referencing.",
+            "status": "done",
+            "testStrategy": "Verify the compiled list against the official documentation to ensure completeness and accuracy."
+          },
+          {
+            "id": 2,
+            "title": "Inventory All Implemented Endpoints in MCP Server and HTTP Client",
+            "description": "Identify and document all Lodgify API endpoints currently implemented in src/server.ts and src/lodgify.ts, including their HTTP methods and paths.",
+            "dependencies": [
+              "18.1"
+            ],
+            "details": "Review the codebase to list every endpoint registered or implemented, focusing on availability, rate management, booking CRUD, availability updates, and webhook endpoints.",
+            "status": "done",
+            "testStrategy": "Cross-check the inventory with the code to ensure no implemented endpoint is missed."
+          },
+          {
+            "id": 3,
+            "title": "Cross-Reference Implemented Endpoints with Official API Documentation",
+            "description": "For each implemented endpoint, verify its existence and support in the official Lodgify v2 API documentation. Mark endpoints not present in the documentation for removal.",
+            "dependencies": [
+              "18.2"
+            ],
+            "details": "Systematically compare the implemented endpoints list with the definitive API documentation. Clearly flag any endpoints that are not officially supported.",
+            "status": "done",
+            "testStrategy": "Ensure every implemented endpoint is either validated as supported or marked for removal, with supporting documentation."
+          },
+          {
+            "id": 4,
+            "title": "Remove Non-Existent Endpoints and Associated Code",
+            "description": "Delete all code, tool registrations, and method implementations for endpoints not present in the official documentation from both src/server.ts and src/lodgify.ts, including related schemas and handler logic.",
+            "dependencies": [
+              "18.3"
+            ],
+            "details": "Remove all references to non-existent endpoints, ensuring that Zod schemas, input/output types, and handler logic are also deleted to prevent dead code.",
+            "status": "done",
+            "testStrategy": "Manually verify that all removed endpoints and related code are no longer present in the codebase."
+          },
+          {
+            "id": 5,
+            "title": "Refactor References and Update Documentation",
+            "description": "Refactor any code that referenced removed endpoints to avoid runtime errors or broken tool dependencies, and update internal documentation and tool catalogs to reflect the changes.",
+            "dependencies": [
+              "18.4"
+            ],
+            "details": "Update any code, documentation, or catalogs that referenced the removed endpoints. Add comments indicating the audit date and documentation source for future maintainers.",
+            "status": "done",
+            "testStrategy": "Run the MCP server to confirm it starts without errors and that all removed endpoints are no longer accessible. Review documentation for accuracy."
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "title": "Implement v1 Webhook endpoints with TypeScript types, client methods, and MCP tool registration",
+        "description": "Create MCP tool implementations for webhook management operations including listing webhooks, subscribing to events, and unsubscribing from events with proper TypeScript typing and validation",
+        "details": "Add to lodgify.ts:\n1. listWebhooks(params?: Record<string, any>):\n   - GET /v2/webhooks\n   - Support filtering by status, event type\n   - Return list of active webhook subscriptions\n\n2. subscribeWebhook(payload: WebhookSubscription):\n   - POST /v2/webhooks/subscribe\n   - Required fields: event, targetUrl\n   - TypeScript interface:\n   ```typescript\n   interface WebhookSubscription {\n     event: string; // e.g., 'booking.created', 'booking.updated'\n     targetUrl: string; // HTTPS endpoint URL\n   }\n   ```\n   - Validate HTTPS URL format\n   - Return webhook ID and confirmation\n\n3. deleteWebhook(id: string):\n   - DELETE /v2/webhooks/{id}\n   - Path parameter for webhook ID\n   - Return success/failure status\n\nIn server.ts, register tools:\n1. lodgify.list_webhooks:\n   - Description: 'List all active webhook subscriptions'\n   - Optional params for filtering\n\n2. lodgify.subscribe_webhook:\n   - Description: 'Subscribe to webhook events'\n   - Zod schema:\n   ```typescript\n   z.object({\n     payload: z.object({\n       event: z.string().min(1),\n       targetUrl: z.string().url().startsWith('https://')\n     })\n   })\n   ```\n\n3. lodgify.delete_webhook:\n   - Description: 'Unsubscribe from webhook events'\n   - Zod schema: z.object({ id: z.string().min(1) })\n\nError handling:\n- Validate HTTPS requirement for targetUrl\n- Handle duplicate subscription attempts\n- Provide clear error for invalid webhook IDs\n- Return structured errors for failed subscriptions",
+        "testStrategy": "Test scenarios:\n1. List webhooks with no filters and verify response structure\n2. List webhooks with event type filter (e.g., only 'booking.created' events)\n3. Subscribe to a valid webhook event with HTTPS URL and verify returned webhook ID\n4. Attempt to subscribe with HTTP URL and verify rejection with appropriate error\n5. Attempt to subscribe with invalid event type and verify validation error\n6. Delete webhook with valid ID and verify success response\n7. Delete webhook with non-existent ID and verify 404 error handling\n8. Test Zod validation for missing required fields in subscribe payload\n9. Verify POST body serialization for webhook subscription\n10. Test DELETE path parameter substitution for webhook ID",
+        "status": "done",
+        "dependencies": [
+          3,
+          5,
+          7
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define TypeScript types for webhook endpoints",
+            "description": "Create interfaces for webhook subscription, webhook list response, and event types",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 19
+          },
+          {
+            "id": 2,
+            "title": "Implement webhook client methods in lodgify.ts",
+            "description": "Add listWebhooks(), subscribeWebhook(), and unsubscribeWebhook() methods to LodgifyClient",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 19
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "title": "Implement v1 Booking CRUD endpoints with TypeScript types, client methods, and MCP tool registration",
+        "description": "Create MCP tool implementations for booking creation, update, and deletion operations with proper TypeScript typing, validation, and comprehensive error handling",
+        "details": "Add to lodgify.ts:\n1. createBooking(payload: CreateBookingPayload):\n   - POST /v2/reservations/bookings\n   - TypeScript interface:\n   ```typescript\n   interface CreateBookingPayload {\n     propertyId: string;\n     from: string; // YYYY-MM-DD\n     to: string; // YYYY-MM-DD\n     guestBreakdown: {\n       adults: number;\n       children?: number;\n       infants?: number;\n     };\n     roomTypes: Array<{\n       id: string;\n       quantity?: number;\n     }>;\n     guest?: {\n       name?: string;\n       email?: string;\n       phone?: string;\n     };\n     specialRequests?: string;\n   }\n   ```\n   - Validate dates are in correct format\n   - Ensure from date is before to date\n   - Return created booking with ID\n\n2. updateBooking(id: string, payload: UpdateBookingPayload):\n   - PUT /v2/reservations/bookings/{id}\n   - TypeScript interface:\n   ```typescript\n   interface UpdateBookingPayload {\n     from?: string;\n     to?: string;\n     guestBreakdown?: {\n       adults?: number;\n       children?: number;\n       infants?: number;\n     };\n     status?: 'confirmed' | 'cancelled' | 'pending';\n     specialRequests?: string;\n   }\n   ```\n   - All fields optional for partial updates\n   - Validate date format if provided\n   - Return updated booking details\n\n3. deleteBooking(id: string):\n   - DELETE /v2/reservations/bookings/{id}\n   - Confirm booking exists before deletion\n   - Return success/failure status\n   - Consider soft vs hard delete based on API behavior\n\nIn server.ts:\n1. Add Zod schemas for each operation:\n   ```typescript\n   const CreateBookingSchema = z.object({\n     propertyId: z.string(),\n     from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),\n     to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),\n     guestBreakdown: z.object({\n       adults: z.number().min(1),\n       children: z.number().optional(),\n       infants: z.number().optional()\n     }),\n     roomTypes: z.array(z.object({\n       id: z.string(),\n       quantity: z.number().optional()\n     }))\n   });\n   ```\n\n2. Register tools:\n   - lodgify.create_booking\n   - lodgify.update_booking\n   - lodgify.delete_booking\n\n3. Implement proper error handling:\n   - Date validation errors\n   - Availability conflicts\n   - Invalid booking IDs\n   - Missing required fields",
+        "testStrategy": "Test scenarios:\n1. Create a valid booking with all required fields and verify returned booking ID and details\n2. Create booking with invalid date format and verify validation error\n3. Create booking with from date after to date and verify logical validation error\n4. Update existing booking with partial payload (only status) and verify other fields unchanged\n5. Update booking dates and verify availability is rechecked\n6. Delete existing booking and verify success response\n7. Attempt to delete non-existent booking and verify appropriate error\n8. Test Zod validation for missing required fields in create operation\n9. Test optional fields handling in update operation\n10. Verify proper URL encoding for path parameters in update/delete\n11. Test error response formatting for 409 conflicts (double booking)\n12. Verify TypeScript types prevent invalid field usage at compile time",
+        "status": "done",
+        "dependencies": [
+          3,
+          5,
+          7,
+          9
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Implement v1 Rate Management endpoint (update rates) with TypeScript types, client methods, and MCP tool registration",
+        "description": "Create MCP tool implementations for rate management operations including creating new rates and updating existing rates with proper TypeScript typing, validation, and error handling",
+        "details": "Add to lodgify.ts:\n1. createRate(payload: CreateRatePayload):\n   - POST /v2/rates\n   - TypeScript interface:\n   ```typescript\n   interface CreateRatePayload {\n     propertyId: string;\n     roomTypeId: string;\n     from: string; // YYYY-MM-DD\n     to: string; // YYYY-MM-DD\n     rate: number; // Rate amount per night\n     currency?: string; // Currency code (e.g., 'USD', 'EUR')\n     minStay?: number; // Minimum stay requirement\n     maxStay?: number; // Maximum stay limit\n   }\n   ```\n   - Validate date formats and logical constraints (from <= to)\n   - Return created rate ID and confirmation\n\n2. updateRate(id: string, payload: UpdateRatePayload):\n   - PUT /v2/rates/{id}\n   - TypeScript interface:\n   ```typescript\n   interface UpdateRatePayload {\n     from?: string; // YYYY-MM-DD\n     to?: string; // YYYY-MM-DD\n     rate?: number;\n     currency?: string;\n     minStay?: number;\n     maxStay?: number;\n   }\n   ```\n   - All fields optional for partial updates\n   - Validate any provided dates and constraints\n\n3. In server.ts, register tools:\n   - lodgify.create_rate with Zod schema:\n     ```typescript\n     z.object({\n       payload: z.object({\n         propertyId: z.string().min(1),\n         roomTypeId: z.string().min(1),\n         from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),\n         to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),\n         rate: z.number().positive(),\n         currency: z.string().length(3).optional(),\n         minStay: z.number().int().positive().optional(),\n         maxStay: z.number().int().positive().optional()\n       })\n     })\n     ```\n   - lodgify.update_rate with Zod schema for partial updates\n   - Add validation for minStay <= maxStay when both provided\n   - Tool descriptions should emphasize rate management for revenue optimization\n\n4. Error handling:\n   - 400: Invalid date format or rate constraints\n   - 404: Rate ID not found (for updates)\n   - 409: Conflict with existing rates for the same period\n   - 422: Business rule violations (e.g., rate too low/high)",
+        "testStrategy": "Test scenarios:\n1. Create a valid rate with all fields and verify returned rate ID and structure\n2. Create rate with minimum required fields (propertyId, roomTypeId, from, to, rate) and verify success\n3. Create rate with invalid date format (e.g., '2024/03/15') and verify validation error\n4. Create rate with from date after to date and verify logical validation error\n5. Create rate with negative rate amount and verify validation rejection\n6. Create rate with invalid currency code (e.g., 'USDD' or 'US') and verify format validation\n7. Update existing rate with partial fields (only rate amount) and verify selective update\n8. Update rate with new date range and verify proper date validation\n9. Update rate with minStay > maxStay and verify constraint validation\n10. Attempt to update non-existent rate ID and verify 404 error handling\n11. Create overlapping rates for same property/room and verify conflict handling\n12. Test rate creation with various currency codes (USD, EUR, GBP) for international support\n13. Verify rate amount precision handling for decimal values\n14. Test boundary conditions for minStay/maxStay (0, 1, 365 days)",
+        "status": "done",
+        "dependencies": [
+          3,
+          5,
+          7,
+          9
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Refactor Architecture: Abstract Server and Lodgify Files",
+        "description": "Complete architectural refactoring to transform monolithic codebase into modular, scalable structure suitable for long-term maintenance and team collaboration",
+        "details": "Transform the current monolithic architecture (server.ts: 2250 lines, lodgify.ts: 1296 lines) into a modular, layered architecture following SOLID principles. This refactoring will improve maintainability, testability, and enable parallel development. The new architecture will separate concerns into: Core Infrastructure (HTTP client, rate limiting, error handling), API Layer (v1/v2 endpoints organized by domain), MCP Layer (modular tool registration), and Utilities (shared helpers).",
+        "testStrategy": "Comprehensive testing strategy: 1) Add tests for existing functionality before refactoring, 2) Unit tests for each new module (target 90% coverage), 3) Integration tests for API endpoints, 4) E2E tests for MCP tools, 5) Performance benchmarks to ensure no degradation, 6) Regression testing at each phase",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Phase 1.1: Extract Core HTTP Infrastructure",
+            "description": "Extract HTTP client, retry logic, and rate limiting from lodgify.ts into core modules",
+            "details": "Create core/ directory structure and extract: 1) Base HTTP client class with authentication, 2) Retry logic with exponential backoff, 3) Rate limiter (60 req/min), 4) Generic request/response handling. Ensure backward compatibility and add comprehensive tests.\n<info added on 2025-08-26T04:33:54.619Z>\nSuccessfully completed Phase 1.1: Extract Core HTTP Infrastructure. \n\nCreated modular core infrastructure with proper separation of concerns:\n- BaseHttpClient: Abstract HTTP client with authentication, logging, and parameter handling\n- ExponentialBackoffRetry: Configurable retry mechanism with exponential backoff\n- SlidingWindowRateLimiter: Rate limiting implementation (60 req/min for Lodgify)\n- ErrorHandler: Centralized error formatting and sanitization\n\nAll modules have comprehensive test coverage (82 tests, 100% passing). Created proof-of-concept refactored LodgifyClient that uses these modules, maintaining full backward compatibility. All existing tests pass without modification.\n</info added on 2025-08-26T04:33:54.619Z>",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 22
+          },
+          {
+            "id": 2,
+            "title": "Phase 1.2: Create Error Handling System",
+            "description": "Extract and centralize error handling from lodgify.ts into dedicated error modules",
+            "details": "Create core/errors/ directory with: 1) Error handler class for consistent error formatting, 2) Custom error types (LodgifyError, ValidationError, RateLimitError), 3) Error sanitization for security, 4) Error recovery strategies. Maintain backward compatibility with existing error responses.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 3,
+            "title": "Phase 1.3: Extract Utility Functions",
+            "description": "Move date utilities and helper functions from lodgify.ts to dedicated utils modules",
+            "details": "Create utils/ directory and extract: 1) Date utilities (getTodayISO, addDays, compareDates, etc.), 2) Query parameter flattening logic, 3) Validation helpers, 4) Path parameter sanitization. Add unit tests for all utility functions.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 4,
+            "title": "Phase 2.1: Create Base API Client Architecture",
+            "description": "Design and implement base API client class with common functionality for all endpoints",
+            "details": "Create api/base-client.ts with: 1) Abstract base class extending core HTTP client, 2) Common API operations (list, get, create, update, delete patterns), 3) Version-specific URL builders, 4) Response type mappings, 5) Interface contracts for API modules. This will be the foundation for all API domain modules.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 5,
+            "title": "Phase 2.2: Extract Properties API Module",
+            "description": "Create dedicated Properties API client module from lodgify.ts property-related methods",
+            "details": "Create api/v2/properties/ directory with: 1) PropertiesClient class extending base API client, 2) Extract methods: listProperties, getProperty, listPropertyRooms, listDeletedProperties, 3) Property-specific types and interfaces, 4) Property helper functions (findProperties), 5) Comprehensive tests for all property operations.",
+            "status": "done",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 6,
+            "title": "Phase 2.3: Extract Bookings API Module",
+            "description": "Create dedicated Bookings API client module from lodgify.ts booking-related methods",
+            "details": "Create api/v2/bookings/ directory with: 1) BookingsClient class extending base API client, 2) Extract methods: listBookings, getBooking, createBooking, updateBooking, deleteBooking, payment links, key codes, check-in/out, 3) Booking-specific types and helpers, 4) Both v1 and v2 booking endpoints, 5) Integration tests for booking workflows.",
+            "status": "done",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 7,
+            "title": "Phase 2.4: Extract Availability API Module",
+            "description": "Create dedicated Availability API client module with helper methods",
+            "details": "Create api/v2/availability/ directory with: 1) AvailabilityClient class extending base API client, 2) Extract methods: getAvailabilityAll, getNextAvailableDate, checkDateRangeAvailability, getAvailabilityCalendar, 3) Complex availability calculation logic, 4) Date range validation and processing, 5) Performance optimizations for availability checks.",
+            "status": "done",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 8,
+            "title": "Phase 2.5: Extract Rates & Other API Modules",
+            "description": "Create Rates, Quote, and Messaging API client modules",
+            "details": "Create remaining API modules: 1) api/v2/rates/ - RatesClient with getDailyRates, getRateSettings, updateRates, 2) api/v2/quotes/ - QuoteClient with getQuote method, 3) api/v2/messaging/ - MessagingClient with getThread, 4) api/v1/ - Legacy v1 endpoints for webhooks and critical operations not in v2.",
+            "status": "done",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 9,
+            "title": "Phase 3.1: Create MCP Tool Registry System",
+            "description": "Design and implement modular tool registration system for MCP server",
+            "details": "Create mcp/registry.ts with: 1) Tool discovery mechanism to auto-load tools from mcp/tools/ directory, 2) Tool factory pattern for dynamic registration, 3) Tool metadata management (names, descriptions, schemas), 4) Dependency injection for API clients into tools, 5) Plugin architecture for easy tool addition.",
+            "status": "done",
+            "dependencies": [
+              5,
+              6,
+              7,
+              8
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 10,
+            "title": "Phase 3.2: Extract Property Tools",
+            "description": "Move all property-related MCP tools from server.ts to dedicated tool modules",
+            "details": "Create mcp/tools/properties/ directory with individual tool files: 1) list-properties.tool.ts, 2) get-property.tool.ts, 3) list-property-rooms.tool.ts, 4) find-properties.tool.ts (helper), 5) Each tool with its own Zod schema, handler function, and metadata. Maintain exact same tool signatures for backward compatibility.",
+            "status": "done",
+            "dependencies": [
+              9
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 11,
+            "title": "Phase 3.3: Extract Booking & Availability Tools",
+            "description": "Move booking and availability MCP tools from server.ts to dedicated modules",
+            "details": "Create mcp/tools/ subdirectories: 1) bookings/ - list-bookings.tool.ts, get-booking.tool.ts, create-booking.tool.ts, update-booking.tool.ts, delete-booking.tool.ts, payment-link tools, 2) availability/ - check-next-availability.tool.ts, check-date-range.tool.ts, get-calendar.tool.ts, 3) Each with schemas and handlers.",
+            "status": "done",
+            "dependencies": [
+              9
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 12,
+            "title": "Phase 3.4: Extract Remaining Tools & Create Lean Server",
+            "description": "Move all remaining MCP tools and create streamlined server.ts",
+            "details": "Complete MCP refactoring: 1) Extract rates/, quotes/, webhooks/, messaging/ tools, 2) Move all Zod schemas to mcp/schemas/ directory, 3) Create lean mcp/server.ts (<200 lines) that only handles: server initialization, tool registration via registry, resource registration, main startup logic. Remove all business logic from server.ts.",
+            "status": "done",
+            "dependencies": [
+              9,
+              10,
+              11
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 13,
+            "title": "Phase 4.1: Comprehensive Testing Suite",
+            "description": "Create comprehensive test coverage for all new modules",
+            "details": "Implement testing strategy: 1) Unit tests for each module (core, api, utils) targeting 90% coverage, 2) Integration tests for API endpoints verifying end-to-end flows, 3) E2E tests for MCP tools ensuring backward compatibility, 4) Performance benchmarks comparing old vs new architecture, 5) Mock fixtures and test utilities for consistent testing.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            "parentTaskId": 22
+          },
+          {
+            "id": 14,
+            "title": "Phase 4.2: Migration & Documentation",
+            "description": "Create migration path and comprehensive documentation",
+            "details": "Final migration steps: 1) Update build process in package.json for new structure, 2) Create compatibility layer/facade for smooth transition, 3) Write architecture decision records (ADRs), 4) Update README with new structure and contribution guide, 5) Create migration guide for existing users, 6) Document all public APIs and interfaces, 7) Final cleanup removing old monolithic files.",
+            "status": "done",
+            "dependencies": [
+              13
+            ],
+            "parentTaskId": 22
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-08-13T22:02:17.495Z",
-      "updated": "2025-08-25T16:26:42.028Z",
+      "updated": "2025-08-26T04:45:59.988Z",
       "description": "Tasks for master context"
     }
   }

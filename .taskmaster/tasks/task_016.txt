@@ -1,0 +1,37 @@
+# Task ID: 16
+# Title: Complete MCPO Integration with Documentation and Examples
+# Status: done
+# Dependencies: 15
+# Priority: high
+# Description: Finalize MCPO integration by creating comprehensive documentation, NPM/Bun scripts, REST API client examples, and updating the README with quick start guide. Includes testing documentation accuracy and ensuring compatibility with OpenWebUI.
+# Details:
+
+
+# Test Strategy:
+
+
+# Subtasks:
+## 1. Create Comprehensive MCPO Integration Documentation [done]
+### Dependencies: None
+### Description: Develop a detailed documentation file at docs/MCPO_INTEGRATION.md covering MCPO architecture, configuration, usage patterns, and integration points, ensuring clarity for both new and experienced developers.
+### Details:
+Analyze the existing codebase for MCPO-related modules, configuration files, and integration points. Follow the documentation structure and conventions used in other docs/ files. Include sections on architecture overview, configuration options, tool registration, security considerations, and usage examples. Reference actual code snippets and configuration blocks from the repository. Ensure the documentation is accurate, up-to-date, and covers OpenWebUI compatibility.
+
+## 2. Add NPM/Bun Scripts for MCPO Operations [done]
+### Dependencies: 16.1
+### Description: Define and document NPM and Bun scripts in package.json for MCPO operations, including start, build, and test commands, ensuring consistency with existing project scripts.
+### Details:
+Review the current package.json for script conventions and naming patterns. Add scripts for starting the MCPO server, building TypeScript sources, and running tests (unit, integration, and smoke). Ensure scripts work with both npm and bun, and document any environment variables or prerequisites. Update the documentation in docs/MCPO_INTEGRATION.md to reference these scripts with usage examples.
+
+## 3. Create Example REST API Client for OpenAPI Endpoints [done]
+### Dependencies: 16.2
+### Description: Develop a sample REST API client (e.g., in examples/mcpo-client.ts) that demonstrates how to interact with MCPO OpenAPI endpoints, including authentication and typical request/response flows.
+### Details:
+Identify the primary OpenAPI endpoints exposed by the MCPO server. Implement a TypeScript or JavaScript client using fetch or axios, following patterns used in existing example or client files. Include examples for authentication, making requests to at least two endpoints, and handling responses and errors. Reference this client in the documentation and README for quick start guidance.
+
+## 4. Update README with MCPO Quick Start and OpenWebUI Integration [done]
+### Dependencies: 16.3
+### Description: Revise the project README to include a quick start guide for MCPO, referencing the new documentation, scripts, and example client, and provide clear instructions for integrating with OpenWebUI.
+### Details:
+Follow the README structure and formatting conventions already present in the repository. Add a 'MCPO Quick Start' section with step-by-step setup, script usage, and example client invocation. Include a dedicated subsection for OpenWebUI integration, outlining configuration steps and compatibility notes. Ensure all links and references are accurate and up-to-date.
+

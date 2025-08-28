@@ -1,14 +1,55 @@
+import type { Mock } from 'bun:test'
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import {
-  createMcpTestServer,
-  validateErrorResponse,
-  validateToolMetadata,
-} from './mcp-test-server.js'
+import type { TestMcpServer } from './mcp-test-server.js'
+import { createMcpTestServer } from './mcp-test-server.js'
 import { fixtures } from './utils.js'
 
+interface MockFunction extends Mock<() => Promise<unknown>> {
+  mockClear(): void
+  mockResolvedValue(value: unknown): void
+  mockRejectedValue(error: Error): void
+}
+
+interface MockClient {
+  [key: string]: MockFunction | unknown
+  listProperties: MockFunction
+  getProperty: MockFunction
+  listPropertyRooms: MockFunction
+  listDeletedProperties: MockFunction
+  getDailyRates: MockFunction
+  getRateSettings: MockFunction
+  createRate: MockFunction
+  updateRate: MockFunction
+  listBookings: MockFunction
+  getBooking: MockFunction
+  getBookingPaymentLink: MockFunction
+  createBookingPaymentLink: MockFunction
+  updateKeyCodes: MockFunction
+  createBooking: MockFunction
+  updateBooking: MockFunction
+  deleteBooking: MockFunction
+  updatePropertyAvailability: MockFunction
+  subscribeWebhook: MockFunction
+  listWebhooks: MockFunction
+  unsubscribeWebhook: MockFunction
+  updateRates: MockFunction
+  availabilityAll: MockFunction
+  checkinBooking: MockFunction
+  checkoutBooking: MockFunction
+  getExternalBookings: MockFunction
+  getAvailabilityRoom: MockFunction
+  getAvailabilityProperty: MockFunction
+  getQuote: MockFunction
+  getThread: MockFunction
+  getNextAvailableDate: MockFunction
+  checkDateRangeAvailability: MockFunction
+  getAvailabilityCalendar: MockFunction
+  findProperties: MockFunction
+}
+
 describe('McpServer Integration Tests', () => {
-  let testServer: any
-  let mockClient: any
+  let testServer: TestMcpServer
+  let mockClient: MockClient
 
   beforeEach(async () => {
     // Create a comprehensive mock LodgifyClient
@@ -20,10 +61,48 @@ describe('McpServer Integration Tests', () => {
       listDeletedProperties: mock(() => Promise.resolve()),
 
       // Rates management
-      getDailyRates: mock(() => Promise.resolve()),
-      getRateSettings: mock(() => Promise.resolve()),
-      createRate: mock(() => Promise.resolve()),
-      updateRate: mock(() => Promise.resolve()),
+      getDailyRates: mock(() =>
+        Promise.resolve({
+          property_id: 123,
+          currency: 'USD',
+          rates: [
+            {
+              date: '2025-11-20',
+              rate: 150.0,
+              available: true,
+            },
+          ],
+        }),
+      ),
+      getRateSettings: mock(() =>
+        Promise.resolve({
+          property_id: 123,
+          currency: 'USD',
+          default_rate: 120.0,
+        }),
+      ),
+      createRate: mock(() =>
+        Promise.resolve({
+          rate_id: 'rate-789',
+          property_id: 123,
+          from: '2025-11-20',
+          to: '2025-11-25',
+          rate: 150.0,
+          currency: 'USD',
+          success: true,
+        }),
+      ),
+      updateRate: mock(() =>
+        Promise.resolve({
+          rate_id: 'rate-789',
+          property_id: 123,
+          from: '2025-11-20',
+          to: '2025-11-25',
+          rate: 160.0,
+          currency: 'USD',
+          success: true,
+        }),
+      ),
 
       // Booking management
       listBookings: mock(() => Promise.resolve()),
@@ -44,10 +123,19 @@ describe('McpServer Integration Tests', () => {
       getQuote: mock(() => Promise.resolve()),
       getThread: mock(() => Promise.resolve()),
 
-      // Webhooks
+      // Webhooks (v1)
       subscribeWebhook: mock(() => Promise.resolve()),
       listWebhooks: mock(() => Promise.resolve()),
-      deleteWebhook: mock(() => Promise.resolve()),
+      unsubscribeWebhook: mock(() => Promise.resolve()),
+
+      // Rate management (v1)
+      updateRates: mock(() => Promise.resolve()),
+
+      // Missing v2 endpoints
+      availabilityAll: mock(() => Promise.resolve()),
+      checkinBooking: mock(() => Promise.resolve()),
+      checkoutBooking: mock(() => Promise.resolve()),
+      getExternalBookings: mock(() => Promise.resolve()),
     }
 
     // Create test server with mock client
@@ -58,7 +146,7 @@ describe('McpServer Integration Tests', () => {
     // Clear all mocks
     Object.values(mockClient).forEach((mockFn) => {
       if (typeof mockFn === 'function' && 'mockClear' in mockFn) {
-        ;(mockFn as any).mockClear()
+        ;(mockFn as MockFunction).mockClear()
       }
     })
 
@@ -136,16 +224,19 @@ describe('McpServer Integration Tests', () => {
 
     test('should handle error propagation correctly', async () => {
       const client = testServer.getClientInstance()
-      const apiError = new Error('Lodgify 404: Not Found')
-      ;(apiError as any).status = 404
+      interface ErrorWithStatus extends Error {
+        status?: number
+      }
+      const apiError = new Error('Lodgify 404: Not Found') as ErrorWithStatus
+      apiError.status = 404
       mockClient.getProperty.mockRejectedValue(apiError)
 
       try {
         await client.getProperty('nonexistent')
         throw new Error('Should have thrown error')
-      } catch (error: any) {
-        expect(error.message).toContain('Not Found')
-        expect(error.status).toBe(404)
+      } catch (error) {
+        expect((error as Error).message).toContain('Not Found')
+        expect((error as ErrorWithStatus).status).toBe(404)
       }
     })
   })
@@ -228,9 +319,8 @@ describe('McpServer Integration Tests', () => {
       expect(typeof client.updateBooking).toBe('function')
       expect(typeof client.deleteBooking).toBe('function')
       expect(typeof client.subscribeWebhook).toBe('function')
-      expect(typeof client.deleteWebhook).toBe('function')
-      expect(typeof client.createRate).toBe('function')
-      expect(typeof client.updateRate).toBe('function')
+      expect(typeof client.unsubscribeWebhook).toBe('function')
+      expect(typeof client.updateRates).toBe('function')
 
       // Enhanced functionality is available
       expect(true).toBe(true) // Enhanced methods available

@@ -1,0 +1,84 @@
+# Task ID: 21
+# Title: Implement v1 Rate Management endpoint (update rates) with TypeScript types, client methods, and MCP tool registration
+# Status: done
+# Dependencies: 3, 5, 7, 9
+# Priority: medium
+# Description: Create MCP tool implementations for rate management operations including creating new rates and updating existing rates with proper TypeScript typing, validation, and error handling
+# Details:
+Add to lodgify.ts:
+1. createRate(payload: CreateRatePayload):
+   - POST /v2/rates
+   - TypeScript interface:
+   ```typescript
+   interface CreateRatePayload {
+     propertyId: string;
+     roomTypeId: string;
+     from: string; // YYYY-MM-DD
+     to: string; // YYYY-MM-DD
+     rate: number; // Rate amount per night
+     currency?: string; // Currency code (e.g., 'USD', 'EUR')
+     minStay?: number; // Minimum stay requirement
+     maxStay?: number; // Maximum stay limit
+   }
+   ```
+   - Validate date formats and logical constraints (from <= to)
+   - Return created rate ID and confirmation
+
+2. updateRate(id: string, payload: UpdateRatePayload):
+   - PUT /v2/rates/{id}
+   - TypeScript interface:
+   ```typescript
+   interface UpdateRatePayload {
+     from?: string; // YYYY-MM-DD
+     to?: string; // YYYY-MM-DD
+     rate?: number;
+     currency?: string;
+     minStay?: number;
+     maxStay?: number;
+   }
+   ```
+   - All fields optional for partial updates
+   - Validate any provided dates and constraints
+
+3. In server.ts, register tools:
+   - lodgify.create_rate with Zod schema:
+     ```typescript
+     z.object({
+       payload: z.object({
+         propertyId: z.string().min(1),
+         roomTypeId: z.string().min(1),
+         from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+         to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+         rate: z.number().positive(),
+         currency: z.string().length(3).optional(),
+         minStay: z.number().int().positive().optional(),
+         maxStay: z.number().int().positive().optional()
+       })
+     })
+     ```
+   - lodgify.update_rate with Zod schema for partial updates
+   - Add validation for minStay <= maxStay when both provided
+   - Tool descriptions should emphasize rate management for revenue optimization
+
+4. Error handling:
+   - 400: Invalid date format or rate constraints
+   - 404: Rate ID not found (for updates)
+   - 409: Conflict with existing rates for the same period
+   - 422: Business rule violations (e.g., rate too low/high)
+
+# Test Strategy:
+Test scenarios:
+1. Create a valid rate with all fields and verify returned rate ID and structure
+2. Create rate with minimum required fields (propertyId, roomTypeId, from, to, rate) and verify success
+3. Create rate with invalid date format (e.g., '2024/03/15') and verify validation error
+4. Create rate with from date after to date and verify logical validation error
+5. Create rate with negative rate amount and verify validation rejection
+6. Create rate with invalid currency code (e.g., 'USDD' or 'US') and verify format validation
+7. Update existing rate with partial fields (only rate amount) and verify selective update
+8. Update rate with new date range and verify proper date validation
+9. Update rate with minStay > maxStay and verify constraint validation
+10. Attempt to update non-existent rate ID and verify 404 error handling
+11. Create overlapping rates for same property/room and verify conflict handling
+12. Test rate creation with various currency codes (USD, EUR, GBP) for international support
+13. Verify rate amount precision handling for decimal values
+14. Test boundary conditions for minStay/maxStay (0, 1, 365 days)

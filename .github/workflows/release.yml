@@ -46,7 +46,7 @@ jobs:
         run: |
           echo "Checking required files..."
           [ -f "dist/server.js" ] || (echo "❌ dist/server.js not found" && exit 1)
-          [ -f "dist/lodgify.js" ] || (echo "❌ dist/lodgify.js not found" && exit 1)
+          [ -f "dist/lodgify-orchestrator.js" ] || (echo "❌ dist/lodgify-orchestrator.js not found" && exit 1)
           [ -f "bin/lodgify-mcp.js" ] || (echo "❌ bin/lodgify-mcp.js not found" && exit 1)
           [ -x "bin/lodgify-mcp.js" ] || (echo "❌ bin/lodgify-mcp.js not executable" && exit 1)
           echo "✅ All required files present and executable"

@@ -1,6 +1,6 @@
 # Task ID: 14
 # Title: Refactor Lodgify MCP Server to Use High-Level McpServer and Adopt Latest SDK Best Practices
-# Status: pending
+# Status: done
 # Dependencies: 7, 13
 # Priority: medium
 # Description: Migrate the Lodgify MCP server from the low-level Server class to the high-level McpServer class, update tool registration with enhanced metadata, declare explicit server capabilities, implement robust JSON-RPC error handling, and add optional features such as notification debouncing and dynamic tool management.
@@ -34,55 +34,67 @@ Consider security best practices (e.g., environment variable management, authent
 8. Run the full integration and smoke test suite to ensure no regressions in tool functionality or server stability.
 
 # Subtasks:
-## 1. Migrate Server Initialization to High-Level McpServer [pending]
+## 1. Migrate Server Initialization to High-Level McpServer [done]
 ### Dependencies: None
 ### Description: Refactor src/server.ts to instantiate and configure the Lodgify MCP server using the high-level McpServer class from @modelcontextprotocol/sdk, replacing all usage of the lower-level Server class. Ensure all server initialization, transport setup, and tool/resource registration are migrated to the new API.
 ### Details:
 Update all server setup logic to use McpServer, including environment variable loading, transport configuration (e.g., STDIO, HTTP), and initial tool/resource registration. Remove or adapt any legacy Server class code.
+<info added on 2025-08-14T23:22:32.066Z>
+Currently at 8 tools converted out of approximately 25 total tools. Working through batch conversion to complete the migration of all remaining tools to the new McpServer registration format. This will ensure comprehensive tool availability while maintaining enhanced metadata and schema validation.
+</info added on 2025-08-14T23:22:32.066Z>
 
-## 2. Enhance Tool Registration with Comprehensive Metadata [pending]
+## 2. Enhance Tool Registration with Comprehensive Metadata [done]
 ### Dependencies: 14.1
 ### Description: Update tool registration to include detailed metadata for each tool, such as title, displayName, description, longDescription, input schema annotations, and relevant flags (e.g., dangerous, requiresConfirmation). Follow SDK conventions for tool annotations to improve LLM and UI integration.
 ### Details:
 For each registered tool, provide clear and descriptive metadata fields. Annotate input schemas with field descriptions and validation details. Ensure destructive actions are flagged appropriately.
 
-## 3. Declare and Advertise Explicit Server Capabilities [pending]
+## 3. Declare and Advertise Explicit Server Capabilities [done]
 ### Dependencies: 14.1
 ### Description: Explicitly declare supported server capabilities (e.g., supported transports, notification support, dynamic tool registration) using the McpServer API. Ensure these capabilities are advertised in the MCP handshake and capability discovery mechanisms.
 ### Details:
 Configure the McpServer instance to expose all relevant capabilities. Update handshake and discovery logic to reflect the server's features and supported operations.
 
-## 4. Implement Robust JSON-RPC Error Handling [pending]
+## 4. Implement Robust JSON-RPC Error Handling [done]
 ### Dependencies: 14.1
 ### Description: Enhance error handling throughout the server to conform to standard JSON-RPC error patterns. Return structured error objects with code, message, and optional data fields. Map common Lodgify API errors and validation failures to appropriate JSON-RPC errors, ensuring all tool handlers propagate errors in the correct format.
 ### Details:
 Refactor tool handlers and middleware to catch and format errors according to JSON-RPC standards. Implement error mapping for known Lodgify API and validation errors.
+<info added on 2025-08-15T00:23:48.646Z>
+Successfully resolved Zod version conflict by downgrading from v4.0.17 to v3.25.76 to match SDK requirements, eliminating the 'keyValidator._parse is not a function' runtime error. Removed all 28 redundant Schema.parse() calls from tool handlers since McpServer performs validation automatically. Verified proper error handling using McpError class with appropriate JSON-RPC error codes (-32602 for invalid params, -32603 for internal errors, -32603 for API errors). All tools tested and confirmed working with correct error propagation through the JSON-RPC pipeline.
+</info added on 2025-08-15T00:23:48.646Z>
 
-## 5. Implement Optional Features: Notification Debouncing and Dynamic Tool Management [pending]
+## 5. Implement Optional Features: Notification Debouncing and Dynamic Tool Management [done]
 ### Dependencies: 14.1, 14.2, 14.3, 14.4
 ### Description: Add advanced features including notification debouncing (to coalesce or throttle repeated notifications) and dynamic tool management (enabling runtime registration/deregistration of tools if supported by the SDK).
 ### Details:
 Integrate logic for debouncing notifications to reduce client noise. Implement APIs or mechanisms for dynamic tool registration and deregistration, allowing the server to adapt its capabilities at runtime.
+<info added on 2025-08-15T00:50:44.732Z>
+Notification debouncing is now implemented, with the debouncedNotificationMethods option added to McpServer initialization to coalesce tools/list_changed and resources/list_changed notifications. For dynamic tool management, the current MCP SDK (v1.17.3) does not support runtime enabling or disabling of tools after registration, as registerTool does not return a manipulable handle. Achieving dynamic tool management would require either a proxy layer to check tool enabled state, a custom registry wrapping tool handling, or waiting for future SDK updates that provide such APIs. At present, all tools are registered statically at server startup.
+</info added on 2025-08-15T00:50:44.732Z>
+<info added on 2025-08-15T01:17:36.746Z>
+Completed notification debouncing implementation using the debouncedNotificationMethods configuration in McpServer, which coalesces tools/list_changed and resources/list_changed notifications to reduce client noise. Documented that dynamic tool management is not supported by MCP SDK v1.17.3, as registerTool() does not provide handles for runtime enabling or disabling of tools. Achieving this would require a proxy layer, a custom registry, or future SDK updates. All tools are currently registered statically at server startup, which satisfies current requirements.
+</info added on 2025-08-15T01:17:36.746Z>
 
-## 6. Update and Expand Automated and Manual Tests [pending]
+## 6. Update and Expand Automated and Manual Tests [done]
 ### Dependencies: 14.1, 14.2, 14.3, 14.4, 14.5
 ### Description: Review and update all automated and manual tests to cover the new McpServer implementation, enhanced tool metadata, capability declarations, error handling, and optional features. Ensure compatibility with existing tool handlers and the Lodgify HTTP client.
 ### Details:
 Expand test coverage to include new server behaviors, metadata exposure, capability discovery, error scenarios, and dynamic tool management. Update documentation and comments to reflect new patterns and capabilities.
 
-## 7. Implement File-Based Logging for STDIO Transport [pending]
+## 7. Implement File-Based Logging for STDIO Transport [done]
 ### Dependencies: 14.1
 ### Description: Update logging practices to use a file-based logger (e.g., pino or winston) for STDIO transports, ensuring logs do not interfere with MCP protocol communication over stdout/stderr
 ### Details:
 Replace console.log/error/warn calls with file-based logging to prevent interference with MCP stdio communication. Configure logger to write to a log file in the project directory or system temp folder. Ensure all debug, info, warning, and error messages are properly routed to the file logger.
 
-## 8. Update Documentation and Code Comments [pending]
+## 8. Update Documentation and Code Comments [done]
 ### Dependencies: 14.1, 14.2, 14.3, 14.4, 14.5
 ### Description: Update README.md, inline code comments, and JSDoc comments to reflect the new McpServer patterns, enhanced capabilities, and best practices
 ### Details:
 Update README.md with new server architecture details, capability descriptions, and usage examples. Add comprehensive JSDoc comments to all public APIs and tool handlers. Update inline comments to explain McpServer-specific patterns and design decisions. Document any breaking changes or migration notes for users upgrading from the previous version.
 
-## 9. Review Security and Environment Variable Management [pending]
+## 9. Review Security and Environment Variable Management [done]
 ### Dependencies: 14.1, 14.7
 ### Description: Audit and enhance security practices including environment variable management, API key handling, and authentication patterns according to MCP best practices
 ### Details:

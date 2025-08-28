@@ -4,125 +4,137 @@ Complete reference for all available Lodgify MCP tools and their parameters.
 
 ## Property Management
 
-### `lodgify.list_properties`
+### `lodgify_list_properties`
 List all properties with optional filtering and pagination.
 
 **Parameters:**
-- `params` (optional): Query parameters for filtering
-  - `page`: Page number
-  - `limit`: Results per page
-  - `includeDeleted`: Include deleted properties
+- `wid` (optional): Website ID
+- `updatedSince` (optional): Return only properties modified since this datetime
+- `includeCount` (optional): Return the total number of results (default: false)
+- `includeInOut` (optional): Include available dates for arrival or departure (default: false)
+- `page` (optional): Page number to retrieve (default: 1)
+- `size` (optional): Number of items per page (max 50, default: 50)
 
 **Example:**
 ```javascript
 {
-  "params": {
-    "page": 1,
-    "limit": 10,
-    "includeDeleted": false
-  }
+  "wid": 12345,
+  "updatedSince": "2024-01-01T00:00:00Z",
+  "includeCount": true,
+  "includeInOut": false,
+  "page": 1,
+  "size": 10
 }
 ```
 
-### `lodgify.get_property`
+### `lodgify_get_property`
 Get detailed information about a specific property.
 
 **Parameters:**
 - `id` (required): Property ID
+- `wid` (optional): Website ID
+- `includeInOut` (optional): Include available dates for arrival or departure (default: false)
 
 **Example:**
 ```javascript
 {
-  "id": "prop-123"
+  "id": 123,
+  "includeInOut": true
 }
 ```
 
-### `lodgify.list_property_rooms`
+### `lodgify_list_property_rooms`
 List all rooms for a specific property.
 
 **Parameters:**
-- `propertyId` (required): Property ID
+- `propertyId` (required): Property ID to list room types for
 
 **Example:**
 ```javascript
 {
-  "propertyId": "prop-123"
+  "propertyId": "684855"
 }
 ```
 
-### `lodgify.list_deleted_properties`
+### `lodgify_list_deleted_properties`
 List properties that have been deleted.
 
 **Parameters:**
 - `params` (optional): Query parameters for filtering
-
-### `lodgify.update_property_availability`
-Update availability settings for a property.
-
-**Parameters:**
-- `propertyId` (required): Property ID
-- `payload` (required): Availability update details
-  - `from`: Start date (YYYY-MM-DD)
-  - `to`: End date (YYYY-MM-DD)
-  - `available`: Availability status (boolean)
-  - `minStay`: Minimum stay requirement (optional)
-  - `maxStay`: Maximum stay limit (optional)
-
-**Example:**
-```javascript
-{
-  "propertyId": "prop-123",
-  "payload": {
-    "from": "2025-12-20",
-    "to": "2025-12-31",
-    "available": false,
-    "minStay": 3
-  }
-}
-```
-
-## Booking Management
-
-### `lodgify.list_bookings`
-List bookings with optional filtering by date range, status, etc.
-
-**Parameters:**
-- `params` (optional): Query parameters
-  - `from`: Start date (YYYY-MM-DD)
-  - `to`: End date (YYYY-MM-DD)
-  - `status`: Booking status filter
+  - `deletedSince`: Filter properties deleted after this date
 
 **Example:**
 ```javascript
 {
   "params": {
-    "from": "2025-11-01",
-    "to": "2025-11-30",
-    "status": "confirmed"
+    "deletedSince": "2024-01-01T00:00:00Z"
   }
 }
 ```
 
-### `lodgify.get_booking`
-Get details of a specific booking.
+## Booking & Reservation Management
+
+### `lodgify_list_bookings`
+List all bookings with comprehensive filtering options. Maximum page size is 50 items per request.
 
 **Parameters:**
-- `id` (required): Booking ID
+- `page` (optional): Page number to retrieve (default: 1)
+- `size` (optional): Number of items per page (max: 50, default: 50)
+- `includeCount` (optional): Include total number of results (default: false)
+- `includeExternal` (optional): Include external bookings (default: false)
+- `includeQuoteDetails` (optional): Include quote details (default: false)
+- `includeTransactions` (optional): Include details about transactions and schedule (default: false)
+- `stayFilter` (optional): Filter bookings by stay dates (Upcoming, Current, Historic, All, ArrivalDate, DepartureDate)
+- `stayFilterDate` (optional): Date to filter when using ArrivalDate or DepartureDate in stayFilter
+- `updatedSince` (optional): Include only bookings updated since this date
+- `trash` (optional): Query bookings that are in trash (False, True, All)
 
-### `lodgify.get_booking_payment_link`
-Retrieve the payment link for a booking.
+**Example:**
+```javascript
+{
+  "page": 1,
+  "size": 10,
+  "includeCount": true,
+  "stayFilter": "Upcoming",
+  "updatedSince": "2024-03-01T00:00:00Z"
+}
+```
+
+### `lodgify_get_booking`
+Get detailed information about a specific booking.
 
 **Parameters:**
-- `id` (required): Booking ID
+- `id` (required): Unique booking/reservation ID to retrieve
 
-### `lodgify.create_booking_payment_link`
-Create a new payment link for a booking.
+**Example:**
+```javascript
+{
+  "id": "BK001"
+}
+```
+
+### `lodgify_get_booking_payment_link`
+Get existing payment link for a booking including payment status, amount due, and link expiration.
 
 **Parameters:**
-- `id` (required): Booking ID
-- `payload` (required): Payment link details
-  - `amount`: Payment amount
-  - `currency`: Currency code
+- `id` (required): Booking ID to get payment link for
+
+**Example:**
+```javascript
+{
+  "id": "book-456"
+}
+```
+
+### `lodgify_create_booking_payment_link`
+Generate a secure payment link for a booking allowing guests to pay outstanding balances online.
+
+**Parameters:**
+- `id` (required): Booking ID to create payment link for
+- `payload` (required): Payment link configuration
+  - `amount` (optional): Payment amount (defaults to booking balance)
+  - `currency` (optional): Currency code (e.g., USD, EUR)
+  - `description` (optional): Payment description for guest (max 500 chars)
 
 **Example:**
 ```javascript
@@ -130,101 +142,299 @@ Create a new payment link for a booking.
   "id": "book-456",
   "payload": {
     "amount": 1000,
-    "currency": "USD"
+    "currency": "USD",
+    "description": "Final payment for booking"
   }
 }
 ```
 
-### `lodgify.update_key_codes`
-Update key codes for a booking (for smart locks).
+### `lodgify_update_key_codes`
+Update access key codes for a booking to provide guests with property entry information.
 
 **Parameters:**
-- `id` (required): Booking ID
-- `payload` (required): Key codes data
-
-### `lodgify.create_booking`
-Create a new booking in the system.
-
-**Parameters:**
-- `payload` (required): Booking details
-  - `propertyId`: Property ID
-  - `from`: Start date (YYYY-MM-DD)
-  - `to`: End date (YYYY-MM-DD)
-  - `guestBreakdown`: Guest breakdown object
-    - `adults`: Number of adults (required)
-    - `children`: Number of children (optional)
-    - `infants`: Number of infants (optional)
-  - `roomTypes`: Array of room type objects
-    - `id`: Room type ID
-    - `quantity`: Number of rooms (optional)
+- `id` (required): Booking ID to update key codes for
+- `payload` (required): Access key codes and entry information
+  - `keyCodes` (required): Array of access codes/keys for the property
 
 **Example:**
 ```javascript
 {
+  "id": 456,
   "payload": {
-    "propertyId": "prop-123",
-    "from": "2025-12-01",
-    "to": "2025-12-07",
-    "guestBreakdown": {
-      "adults": 2,
-      "children": 1
-    },
-    "roomTypes": [
-      {
-        "id": "room-456",
-        "quantity": 1
-      }
-    ]
+    "keyCodes": ["4567", "ABCD"]
   }
 }
 ```
 
-### `lodgify.update_booking`
-Update an existing booking.
+### `lodgify_checkin_booking`
+Mark a booking as checked in. Updates the booking status to reflect that the guest has arrived.
 
 **Parameters:**
-- `id` (required): Booking ID
-- `payload` (required): Updated booking details
-  - `status`: Booking status (optional)
-  - `from`: New start date (optional)
-  - `to`: New end date (optional)
-  - `guestBreakdown`: Updated guest breakdown (optional)
+- `id` (required): Booking ID to check in
+- `time` (required): Check-in time in ISO 8601 date-time format
 
 **Example:**
 ```javascript
 {
-  "id": "book-789",
-  "payload": {
-    "status": "confirmed",
-    "guestBreakdown": {
-      "adults": 3,
-      "children": 0
+  "id": 456,
+  "time": "2024-03-15T15:00:00Z"
+}
+```
+
+### `lodgify_checkout_booking`
+Mark a booking as checked out. Updates the booking status to reflect that the guest has departed.
+
+**Parameters:**
+- `id` (required): Booking ID to check out
+- `time` (required): Check-out time in ISO 8601 date-time format
+
+**Example:**
+```javascript
+{
+  "id": 456,
+  "time": "2024-03-22T11:00:00Z"
+}
+```
+
+### `lodgify_get_external_bookings`
+Retrieve external bookings associated with a property. These are bookings made through external channels (OTAs).
+
+**Parameters:**
+- `id` (required): Property ID to get external bookings for
+
+**Example:**
+```javascript
+{
+  "id": "684855"
+}
+```
+
+### `lodgify_create_booking`
+Create a new booking in the system. This v1 endpoint provides direct booking creation functionality.
+
+**Parameters:**
+- `property_id` (required): Property ID for the booking
+- `room_type_id` (required): Room type ID
+- `arrival` (required): Arrival date (YYYY-MM-DD)
+- `departure` (required): Departure date (YYYY-MM-DD)
+- `guest_name` (required): Primary guest name
+- `adults` (required): Number of adult guests (minimum 1)
+- `guest_email` (optional): Guest email address
+- `guest_phone` (optional): Guest phone number
+- `children` (optional): Number of children (default: 0)
+- `infants` (optional): Number of infants
+- `status` (optional): Booking status (booked, tentative, declined, confirmed)
+- `source` (optional): Booking source or channel
+- `notes` (optional): Internal notes or special requests
+
+**Example:**
+```javascript
+{
+  "property_id": 684855,
+  "room_type_id": 751902,
+  "arrival": "2025-08-27",
+  "departure": "2025-08-28",
+  "guest_name": "Test Guest",
+  "guest_email": "test@example.com",
+  "adults": 2,
+  "children": 0,
+  "status": "booked",
+  "source": "Direct Website"
+}
+```
+
+### `lodgify_update_booking`
+Update an existing booking's details. This v1 endpoint provides comprehensive booking modification capabilities.
+
+**Parameters:**
+- `id` (required): Booking ID to update
+- `arrival` (optional): New arrival date (YYYY-MM-DD)
+- `departure` (optional): New departure date (YYYY-MM-DD)
+- `guest_name` (optional): Updated guest name
+- `guest_email` (optional): Updated guest email
+- `guest_phone` (optional): Updated guest phone
+- `adults` (optional): Updated number of adults (minimum 1)
+- `children` (optional): Updated number of children
+- `infants` (optional): Updated number of infants
+- `property_id` (optional): New property ID
+- `room_type_id` (optional): New room type ID
+- `status` (optional): Updated booking status
+- `source` (optional): Updated booking source
+- `notes` (optional): Updated notes
+
+**Example:**
+```javascript
+{
+  "id": 789,
+  "arrival": "2024-06-16",
+  "departure": "2024-06-21",
+  "guest_name": "Updated Guest Name",
+  "adults": 3,
+  "status": "tentative"
+}
+```
+
+### `lodgify_delete_booking`
+Permanently delete a booking from the system. Use with caution as this action cannot be undone.
+
+**Parameters:**
+- `id` (required): Booking ID to delete permanently
+
+**Example:**
+```javascript
+{
+  "id": 789
+}
+```
+
+## Rates & Pricing
+
+### `lodgify_daily_rates`
+View daily pricing rates for properties across date ranges. Shows the actual nightly rates that would be charged for specific dates.
+
+**Parameters:**
+- `roomTypeId` (required): Room Type ID
+- `houseId` (required): House/Property ID
+- `startDate` (required): Start date for rates calendar (YYYY-MM-DD)
+- `endDate` (required): End date for rates calendar (YYYY-MM-DD)
+
+**Example:**
+```javascript
+{
+  "roomTypeId": 123,
+  "houseId": 456,
+  "startDate": "2024-03-01",
+  "endDate": "2024-03-31"
+}
+```
+
+### `lodgify_rate_settings`
+Retrieve rate configuration settings including pricing rules, modifiers, seasonal adjustments, and rate calculation parameters.
+
+**Parameters:**
+- `params` (required): Query parameters for rate settings
+  - `houseId` (optional): Property ID
+
+**Example:**
+```javascript
+{
+  "params": {
+    "houseId": 456
+  }
+}
+```
+
+### `lodgify_update_rates`
+Update rates for properties and room types. This v1 endpoint provides direct rate modification capability.
+
+**Parameters:**
+- `property_id` (required): Property ID to update rates for
+- `rates` (required): Array of rate updates to apply
+  - `room_type_id` (required): Room type ID
+  - `start_date` (required): Start date for rate period (YYYY-MM-DD)
+  - `end_date` (required): End date for rate period (YYYY-MM-DD)
+  - `price_per_day` (required): Rate amount per day
+  - `min_stay` (optional): Minimum stay requirement
+  - `currency` (optional): Currency code (e.g., USD, EUR)
+
+**Example:**
+```javascript
+{
+  "property_id": 123,
+  "rates": [
+    {
+      "room_type_id": 456,
+      "start_date": "2024-06-01",
+      "end_date": "2024-08-31",
+      "price_per_day": 150.00,
+      "min_stay": 3,
+      "currency": "USD"
     }
-  }
+  ]
 }
 ```
 
-### `lodgify.delete_booking`
-Delete or cancel a booking.
+## Quotes & Messaging
+
+### `lodgify_get_quote`
+Retrieve an existing quote that was created when a booking was made. This does NOT calculate new pricing.
 
 **Parameters:**
-- `id` (required): Booking ID
+- `propertyId` (required): Property ID with existing booking/quote
+- `params` (required): Quote retrieval parameters
+  - Dates (from/to) that match the booking
+  - Room types (roomTypes[0].Id)  
+  - Guest breakdown (guest_breakdown[adults])
+  - Uses bracket notation for complex parameters
 
 **Example:**
 ```javascript
 {
-  "id": "book-789"
+  "propertyId": "684855",
+  "params": {
+    "from": "2025-09-01",
+    "to": "2025-09-03",
+    "guest_breakdown[adults]": 2
+  }
 }
 ```
 
-## Availability & Rates
+### `lodgify_get_thread`
+Retrieve a messaging conversation thread including all messages, participants, and thread metadata.
 
-### ✨ **Recommended Availability Tools**
+**Parameters:**
+- `threadGuid` (required): Unique thread identifier (GUID) for the conversation
 
-### `lodgify.check_next_availability`
-**Best for: "When is this property next available?"**
+**Example:**
+```javascript
+{
+  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
 
-Find the next available date for a property by analyzing bookings.
+## Property Discovery & Helper Tools
+
+### `lodgify_find_properties`
+Find properties in the system when you don't know the exact property ID. Searches properties by name and gets property IDs from bookings.
+
+**Parameters:**
+- `searchTerm` (optional): Search term to filter properties by name (case-insensitive)
+- `includePropertyIds` (optional): Include property IDs found in recent bookings (default: true)
+- `limit` (optional): Maximum number of properties to return (default: 10, max: 50)
+
+**Example:**
+```javascript
+{
+  "searchTerm": "beach",
+  "includePropertyIds": true,
+  "limit": 5
+}
+```
+
+## Availability & Calendar
+
+### `lodgify_availability_all`
+Get all availabilities for the calling user. Returns availability information for all properties for a given period.
+
+**Parameters:**
+- `params` (optional): Query parameters for filtering availabilities
+  - `start` (optional): Calendar start date (ISO 8601 date-time)
+  - `end` (optional): Calendar end date (ISO 8601 date-time)
+  - `includeDetails` (optional): Include booking status details
+
+**Example:**
+```javascript
+{
+  "params": {
+    "start": "2024-03-01T00:00:00Z",
+    "end": "2024-03-31T23:59:59Z",
+    "includeDetails": true
+  }
+}
+```
+
+### `lodgify_check_next_availability`
+Find the next available date for a property by analyzing bookings. Returns when the property is next available and for how long.
 
 **Parameters:**
 - `propertyId` (required): Property ID
@@ -234,304 +444,130 @@ Find the next available date for a property by analyzing bookings.
 **Example:**
 ```javascript
 {
-  "propertyId": "435707",
-  "fromDate": "2025-08-14",
-  "daysToCheck": 30
+  "propertyId": "123",
+  "fromDate": "2024-03-15",
+  "daysToCheck": 90
 }
 ```
 
-**Response:**
-```json
-{
-  "nextAvailableDate": "2025-08-19",
-  "availableUntil": "2025-09-13", 
-  "blockedPeriods": [
-    {
-      "arrival": "2025-08-16",
-      "departure": "2025-08-18",
-      "status": "Booked",
-      "isBlocked": true
-    }
-  ],
-  "totalDaysAvailable": 25,
-  "message": "Available from 2025-08-19 to 2025-09-13 (25 days)"
-}
-```
-
-### `lodgify.check_date_range_availability`
-**Best for: "Are these specific dates available?"**
-
-Check if a specific date range is available for booking.
+### `lodgify_check_date_range_availability`
+Verify if a specific date range is available for booking at a property. Returns detailed availability status including any conflicts or restrictions.
 
 **Parameters:**
-- `propertyId` (required): Property ID
-- `checkInDate` (required): Check-in date (YYYY-MM-DD)
-- `checkOutDate` (required): Check-out date (YYYY-MM-DD)
+- `propertyId` (required): Property ID to check availability for
+- `checkInDate` (required): Desired check-in date (YYYY-MM-DD)
+- `checkOutDate` (required): Desired check-out date (YYYY-MM-DD)
 
 **Example:**
 ```javascript
 {
-  "propertyId": "435707",
-  "checkInDate": "2025-08-20",
-  "checkOutDate": "2025-08-25"
+  "propertyId": "123",
+  "checkInDate": "2025-12-20",
+  "checkOutDate": "2025-12-27"
 }
 ```
 
-**Response:**
-```json
-{
-  "isAvailable": true,
-  "conflictingBookings": [],
-  "message": "Available for 5 nights from 2025-08-20 to 2025-08-25"
-}
-```
-
-### `lodgify.get_availability_calendar`
-**Best for: "Show me a calendar view of availability"**
-
-Get a calendar view showing available and blocked dates.
+### `lodgify_get_availability_calendar`
+Retrieve a visual calendar view of property availability showing available, booked, and blocked dates.
 
 **Parameters:**
-- `propertyId` (required): Property ID
-- `fromDate` (optional): Start date (YYYY-MM-DD, defaults to today)
-- `daysToShow` (optional): Number of days to show (1-90, defaults to 30)
+- `propertyId` (required): Property ID to get calendar for
+- `fromDate` (optional): Calendar start date (YYYY-MM-DD, defaults to today)
+- `daysToShow` (optional): Number of days to display (1-90, default: 30 days)
 
 **Example:**
 ```javascript
 {
-  "propertyId": "435707",
-  "fromDate": "2025-08-14",
-  "daysToShow": 14
+  "propertyId": "123",
+  "fromDate": "2025-12-01",
+  "daysToShow": 30
 }
 ```
 
-**Response:**
-```json
-{
-  "calendar": [
-    {
-      "date": "2025-08-14",
-      "isAvailable": false,
-      "bookingStatus": "Tentative",
-      "isToday": true
-    },
-    {
-      "date": "2025-08-15",
-      "isAvailable": true,
-      "isToday": false
-    }
-  ],
-  "summary": {
-    "totalDays": 14,
-    "availableDays": 10,
-    "blockedDays": 4,
-    "availabilityRate": 71
-  }
-}
+## Webhooks & Notifications
+
+### `lodgify_list_webhooks`
+List all webhook subscriptions configured for the account. Returns webhook details including event types, target URLs, status, and last triggered timestamps.
+
+**Parameters:**
+None
+
+**Example:**
+```javascript
+{}
 ```
 
-### **Raw API Availability Tools**
-
-### `lodgify.availability_property`
-Get raw availability data for an entire property (advanced use).
+### `lodgify_subscribe_webhook`
+Subscribe to webhook events to receive real-time notifications when specific events occur in Lodgify. Supports various event types including booking changes, rate updates, and guest messages.
 
 **Parameters:**
-- `propertyId` (required): Property ID
-- `params` (optional): Query parameters
-  - `from`: Start date (YYYY-MM-DD)
-  - `to`: End date (YYYY-MM-DD)
-
-**Note:** Returns technical availability data. For easier availability checking, use the recommended tools above.
-
-### `lodgify.availability_room`
-Get raw availability data for a specific room type (advanced use).
-
-**Parameters:**
-- `propertyId` (required): Property ID
-- `roomTypeId` (required): Room Type ID
-- `params` (optional): Query parameters
-  - `from`: Start date (YYYY-MM-DD)
-  - `to`: End date (YYYY-MM-DD)
-
-**Note:** Returns technical availability data. For easier availability checking, use the recommended tools above.
-
-### `lodgify.daily_rates`
-Get daily rates calendar for a property.
-
-**Parameters:**
-- `params` (required): Query parameters
-  - `propertyId`: Property ID
-  - `from`: Start date
-  - `to`: End date
-
-### `lodgify.rate_settings`
-Get rate configuration settings.
-
-**Parameters:**
-- `params` (required): Query parameters
-  - `propertyId`: Property ID
-
-### `lodgify.create_rate`
-Create or update rates for a property.
-
-**Parameters:**
-- `payload` (required): Rate details
-  - `propertyId`: Property ID
-  - `roomTypeId`: Room type ID
-  - `from`: Start date (YYYY-MM-DD)
-  - `to`: End date (YYYY-MM-DD)
-  - `rate`: Rate amount (positive number)
-  - `currency`: Currency code (optional, 3 characters)
+- `event` (required): Event type to subscribe to (rate_change, availability_change, booking_new_any_status, booking_new_status_booked, booking_change, booking_status_change_booked, booking_status_change_tentative, booking_status_change_open, booking_status_change_declined, guest_message_received)
+- `target_url` (required): HTTPS URL endpoint to receive webhook notifications
 
 **Example:**
 ```javascript
 {
-  "payload": {
-    "propertyId": "prop-123",
-    "roomTypeId": "room-456",
-    "from": "2025-12-01",
-    "to": "2025-12-31",
-    "rate": 150.00,
-    "currency": "USD"
-  }
+  "event": "booking_new_status_booked",
+  "target_url": "https://example.com/webhooks/lodgify"
 }
 ```
 
-### `lodgify.update_rate`
-Update a specific rate.
+### `lodgify_unsubscribe_webhook`
+Remove a webhook subscription to stop receiving event notifications. This is a permanent action that cannot be undone.
 
 **Parameters:**
-- `id` (required): Rate ID
-- `payload` (required): Updated rate details
-  - `rate`: New rate amount (optional)
-  - `currency`: Currency code (optional)
-  - `from`: New start date (optional)
-  - `to`: New end date (optional)
+- `id` (required): Webhook subscription ID to remove
 
 **Example:**
 ```javascript
 {
-  "id": "rate-789",
-  "payload": {
-    "rate": 175.00,
-    "currency": "EUR"
-  }
+  "id": "webhook_123"
 }
 ```
 
-## Quotes & Messaging
+## Resources
 
-### `lodgify.get_quote`
-Generate a quote for a property stay with complex parameters.
+### `lodgify://health`
+Health check resource providing server status information.
 
-**Parameters:**
-- `propertyId` (required): Property ID
-- `params` (required): Quote parameters
+**Response includes:**
+- `ok`: Health status (boolean)
+- `baseUrl`: API base URL
+- `version`: Server version
+- `apiKeyConfigured`: API key status
+- `timestamp`: Check timestamp
 
-**Example with bracket notation:**
-```javascript
-{
-  "propertyId": "prop-123",
-  "params": {
-    "from": "2025-11-20",
-    "to": "2025-11-25",
-    "roomTypes[0].Id": 999,
-    "roomTypes[0].quantity": 1,
-    "guest_breakdown[adults]": 2,
-    "guest_breakdown[children]": 0,
-    "currency": "USD"
-  }
-}
-```
+## Complex Parameter Handling
 
-### `lodgify.get_thread`
-Retrieve a messaging thread.
-
-**Parameters:**
-- `threadGuid` (required): Thread GUID
-
-## Webhook Management
-
-### `lodgify.subscribe_webhook`
-Subscribe to a webhook event to receive notifications.
-
-**Parameters:**
-- `payload` (required): Webhook subscription details
-  - `event`: Event name to subscribe to
-  - `targetUrl`: URL where webhook notifications will be sent
-
-**Example:**
-```javascript
-{
-  "payload": {
-    "event": "booking.created",
-    "targetUrl": "https://your-app.com/webhooks/lodgify"
-  }
-}
-```
-
-### `lodgify.list_webhooks`
-List all active webhook subscriptions.
-
-**Parameters:**
-- `params` (optional): Query parameters for filtering
-  - `page`: Page number
-  - `limit`: Results per page
-
-**Example:**
-```javascript
-{
-  "params": {
-    "page": 1,
-    "limit": 10
-  }
-}
-```
-
-### `lodgify.delete_webhook`
-Unsubscribe from a webhook event.
-
-**Parameters:**
-- `id` (required): Webhook ID
-
-**Example:**
-```javascript
-{
-  "id": "webhook-123"
-}
-```
-
-## Health Check
-
-The server provides a health check resource:
-- **URI**: `lodgify://health`
-- **Returns**: Server status, API configuration, and version info
-
-## Complex Parameter Support
-
-The server supports Lodgify's bracket notation for complex nested parameters:
+The Lodgify API supports bracket notation for complex nested parameters:
 
 ```javascript
-// Nested objects are automatically flattened:
-{
-  "guest_breakdown": {
-    "adults": 2,
-    "children": 1
-  }
-}
-// Becomes: guest_breakdown[adults]=2&guest_breakdown[children]=1
-
-// Arrays with objects:
-{
-  "roomTypes": [
-    { "Id": 123, "quantity": 1 }
-  ]
-}
-// Becomes: roomTypes[0][Id]=123&roomTypes[0][quantity]=1
-
-// Pre-bracketed keys are preserved:
-{
-  "filters[type]": "VILLA",
-  "filters[amenities][0]": "POOL"
+// Example: Complex room and guest parameters
+params = {
+  "roomTypes[0].Id": 123,
+  "roomTypes[1].Id": 456,
+  "guest_breakdown[adults]": 2,
+  "guest_breakdown[children]": 1,
+  "guest_breakdown[infants]": 0
 }
 ```
+
+## Error Handling
+
+All tools return structured error responses with:
+- HTTP status codes
+- Error messages
+- Request context
+- Detailed error information when available
+
+## Rate Limiting
+
+The server automatically handles Lodgify's rate limits with:
+- Exponential backoff retry logic
+- Respect for `Retry-After` headers
+- Maximum 5 retry attempts
+- Backoff up to 30 seconds
+
+## Authentication
+
+All requests require a valid Lodgify API key configured via the `LODGIFY_API_KEY` environment variable.

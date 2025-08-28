@@ -1,20 +1,32 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { LodgifyClient } from '../src/lodgify.js'
+import { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { createMockFetch, createMockResponse } from './utils.js'
 
 describe('Query Parameter Flattening', () => {
-  let client: LodgifyClient
+  let client: LodgifyOrchestrator
   let mockFetch: ReturnType<typeof createMockFetch>
 
   beforeEach(() => {
-    client = new LodgifyClient('test-api-key')
-    mockFetch = createMockFetch([createMockResponse(200, { success: true })])
+    client = new LodgifyOrchestrator({ apiKey: 'test-api-key' })
+    mockFetch = createMockFetch([
+      createMockResponse(200, {
+        property_id: 123,
+        currency: 'USD',
+        rates: [
+          {
+            date: '2025-11-20',
+            rate: 150.0,
+            available: true,
+          },
+        ],
+      }),
+    ])
     global.fetch = mockFetch
   })
 
   describe('Bracket notation handling', () => {
     test('should handle simple bracket notation', async () => {
-      await client.getQuote('prop-123', {
+      await client.quotes.getQuoteRaw('prop-123', {
         'roomTypes[0].Id': 999,
         'guest_breakdown[adults]': 2,
       })
@@ -25,7 +37,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle nested objects', async () => {
-      await client.getQuote('prop-123', {
+      await client.quotes.getQuoteRaw('prop-123', {
         guest_breakdown: {
           adults: 2,
           children: 1,
@@ -40,7 +52,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle arrays with objects', async () => {
-      await client.getQuote('prop-123', {
+      await client.quotes.getQuoteRaw('prop-123', {
         roomTypes: [
           { Id: 123, quantity: 1 },
           { Id: 456, quantity: 2 },
@@ -55,7 +67,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle arrays with primitive values', async () => {
-      await client.listProperties({
+      await client.properties.listProperties({
         propertyIds: [100, 200, 300],
       })
 
@@ -66,7 +78,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle mixed bracket and object notation', async () => {
-      await client.getQuote('prop-123', {
+      await client.quotes.getQuoteRaw('prop-123', {
         from: '2025-11-20',
         to: '2025-11-25',
         'roomTypes[0].Id': 999,
@@ -88,7 +100,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle deeply nested structures', async () => {
-      await client.listProperties({
+      await client.properties.listProperties({
         filters: {
           location: {
             country: 'US',
@@ -110,7 +122,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should skip null and undefined values', async () => {
-      await client.listProperties({
+      await client.properties.listProperties({
         includeDeleted: true,
         deletedSince: null,
         deletedBefore: undefined,
@@ -125,7 +137,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle boolean values', async () => {
-      await client.listProperties({
+      await client.properties.listProperties({
         includeDeleted: true,
         includeArchived: false,
       })
@@ -136,7 +148,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle number values', async () => {
-      await client.listProperties({
+      await client.properties.listProperties({
         page: 1,
         limit: 50,
         minPrice: 100.5,
@@ -151,7 +163,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle special characters in values', async () => {
-      await client.listProperties({
+      await client.properties.listProperties({
         search: 'Beach & Mountain View',
         tags: ['luxury+spa', 'pet-friendly'],
       })
@@ -164,7 +176,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle empty objects and arrays', async () => {
-      await client.listProperties({
+      await client.properties.listProperties({
         filters: {},
         tags: [],
         page: 1,
@@ -178,7 +190,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle date strings correctly', async () => {
-      await client.getDailyRates({
+      await client.rates.getDailyRates({
         propertyId: 'prop-123',
         from: '2025-11-20T00:00:00Z',
         to: '2025-11-25T23:59:59Z',
@@ -191,7 +203,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should preserve pre-bracketed keys', async () => {
-      await client.getQuote('prop-123', {
+      await client.quotes.getQuoteRaw('prop-123', {
         'filters[type]': 'VILLA',
         'filters[amenities][0]': 'POOL',
         'filters[amenities][1]': 'WIFI',
@@ -206,14 +218,14 @@ describe('Query Parameter Flattening', () => {
 
   describe('URL construction', () => {
     test('should construct correct URL with no parameters', async () => {
-      await client.listProperties()
+      await client.properties.listProperties()
 
       const calledUrl = mockFetch.mock.calls[0][0] as string
       expect(calledUrl).toBe('https://api.lodgify.com/v2/properties')
     })
 
     test('should construct correct URL with parameters', async () => {
-      await client.listProperties({ page: 1, limit: 10 })
+      await client.properties.listProperties({ page: 1, limit: 10 })
 
       const calledUrl = mockFetch.mock.calls[0][0] as string
       expect(calledUrl).toContain('https://api.lodgify.com/v2/properties?')
@@ -222,7 +234,7 @@ describe('Query Parameter Flattening', () => {
     })
 
     test('should handle multiple parameter combinations', async () => {
-      await client.getQuote('prop-123', {
+      await client.quotes.getQuoteRaw('prop-123', {
         from: '2025-11-20',
         to: '2025-11-25',
         'roomTypes[0].Id': 999,
