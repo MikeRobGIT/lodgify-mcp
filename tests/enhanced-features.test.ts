@@ -135,23 +135,23 @@ describe('Enhanced McpServer Features', () => {
   })
 
   describe('Integration with Existing Functionality', () => {
-    test('should maintain all existing tool functionality', () => {
-      const originalToolNames = [
-        'lodgify_list_properties',
-        'lodgify_get_property',
-        'lodgify_list_property_rooms',
-        'lodgify_list_deleted_properties',
-        'lodgify_daily_rates',
-        'lodgify_rate_settings',
-        'lodgify_list_bookings',
-        'lodgify_get_booking',
-        'lodgify_get_booking_payment_link',
-        'lodgify_create_booking_payment_link',
-        'lodgify_update_key_codes',
-        'lodgify_get_quote',
-        'lodgify_get_thread',
-      ]
+    const originalToolNames = [
+      'lodgify_list_properties',
+      'lodgify_get_property',
+      'lodgify_list_property_rooms',
+      'lodgify_list_deleted_properties',
+      'lodgify_daily_rates',
+      'lodgify_rate_settings',
+      'lodgify_list_bookings',
+      'lodgify_get_booking',
+      'lodgify_get_booking_payment_link',
+      'lodgify_create_booking_payment_link',
+      'lodgify_update_key_codes',
+      'lodgify_get_quote',
+      'lodgify_get_thread',
+    ]
 
+    test('should maintain all existing tool functionality', () => {
       // All original tools should still be available
       originalToolNames.forEach((toolName) => {
         expect(toolName).toMatch(/^lodgify_/)
@@ -174,7 +174,7 @@ describe('Enhanced McpServer Features', () => {
       })
 
       // Should have both original and enhanced tools
-      const totalExpectedTools = 13 + 4 // Original + Enhanced
+      const totalExpectedTools = new Set([...originalToolNames, ...enhancedToolNames]).size
       expect(totalExpectedTools).toBe(17) // We should have about 17 tools total
     })
   })

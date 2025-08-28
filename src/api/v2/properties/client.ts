@@ -98,7 +98,8 @@ export class PropertiesClient extends BaseApiModule {
    * GET /v2/deletedProperties
    */
   async listDeletedProperties(params?: PropertySearchParams): Promise<PropertiesListResponse> {
-    // Use a different base path for deleted properties
+    // Note: deletedProperties endpoint is at /v2/deletedProperties (not /v2/properties/deletedProperties)
+    // Therefore we bypass the inherited request method which would prepend the 'properties' basePath
     const result = await this.client.request<Property[] | PropertiesListResponse>(
       'GET',
       'deletedProperties',

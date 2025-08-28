@@ -84,8 +84,8 @@ export function validateErrorResponse(error: ErrorResponse, expect: ExpectFuncti
   // Check for JSON-RPC error structure if it's an McpError
   if (error.code !== undefined) {
     if (typeof error.code === 'number') {
-      expect(error.code).toBeGreaterThanOrEqual(-32999)
-      expect(error.code).toBeLessThanOrEqual(-32000)
+      expect(error.code).toBeGreaterThan(-33000)
+      expect(error.code).toBeLessThan(-31999)
     } else {
       expect(typeof error.code).toBe('string')
       expect((error.code as string).length).toBeGreaterThan(0)

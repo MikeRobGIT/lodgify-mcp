@@ -12,13 +12,7 @@ Run comprehensive code quality checks and automatically fix any issues that can 
 
    This runs: lint → typecheck → format → build → test
 
-2. If linting errors are found, automatically fix them:
-
-   ```bash
-   bun run lint:fix
-   ```
-
-3. After any fixes, run the full check again to verify everything passes:
+2. If there are unfixable issues, run the full check again to verify everything passes:
 
    ```bash
    bun run check
