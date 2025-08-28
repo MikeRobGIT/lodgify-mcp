@@ -970,9 +970,7 @@ Example request:
     async ({ params }) => {
       try {
         // Map houseId to propertyId if provided
-        const rateParams = params?.houseId 
-          ? { propertyId: params.houseId.toString() }
-          : {}
+        const rateParams = params?.houseId ? { propertyId: params.houseId.toString() } : {}
         const result = await getClient().rates.getRateSettings(rateParams)
         return {
           content: [

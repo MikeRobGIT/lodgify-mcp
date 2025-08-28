@@ -30,8 +30,8 @@ export class RatesV1Client extends BaseApiModule {
     if (!data || typeof data !== 'object') {
       throw new Error('Rate data is required')
     }
-    if (!data.property_id) {
-      throw new Error('Property ID is required')
+    if (!Number.isInteger(data.property_id) || data.property_id <= 0) {
+      throw new Error('Property ID must be a positive integer')
     }
     if (!data.rates || !Array.isArray(data.rates) || data.rates.length === 0) {
       throw new Error('At least one rate entry is required')
@@ -39,8 +39,8 @@ export class RatesV1Client extends BaseApiModule {
 
     // Validate each rate entry
     for (const rate of data.rates) {
-      if (!rate.room_type_id) {
-        throw new Error('Room type ID is required for all rate entries')
+      if (!Number.isInteger(rate.room_type_id) || rate.room_type_id <= 0) {
+        throw new Error('Room type ID must be a positive integer for all rate entries')
       }
       if (!rate.start_date || !rate.end_date) {
         throw new Error('Start date and end date are required for all rate entries')

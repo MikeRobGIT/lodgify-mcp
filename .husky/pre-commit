@@ -1,12 +1,12 @@
 #!/bin/sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🔍 Running pre-commit checks..."
+echo "🔍 Running checks..."
 
 # Run linting and formatting
-bun run pre-commit || {
-  echo "❌ Pre-commit checks failed. Please fix the issues and try again."
+bun run check || {
+  echo "❌ checks failed. Please fix the issues and try again."
   exit 1
 }
 
-echo "✅ Pre-commit checks passed!"
+echo "✅ checks passed!"
