@@ -960,13 +960,20 @@ Example request:
         'Retrieve rate configuration settings including pricing rules, modifiers, seasonal adjustments, and rate calculation parameters. This shows HOW rates are calculated, not the actual prices themselves. Use lodgify_daily_rates to view actual pricing. Essential for understanding rate calculation logic and configuring pricing strategies.',
       inputSchema: {
         params: z
-          .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-          .describe('Query parameters for rate settings. Available: houseId (int32)'),
+          .object({
+            houseId: z.number().int().optional().describe('House/Property ID'),
+          })
+          .optional()
+          .describe('Query parameters for rate settings'),
       },
     },
-    async () => {
+    async ({ params }) => {
       try {
-        const result = await getClient().rates.getRateSettings({})
+        // Map houseId to propertyId if provided
+        const rateParams = params?.houseId 
+          ? { propertyId: params.houseId.toString() }
+          : {}
+        const result = await getClient().rates.getRateSettings(rateParams)
         return {
           content: [
             {
