@@ -116,6 +116,15 @@ export interface BookingSearchParams {
   source?: string
   sort?: 'checkIn' | 'checkOut' | 'created' | 'updated' | 'guest'
   order?: 'asc' | 'desc'
+  // Additional Lodgify v2 API parameters
+  includeCount?: boolean
+  stayFilter?: 'Upcoming' | 'Current' | 'Historic' | 'All' | 'ArrivalDate' | 'DepartureDate'
+  stayFilterDate?: string
+  updatedSince?: string
+  includeTransactions?: boolean
+  includeExternal?: boolean
+  includeQuoteDetails?: boolean
+  trash?: 'False' | 'True' | 'All'
 }
 
 /**

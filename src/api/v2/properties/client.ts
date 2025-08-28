@@ -58,11 +58,14 @@ export class PropertiesClient extends BaseApiModule {
    * Get detailed information about a specific property
    * GET /v2/properties/{id}
    */
-  async getProperty(id: string): Promise<Property> {
+  async getProperty(
+    id: string,
+    params?: { wid?: number; includeInOut?: boolean },
+  ): Promise<Property> {
     if (!id) {
       throw new Error('Property ID is required')
     }
-    return this.get<Property>('', id)
+    return this.request<Property>('GET', id, params ? { params } : undefined)
   }
 
   /**

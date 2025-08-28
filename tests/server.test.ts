@@ -1,5 +1,6 @@
 import type { Mock } from 'bun:test'
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import pkg from '../package.json' with { type: 'json' }
 import type { TestServer } from './test-server.js'
 import { createTestServer } from './test-server.js'
 import { fixtures } from './utils.js'
@@ -338,7 +339,7 @@ describe('MCP Server Integration Tests', () => {
       expect(healthData).toMatchObject({
         ok: true,
         baseUrl: 'https://api.lodgify.com',
-        version: '0.1.0',
+        version: pkg.version,
         apiKeyConfigured: true,
         timestamp: expect.any(String),
       })

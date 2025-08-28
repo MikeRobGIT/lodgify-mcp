@@ -33,15 +33,36 @@ export abstract class BaseApiModule implements ApiModule {
 
   /**
    * Build full endpoint path
+   * Handles various edge cases in path concatenation
    */
   protected buildEndpoint(path: string): string {
-    // Remove leading slash from path if present
-    const cleanPath = path.startsWith('/') ? path.slice(1) : path
-    // Combine base path with specific path, handling empty cleanPath
-    if (!this.basePath) {
+    // Handle empty or null path
+    if (!path || path === '') {
+      return this.basePath || ''
+    }
+
+    // Clean up path: remove leading/trailing slashes and normalize multiple slashes
+    const cleanPath = path
+      .replace(/^\/+/, '') // Remove leading slashes
+      .replace(/\/+$/, '') // Remove trailing slashes
+      .replace(/\/+/g, '/') // Replace multiple slashes with single slash
+
+    // Handle empty basePath
+    if (!this.basePath || this.basePath === '') {
       return cleanPath
     }
-    return cleanPath ? `${this.basePath}/${cleanPath}` : this.basePath
+
+    // Clean up basePath: remove trailing slashes and normalize multiple slashes
+    const cleanBasePath = this.basePath
+      .replace(/\/+$/, '') // Remove trailing slashes
+      .replace(/\/+/g, '/') // Replace multiple slashes with single slash
+
+    // Combine base path with specific path
+    if (!cleanPath) {
+      return cleanBasePath
+    }
+
+    return `${cleanBasePath}/${cleanPath}`
   }
 
   /**

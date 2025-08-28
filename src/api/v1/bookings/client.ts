@@ -246,28 +246,14 @@ export class BookingsV1Client extends BaseApiModule {
       throw new Error('Booking ID is required')
     }
 
-    try {
-      // For delete operations, use the singular path structure
-      const deletePath = `reservation/booking/${id}`
-      const result = await this.client.request<DeleteBookingV1Response>('DELETE', deletePath, {
-        apiVersion: 'v1',
-      })
+    // For delete operations, use the singular path structure
+    const deletePath = `reservation/booking/${id}`
+    const result = await this.client.request<DeleteBookingV1Response>('DELETE', deletePath, {
+      apiVersion: 'v1',
+    })
 
-      // Log the actual result to understand what the API returns
-      console.log('Delete booking result:', result)
-
-      return {
-        success: true,
-        message: `Booking ${id} has been successfully deleted`,
-        deleted_booking_id: typeof id === 'string' ? parseInt(id, 10) : id,
-      }
-    } catch (error) {
-      console.log('Delete booking error:', error)
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to delete booking',
-      }
-    }
+    // Result logged internally by client
+    return result
   }
 
   /**

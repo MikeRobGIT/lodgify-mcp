@@ -10,7 +10,7 @@ Run comprehensive code quality checks and automatically fix any issues that can 
    bun run check
    ```
 
-   This runs: lint → typecheck → build → test
+   This runs: lint → typecheck → format → build → test
 
 2. If linting errors are found, automatically fix them:
 

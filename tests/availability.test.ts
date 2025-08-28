@@ -46,9 +46,15 @@ describe('Date Utility Functions', () => {
   })
 
   test('isDateInRange correctly checks if date is in range', () => {
+    // Test dates within the range
     expect(isDateInRange('2025-08-15', '2025-08-14', '2025-08-16')).toBe(true)
+
+    // Test boundary conditions: start is inclusive, end is exclusive
+    // This behavior follows standard interval notation [start, end)
     expect(isDateInRange('2025-08-14', '2025-08-14', '2025-08-16')).toBe(true) // Start boundary (inclusive)
     expect(isDateInRange('2025-08-16', '2025-08-14', '2025-08-16')).toBe(false) // End boundary (exclusive)
+
+    // Test dates outside the range
     expect(isDateInRange('2025-08-13', '2025-08-14', '2025-08-16')).toBe(false)
     expect(isDateInRange('2025-08-17', '2025-08-14', '2025-08-16')).toBe(false)
   })
@@ -325,8 +331,10 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
 
   describe('error handling', () => {
     test('should handle API errors gracefully', async () => {
-      // Use 400 error which doesn't retry to avoid timeout
-      global.fetch = mock(async () => createMockResponse(400, { error: 'Bad Request' }))
+      // Simulate a network error to test error handling without relying on status codes
+      global.fetch = mock(async () => {
+        throw new Error('Network error')
+      })
 
       await expect(client.availability.getNextAvailableDate('123')).rejects.toThrow()
 

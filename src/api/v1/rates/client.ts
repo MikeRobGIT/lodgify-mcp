@@ -66,23 +66,12 @@ export class RatesV1Client extends BaseApiModule {
       }
     }
 
-    try {
-      await this.request<void>('POST', 'savewithoutavailability', {
-        body: data,
-      })
-
-      return {
-        success: true,
-        message: `Successfully updated ${data.rates.length} rate entries for property ${data.property_id}`,
-        updated_rates: data.rates.length,
-        property_id: data.property_id,
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to update rates',
-        property_id: data.property_id,
-      }
+    await this.request<void>('POST', 'savewithoutavailability', { body: data })
+    return {
+      success: true,
+      message: `Successfully updated ${data.rates.length} rate entries for property ${data.property_id}`,
+      updated_rates: data.rates.length,
+      property_id: data.property_id,
     }
   }
 }

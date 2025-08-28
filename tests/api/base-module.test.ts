@@ -86,6 +86,40 @@ describe('BaseApiModule', () => {
         ),
       ).toBe('items')
     })
+
+    test('should handle empty path', () => {
+      expect(module.testBuildEndpoint('')).toBe('test-resources')
+    })
+
+    test('should handle multiple slashes in path', () => {
+      expect(module.testBuildEndpoint('//items//subpath//')).toBe('test-resources/items/subpath')
+    })
+
+    test('should handle basePath with trailing slashes', () => {
+      const moduleTrailingBase = new BaseApiModule(client, {
+        name: 'test',
+        version: 'v2',
+        basePath: 'test-resources/',
+      })
+      expect(
+        (
+          moduleTrailingBase as unknown as { buildEndpoint: (path: string) => string }
+        ).buildEndpoint('items'),
+      ).toBe('test-resources/items')
+    })
+
+    test('should handle complex path combinations', () => {
+      const moduleTrailingBase = new BaseApiModule(client, {
+        name: 'test',
+        version: 'v2',
+        basePath: 'api//base//',
+      })
+      expect(
+        (
+          moduleTrailingBase as unknown as { buildEndpoint: (path: string) => string }
+        ).buildEndpoint('//items//123//'),
+      ).toBe('api/base/items/123')
+    })
   })
 
   describe('request operations', () => {

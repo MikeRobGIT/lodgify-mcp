@@ -120,6 +120,11 @@ export interface PropertySearchParams {
   amenities?: string[]
   sort?: 'name' | 'price' | 'created' | 'updated'
   order?: 'asc' | 'desc'
+  // Additional Lodgify v2 API parameters
+  wid?: number
+  updatedSince?: string
+  includeCount?: boolean
+  includeInOut?: boolean
 }
 
 /**

@@ -140,8 +140,10 @@ export abstract class BaseApiClient extends BaseHttpClient {
     // Check rate limit unless skipped
     if (!skipRateLimit) {
       if (!this.rateLimiter.checkLimit()) {
-        this.log('warn', 'Rate limit exceeded, waiting before request')
-        await this.sleep(1000)
+        const resetTime = this.rateLimiter.getResetTime()
+        const waitTime = Math.max(resetTime, 1000) // Minimum 1s, but use dynamic reset time
+        this.log('warn', `Rate limit exceeded, waiting ${waitTime}ms before request`)
+        await this.sleep(waitTime)
       }
     }
 

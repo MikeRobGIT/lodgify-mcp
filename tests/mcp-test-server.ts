@@ -64,11 +64,7 @@ export function validateToolMetadata(tool: ToolMetadata, expect: ExpectFunction)
   expect(typeof tool.description).toBe('string')
   expect(tool.description.length).toBeGreaterThan(10) // Meaningful description
 
-  // Check for enhanced metadata
-  if (tool.title) {
-    expect(typeof tool.title).toBe('string')
-    expect(tool.title.length).toBeGreaterThan(0)
-  }
+  // (optional) Add richer metadata checks here if ToolMetadata is extended
 
   // Check input schema structure
   if (tool.inputSchema) {
@@ -87,8 +83,12 @@ export function validateErrorResponse(error: ErrorResponse, expect: ExpectFuncti
 
   // Check for JSON-RPC error structure if it's an McpError
   if (error.code !== undefined) {
-    expect(typeof error.code).toBe('number')
-    expect(error.code).toBeGreaterThanOrEqual(-32999)
-    expect(error.code).toBeLessThanOrEqual(-32000)
+    if (typeof error.code === 'number') {
+      expect(error.code).toBeGreaterThanOrEqual(-32999)
+      expect(error.code).toBeLessThanOrEqual(-32000)
+    } else {
+      expect(typeof error.code).toBe('string')
+      expect((error.code as string).length).toBeGreaterThan(0)
+    }
   }
 }

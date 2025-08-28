@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
+import pkg from '../package.json' with { type: 'json' }
 import type { TestError } from './types.js'
 
 interface McpErrorData {
@@ -121,7 +122,7 @@ describe('Enhanced McpServer Features', () => {
       const expectedHealthData = {
         ok: true,
         timestamp: new Date().toISOString(),
-        version: '0.1.0',
+        version: pkg.version,
         baseUrl: 'https://api.lodgify.com',
         apiKeyConfigured: true,
       }
@@ -129,7 +130,7 @@ describe('Enhanced McpServer Features', () => {
       expect(expectedHealthData.ok).toBe(true)
       expect(expectedHealthData.baseUrl).toBe('https://api.lodgify.com')
       expect(expectedHealthData.apiKeyConfigured).toBe(true)
-      expect(expectedHealthData.version).toBe('0.1.0')
+      expect(expectedHealthData.version).toMatch(/^\d+\.\d+\.\d+(-.+)?$/)
     })
   })
 

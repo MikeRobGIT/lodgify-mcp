@@ -38,7 +38,7 @@
 ## CI Expectations
 - CI on push/PR to `main/master/develop` (Ubuntu + macOS).
 - Steps: bun install → lint → bun test (`TEST_MODE=mock`) → build.
-- Require: `dist/server.js` and `dist/lodgify.js` present.
+- Require: `dist/server.js` and `dist/lodgify-orchestrator.js` present.
 - Coverage: uploaded to Codecov.
 - Tags `v*`: release workflow publishes to npm with provenance.
 

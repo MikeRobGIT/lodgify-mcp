@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { config } from 'dotenv'
 import { type ZodRawShape, z } from 'zod'
+import pkg from '../package.json'
 import { type EnvConfig, isProduction, loadEnvironment } from './env.js'
 import {
   type AvailabilityQueryParams,
@@ -524,6 +525,10 @@ Example response:
         const mappedParams: PropertySearchParams = {}
         if (params.size !== undefined) mappedParams.limit = params.size
         if (params.page !== undefined) mappedParams.offset = (params.page - 1) * (params.size || 50)
+        if (params.wid !== undefined) mappedParams.wid = params.wid
+        if (params.updatedSince !== undefined) mappedParams.updatedSince = params.updatedSince
+        if (params.includeCount !== undefined) mappedParams.includeCount = params.includeCount
+        if (params.includeInOut !== undefined) mappedParams.includeInOut = params.includeInOut
 
         const result = await getClient().properties.listProperties(mappedParams)
         return {
@@ -591,12 +596,15 @@ Example response:
     async ({ id, wid, includeInOut }) => {
       try {
         // Build params object for the API call
-        const params: Record<string, unknown> = {}
+        const params: { wid?: number; includeInOut?: boolean } = {}
         if (wid !== undefined) params.wid = wid
         if (includeInOut !== undefined) params.includeInOut = includeInOut
 
         // Call with property ID and optional query params
-        const result = await getClient().properties.getProperty(id.toString())
+        const result = await getClient().properties.getProperty(
+          id.toString(),
+          Object.keys(params).length > 0 ? params : undefined,
+        )
         return {
           content: [
             {
@@ -722,8 +730,17 @@ Example response:
         const mappedParams: BookingSearchParams = {}
         if (params.size !== undefined) mappedParams.limit = params.size
         if (params.page !== undefined) mappedParams.offset = (params.page - 1) * (params.size || 50)
-        // Note: Other MCP parameters don't directly map to BookingSearchParams
-        // They may be handled differently by the client or require transformation
+        if (params.includeCount !== undefined) mappedParams.includeCount = params.includeCount
+        if (params.stayFilter !== undefined) mappedParams.stayFilter = params.stayFilter
+        if (params.stayFilterDate !== undefined) mappedParams.stayFilterDate = params.stayFilterDate
+        if (params.updatedSince !== undefined) mappedParams.updatedSince = params.updatedSince
+        if (params.includeTransactions !== undefined)
+          mappedParams.includeTransactions = params.includeTransactions
+        if (params.includeExternal !== undefined)
+          mappedParams.includeExternal = params.includeExternal
+        if (params.includeQuoteDetails !== undefined)
+          mappedParams.includeQuoteDetails = params.includeQuoteDetails
+        if (params.trash !== undefined) mappedParams.trash = params.trash
 
         const result = await getClient().bookings.listBookings(mappedParams)
         return {
@@ -2222,7 +2239,7 @@ function registerResources(server: McpServer, getClient: () => LodgifyOrchestrat
       const health = {
         status: overallStatus,
         service: 'lodgify-mcp',
-        version: '0.1.0',
+        version: pkg.version,
         timestamp: new Date().toISOString(),
         dependencies,
         runtimeInfo: {

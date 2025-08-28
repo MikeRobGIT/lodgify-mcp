@@ -1,3 +1,4 @@
+import pkg from '../package.json'
 import type { ToolHandlerArgs } from './types.js'
 
 export interface TestServer {
@@ -453,7 +454,7 @@ export function createTestServer(mockClient: unknown): TestServer {
         const health = {
           ok: true,
           timestamp: new Date().toISOString(),
-          version: '0.1.0',
+          version: pkg.version,
           baseUrl: 'https://api.lodgify.com',
           apiKeyConfigured: true,
         }
