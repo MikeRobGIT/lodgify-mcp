@@ -1211,7 +1211,6 @@ Example request:
               .datetime()
               .optional()
               .describe('Calendar end date (ISO 8601 date-time)'),
-            includeDetails: z.boolean().optional().describe('Include booking status details'),
           })
           .optional()
           .describe('Optional query parameters for filtering availabilities'),
@@ -2385,7 +2384,7 @@ export function setupServer(injectedClient?: LodgifyOrchestrator) {
   const server = new McpServer(
     {
       name: 'lodgify-mcp',
-      version: '0.1.0',
+      version: pkg.version,
     },
     {
       capabilities: {

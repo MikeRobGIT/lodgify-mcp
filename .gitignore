@@ -47,3 +47,4 @@ temp/
 .cursor/mcp.json
 .mcp.json
 mcp_options.json
+.gemini/settings.json
