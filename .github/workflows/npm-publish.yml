@@ -54,7 +54,7 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           
           # Check if version already exists on npm
-          if npm view lodgify-mcp@$CURRENT_VERSION version 2>/dev/null; then
+          if npm view @mikerobgit/lodgify-mcp@$CURRENT_VERSION version 2>/dev/null; then
             echo "Version $CURRENT_VERSION already published"
             echo "should-publish=false" >> $GITHUB_OUTPUT
           else
@@ -245,7 +245,7 @@ jobs:
             
             ### Installation
             ```bash
-            npx -y lodgify-mcp@${{ steps.bump.outputs.version }}
+            npx -y @mikerobgit/lodgify-mcp@${{ steps.bump.outputs.version }}
             ```
             
             ### Changes
@@ -256,5 +256,5 @@ jobs:
       - name: Notify success
         if: success()
         run: |
-          echo "✅ Successfully published lodgify-mcp@${{ steps.bump.outputs.version }} to npm!"
-          echo "View at: https://www.npmjs.com/package/lodgify-mcp/v/${{ steps.bump.outputs.version }}"
+          echo "✅ Successfully published @mikerobgit/lodgify-mcp@${{ steps.bump.outputs.version }} to npm!"
+          echo "View at: https://www.npmjs.com/package/@mikerobgit/lodgify-mcp/v/${{ steps.bump.outputs.version }}"

@@ -127,7 +127,7 @@ jobs:
           
           # Get all published versions from NPM
           echo "Fetching published versions from NPM..."
-          NPM_VERSIONS=$(npm view lodgify-mcp versions --json 2>/dev/null || echo "[]")
+          NPM_VERSIONS=$(npm view @mikerobgit/lodgify-mcp versions --json 2>/dev/null || echo "[]")
           
           # Determine base version for pre-release
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
@@ -235,17 +235,17 @@ jobs:
             
             #### Install specific pre-release version:
             ```bash
-            npm install lodgify-mcp@${{ steps.next.outputs.version }}
+            npm install @mikerobgit/lodgify-mcp@${{ steps.next.outputs.version }}
             ```
             
             #### Install latest ${{ steps.tag.outputs.tag }} version:
             ```bash
-            npm install lodgify-mcp@${{ steps.tag.outputs.tag }}
+            npm install @mikerobgit/lodgify-mcp@${{ steps.tag.outputs.tag }}
             ```
             
             #### Use with npx:
             ```bash
-            npx lodgify-mcp@${{ steps.next.outputs.version }}
+            npx @mikerobgit/lodgify-mcp@${{ steps.next.outputs.version }}
             ```
             
             ### Testing
@@ -263,9 +263,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: \`${{ steps.next.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag**: \`${{ steps.tag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **NPM Package**: [lodgify-mcp@${{ steps.next.outputs.version }}](https://www.npmjs.com/package/lodgify-mcp/v/${{ steps.next.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **NPM Package**: [@mikerobgit/lodgify-mcp@${{ steps.next.outputs.version }}](https://www.npmjs.com/package/@mikerobgit/lodgify-mcp/v/${{ steps.next.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Installation" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npm install lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "npm install @mikerobgit/lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

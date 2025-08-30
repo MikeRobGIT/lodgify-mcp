@@ -18,15 +18,15 @@ let readme = readFileSync(readmePath, 'utf8');
 
 // Update npm badge URL with specific version
 readme = readme.replace(
-  /\[!\[npm version\]\(https:\/\/badge\.fury\.io\/js\/lodgify-mcp\.svg\)\]/g,
-  `[![npm version](https://badge.fury.io/js/lodgify-mcp.svg)](https://www.npmjs.com/package/lodgify-mcp)`
+  /\[!\[npm version\]\(https:\/\/badge\.fury\.io\/js\/%40mikerobgit%2Flodgify-mcp\.svg\)\]/g,
+  `[![npm version](https://badge.fury.io/js/%40mikerobgit%2Flodgify-mcp.svg)](https://www.npmjs.com/package/@mikerobgit/lodgify-mcp)`
 );
 
 // Update any versioned npm install commands (if you add them in the future)
 // Example: npm install lodgify-mcp@0.2.6 -> npm install lodgify-mcp@0.2.7
 readme = readme.replace(
-  /npm install lodgify-mcp@[\d\.]+/g,
-  `npm install lodgify-mcp@${version}`
+  /npm install @mikerobgit\/lodgify-mcp@[\d\.]+/g,
+  `npm install @mikerobgit/lodgify-mcp@${version}`
 );
 
 readme = readme.replace(

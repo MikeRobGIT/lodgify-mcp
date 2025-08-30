@@ -113,17 +113,17 @@ jobs:
             
             #### Via NPX (recommended)
             ```bash
-            npx -y lodgify-mcp@${{ steps.version.outputs.VERSION }}
+            npx -y @mikerobgit/lodgify-mcp@${{ steps.version.outputs.VERSION }}
             ```
             
             #### Via NPM
             ```bash
-            npm install -g lodgify-mcp@${{ steps.version.outputs.VERSION }}
+            npm install -g @mikerobgit/lodgify-mcp@${{ steps.version.outputs.VERSION }}
             ```
             
             #### Via Bun
             ```bash
-            bunx lodgify-mcp@${{ steps.version.outputs.VERSION }}
+            bunx @mikerobgit/lodgify-mcp@${{ steps.version.outputs.VERSION }}
             ```
             
             ### MCP Configuration
@@ -132,7 +132,7 @@ jobs:
               "mcpServers": {
                 "lodgify": {
                   "command": "npx",
-                  "args": ["-y", "lodgify-mcp@${{ steps.version.outputs.VERSION }}"],
+                  "args": ["-y", "@mikerobgit/lodgify-mcp@${{ steps.version.outputs.VERSION }}"],
                   "env": {
                     "LODGIFY_API_KEY": "your-api-key-here"
                   }
@@ -154,4 +154,4 @@ jobs:
           echo "Waiting for npm registry to update..."
           sleep 10
           echo "Verifying package is available on npm..."
-          npm view lodgify-mcp@${{ steps.version.outputs.VERSION }} version || (echo "⚠️ Package not yet visible on npm, may take a few minutes" && exit 0)
+          npm view @mikerobgit/lodgify-mcp@${{ steps.version.outputs.VERSION }} version || (echo "⚠️ Package not yet visible on npm, may take a few minutes" && exit 0)

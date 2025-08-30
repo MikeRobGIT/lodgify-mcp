@@ -174,4 +174,4 @@ When testing the MCP server during development:
 
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
-- The owner of the repository is mikerobgit. the repository name is lodgify-mcp
+- The owner of the repository is mikerobgit. the repository name is lodgify-mcp (package: @mikerobgit/lodgify-mcp)

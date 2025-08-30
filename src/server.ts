@@ -2322,7 +2322,7 @@ function registerResources(server: McpServer, getClient: () => LodgifyOrchestrat
 
       const health = {
         status: overallStatus,
-        service: 'lodgify-mcp',
+        service: '@mikerobgit/lodgify-mcp',
         version: pkg.version,
         timestamp: new Date().toISOString(),
         dependencies,
@@ -2415,7 +2415,7 @@ function registerResources(server: McpServer, getClient: () => LodgifyOrchestrat
       }))
 
       const registry = {
-        service: 'lodgify-mcp-deprecations',
+        service: '@mikerobgit/lodgify-mcp-deprecations',
         totalDeprecatedTools: deprecationList.length,
         deprecations: deprecationList,
         recommendations:
@@ -2468,7 +2468,7 @@ function registerResources(server: McpServer, getClient: () => LodgifyOrchestrat
 export function setupServer(injectedClient?: LodgifyOrchestrator) {
   const server = new McpServer(
     {
-      name: 'lodgify-mcp',
+      name: '@mikerobgit/lodgify-mcp',
       version: pkg.version,
     },
     {
