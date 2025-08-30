@@ -1,11 +1,11 @@
 # Lodgify MCP Server
 
-[![npm version](https://badge.fury.io/js/%40mikerobgit%2Flodgify-mcp.svg)](https://www.npmjs.com/package/@mikerobgit/lodgify-mcp)
+[![npm version](https://badge.fury.io/js/%40mikerob%2Flodgify-mcp.svg)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/MikeRobGIT/lodgify-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeRobGIT/lodgify-mcp/actions)
-[![npm downloads](https://img.shields.io/npm/dm/%40mikerobgit%2Flodgify-mcp)](https://www.npmjs.com/package/@mikerobgit/lodgify-mcp)
-[![npm bundle size](https://img.shields.io/bundlephobia/minzip/%40mikerobgit%2Flodgify-mcp)](https://bundlephobia.com/package/@mikerobgit/lodgify-mcp)
-[![node-current](https://img.shields.io/node/v/%40mikerobgit%2Flodgify-mcp)](https://www.npmjs.com/package/@mikerobgit/lodgify-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/%40mikerob%2Flodgify-mcp)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/%40mikerob%2Flodgify-mcp)](https://bundlephobia.com/package/@mikerob/lodgify-mcp)
+[![node-current](https://img.shields.io/node/v/%40mikerob%2Flodgify-mcp)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
 
 [![GitHub stars](https://img.shields.io/github/stars/MikeRobGIT/lodgify-mcp?style=social)](https://github.com/MikeRobGIT/lodgify-mcp)
 [![GitHub issues](https://img.shields.io/github/issues/MikeRobGIT/lodgify-mcp)](https://github.com/MikeRobGIT/lodgify-mcp/issues)
@@ -68,13 +68,13 @@ For detailed information, see [Security Documentation](docs/SECURITY.md).
 
 ```bash
 # Using bun (recommended)
-bun add @mikerobgit/lodgify-mcp
+bun add @mikerob/lodgify-mcp
 
 # Using npm
-npm install @mikerobgit/lodgify-mcp
+npm install @mikerob/lodgify-mcp
 
 # Using yarn
-yarn add @mikerobgit/lodgify-mcp
+yarn add @mikerob/lodgify-mcp
 ```
 
 ### Configuration
@@ -88,7 +88,7 @@ Configure your MCP client (like Claude Desktop) to connect to the Lodgify MCP Se
   "mcpServers": {
     "lodgify": {
       "command": "bunx",
-      "args": ["-y", "@mikerobgit/lodgify-mcp"],
+      "args": ["-y", "@mikerob/lodgify-mcp"],
       "env": {
         "LODGIFY_API_KEY": "your_lodgify_api_key_here"
       }
@@ -104,7 +104,7 @@ Configure your MCP client (like Claude Desktop) to connect to the Lodgify MCP Se
   "mcpServers": {
     "lodgify": {
       "command": "npx",
-      "args": ["-y", "@mikerobgit/lodgify-mcp"],
+      "args": ["-y", "@mikerob/lodgify-mcp"],
       "env": {
         "LODGIFY_API_KEY": "your_lodgify_api_key_here"
       }
@@ -119,10 +119,10 @@ Configure your MCP client (like Claude Desktop) to connect to the Lodgify MCP Se
 
 ```bash
 # Install globally with bun
-bun install -g @mikerobgit/lodgify-mcp
+bun install -g @mikerob/lodgify-mcp
 
 # Or with npm
-npm install -g @mikerobgit/lodgify-mcp
+npm install -g @mikerob/lodgify-mcp
 
 # Then use in MCP config:
 ```

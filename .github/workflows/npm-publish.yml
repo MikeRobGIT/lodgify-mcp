@@ -54,7 +54,7 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           
           # Check if version already exists on npm
-          if npm view @mikerobgit/lodgify-mcp@$CURRENT_VERSION version 2>/dev/null; then
+          if npm view @mikerob/lodgify-mcp@$CURRENT_VERSION version 2>/dev/null; then
             echo "Version $CURRENT_VERSION already published"
             echo "should-publish=false" >> $GITHUB_OUTPUT
           else

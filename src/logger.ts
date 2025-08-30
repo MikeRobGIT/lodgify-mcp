@@ -25,7 +25,7 @@ function ensureLogDirectory(): string {
     return logDir
   } catch (_error) {
     // Fallback to temp directory if we can't create logs directory
-    const tempDir = path.join(process.env.TMPDIR || '/tmp', '@mikerobgit-lodgify-mcp-logs')
+    const tempDir = path.join(process.env.TMPDIR || '/tmp', '@mikerob-lodgify-mcp-logs')
     try {
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true })
