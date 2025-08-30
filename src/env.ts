@@ -229,6 +229,7 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
       })
     }
 
+    // Log successful environment configuration loading
     safeLogger.info('Environment configuration loaded successfully', {
       logLevel: config.LOG_LEVEL,
       debugHttp: config.DEBUG_HTTP,
