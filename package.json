@@ -4,6 +4,7 @@
   "description": "Model Context Protocol server for Lodgify Public API v2 - Expose Lodgify endpoints as MCP tools for AI assistants",
   "type": "module",
   "main": "dist/server.js",
+  "types": "dist/server.d.ts",
   "bin": {
     "lodgify-mcp": "bin/lodgify-mcp.js"
   },

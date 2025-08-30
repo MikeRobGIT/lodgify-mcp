@@ -15,14 +15,16 @@ export class ExponentialBackoffRetry {
   private readonly backoffMultiplier: number
   private readonly shouldRetry: (status: number, attempt: number) => boolean
   private readonly sleepFn: SleepFunction
+  private readonly readOnly: boolean
 
-  constructor(config?: RetryConfig, sleepFn?: SleepFunction) {
+  constructor(config?: RetryConfig, sleepFn?: SleepFunction, readOnly = false) {
     this.maxRetries = config?.maxRetries ?? 5
     this.maxRetryDelay = config?.maxRetryDelay ?? 30000 // 30 seconds
     this.initialDelay = config?.initialDelay ?? 1000 // 1 second
     this.backoffMultiplier = config?.backoffMultiplier ?? 2
     this.shouldRetry = config?.shouldRetry ?? this.defaultShouldRetry
     this.sleepFn = sleepFn ?? this.defaultSleep
+    this.readOnly = readOnly
   }
 
   /**
@@ -94,6 +96,16 @@ export class ExponentialBackoffRetry {
       } catch (error) {
         lastError = error
 
+        // In read-only mode, don't retry write operations
+        // This prevents retrying operations that would fail anyway
+        if (this.readOnly && this.isWriteOperationError(error)) {
+          return {
+            success: false,
+            error,
+            attempts: attempt + 1,
+          }
+        }
+
         // Check if we should retry
         const status = this.getStatusFromError(error)
         if (!this.shouldRetry(status, attempt)) {
@@ -131,6 +143,17 @@ export class ExponentialBackoffRetry {
       }
     }
     return 0 // Network error or unknown
+  }
+
+  /**
+   * Check if error is from a write operation in read-only mode
+   */
+  private isWriteOperationError(error: unknown): boolean {
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorName = (error as { name: string }).name
+      return errorName === 'ReadOnlyModeError'
+    }
+    return false
   }
 
   /**

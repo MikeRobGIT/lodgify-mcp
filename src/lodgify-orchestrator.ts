@@ -58,6 +58,7 @@ import { RatesClient } from './api/v2/rates/index.js'
 import type { DailyRatesResponse, RateSettingsResponse } from './api/v2/rates/schemas.js'
 import type { DailyRatesParams } from './api/v2/rates/types.js'
 import { ReadOnlyModeError } from './core/errors/read-only-error.js'
+import { safeLogger } from './logger.js'
 
 /**
  * Lodgify API Orchestrator Configuration
@@ -93,15 +94,23 @@ export class LodgifyOrchestrator {
   public readonly ratesV1: RatesV1Client
 
   constructor(config: LodgifyOrchestratorConfig) {
-    // Store read-only mode
-    this.readOnly = config.readOnly || false
+    // Store read-only mode - default to false (write-enabled) when not set
+    this.readOnly = config.readOnly === true
+
+    // Debug logging for read-only mode
+    if (config.debugHttp && config.readOnly !== undefined) {
+      safeLogger.debug('[LodgifyOrchestrator] Read-only mode configuration', {
+        readOnlyProvided: !!config.readOnly,
+        readOnly: this.readOnly,
+      })
+    }
 
     // Initialize the API client orchestrator
     this.client = new ApiClientOrchestrator({
       apiKey: config.apiKey,
       baseUrl: config.baseUrl || 'https://api.lodgify.com',
       defaultVersion: 'v2',
-      readOnly: config.readOnly,
+      readOnly: this.readOnly, // Use normalized boolean value
     })
 
     // Initialize all API modules
@@ -367,44 +376,46 @@ export class LodgifyOrchestrator {
 
 // Export types for external use
 export type {
+  AvailabilityCalendarResult,
+  // Availability
+  AvailabilityQueryParams,
+  // Bookings
+  Booking,
+  BookingPeriod,
+  BookingSearchParams,
+  BookingsListResponse,
+  // V1 Bookings
+  BookingV1Response,
+  CreateBookingRequest,
+  CreateBookingV1Request,
+  // Rates
+  DailyRatesParams,
+  DailyRatesResponse,
+  DateRangeAvailabilityResult,
+  DeleteBookingV1Response,
+  KeyCodesRequest,
+  Message,
+  // Messaging
+  MessageThread,
+  NextAvailabilityResult,
+  Participant,
+  PaymentLink,
+  PaymentLinkRequest,
+  PropertiesListResponse,
   // Properties
   Property,
   PropertySearchParams,
-  PropertiesListResponse,
-  RoomType,
-  // Bookings
-  Booking,
-  BookingSearchParams,
-  BookingsListResponse,
-  CreateBookingRequest,
-  UpdateBookingRequest,
-  PaymentLink,
-  PaymentLinkRequest,
-  KeyCodesRequest,
-  // Availability
-  AvailabilityQueryParams,
-  BookingPeriod,
-  NextAvailabilityResult,
-  DateRangeAvailabilityResult,
-  AvailabilityCalendarResult,
-  // Rates
-  DailyRatesParams,
-  // V1 Bookings
-  BookingV1Response,
-  CreateBookingV1Request,
-  DeleteBookingV1Response,
-  UpdateBookingV1Request,
-  // V1 Rates
-  RateUpdateV1Request,
-  RateUpdateV1Response,
+  QuoteParams,
   // Quotes
   QuoteRequest,
   QuoteResponse,
-  QuoteParams,
-  // Messaging
-  MessageThread,
-  Message,
-  Participant,
+  RateSettingsResponse,
+  // V1 Rates
+  RateUpdateV1Request,
+  RateUpdateV1Response,
+  RoomType,
+  UpdateBookingRequest,
+  UpdateBookingV1Request,
   // Webhooks
   WebhookEvent,
   WebhookListResponse,

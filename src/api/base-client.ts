@@ -95,13 +95,17 @@ export abstract class BaseApiClient extends BaseHttpClient {
     this.readOnly = readOnly
     this.rateLimiter = createLodgifyRateLimiter()
     this.errorHandler = new ErrorHandler()
-    this.retryHandler = new ExponentialBackoffRetry({
-      maxRetries: 5,
-      maxRetryDelay: 30000,
-      shouldRetry: (status: number) => {
-        return status === 429 || (status >= 500 && status < 600)
+    this.retryHandler = new ExponentialBackoffRetry(
+      {
+        maxRetries: 5,
+        maxRetryDelay: 30000,
+        shouldRetry: (status: number) => {
+          return status === 429 || (status >= 500 && status < 600)
+        },
       },
-    })
+      undefined,
+      this.readOnly,
+    )
   }
 
   /**

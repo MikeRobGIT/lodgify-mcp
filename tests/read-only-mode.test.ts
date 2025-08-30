@@ -317,17 +317,24 @@ describe('Read-Only Mode Comprehensive Tests', () => {
       },
       { name: 'updateKeyCodes', args: ['booking-123', { keyCodes: ['1234'] }] },
       { name: 'createBookingPaymentLink', args: ['booking-123', { amount: 100, currency: 'USD' }] },
+      { name: 'checkinBooking', args: ['booking-123'] },
+      { name: 'checkoutBooking', args: ['booking-123'] },
+      { name: 'deleteWebhook', args: ['webhook-123'] },
+      { name: 'updateBookingV1', args: ['booking-123', { guest_name: 'Jane Doe' }] },
+      { name: 'deleteBookingV1', args: ['booking-123'] },
     ]
 
     test.each(writeOperations)('should block $name in read-only mode', async ({ name, args }) => {
-      const method = (readOnlyClient as Record<string, (...args: unknown[]) => Promise<unknown>>)[
-        name
-      ]
+      const method = (
+        readOnlyClient as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+      )[name]
       await expect(method.apply(readOnlyClient, args)).rejects.toThrow(ReadOnlyModeError)
     })
 
     test.each(writeOperations)('should allow $name in write mode', async ({ name, args }) => {
-      const method = (writeClient as Record<string, (...args: unknown[]) => Promise<unknown>>)[name]
+      const method = (
+        writeClient as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+      )[name]
       await expect(method.apply(writeClient, args)).resolves.toBeDefined()
     })
   })
