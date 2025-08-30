@@ -77,6 +77,18 @@ export abstract class BaseApiClient extends BaseHttpClient {
       throw new Error('API key is required')
     }
 
+    // Validate HTTPS protocol for security
+    let parsedUrl: URL
+    try {
+      parsedUrl = new URL(baseUrl)
+    } catch {
+      throw new Error(`Invalid baseUrl format: ${baseUrl}`)
+    }
+
+    if (parsedUrl.protocol !== 'https:') {
+      throw new Error('baseUrl must use HTTPS protocol for security')
+    }
+
     // Initialize base HTTP client
     super(
       {

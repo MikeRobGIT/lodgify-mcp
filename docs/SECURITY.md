@@ -246,7 +246,7 @@ The server implements rate limiting to prevent API abuse:
 
 Default rate limits:
 - **Window**: 60 seconds
-- **Requests**: 100 requests per window
+- **Requests**: 60 requests per window
 - **Retry Delay**: Up to 30 seconds maximum
 
 ## Error Handling

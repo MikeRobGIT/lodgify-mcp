@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'bun:test'
 import { normalizeBoolean } from '../src/env.js'
 
 // This test demonstrates that the normalizeBoolean function has the correct type annotation

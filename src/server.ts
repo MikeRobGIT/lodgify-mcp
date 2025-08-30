@@ -235,7 +235,7 @@ const mcpApiKey = process.env.LODGIFY_API_KEY
 
 // Debug logging to understand environment variable flow
 if (process.env.DEBUG_HTTP === '1') {
-  console.info('[ENV DEBUG] Before dotenv:', {
+  safeLogger.info('[ENV DEBUG] Before dotenv:', {
     LODGIFY_READ_ONLY: mcpReadOnly,
     LODGIFY_API_KEY_present: !!mcpApiKey,
     source: 'MCP or pre-existing env',
@@ -248,7 +248,7 @@ config({ override: false })
 
 // Debug logging after dotenv
 if (process.env.DEBUG_HTTP === '1') {
-  console.info('[ENV DEBUG] After dotenv:', {
+  safeLogger.info('[ENV DEBUG] After dotenv:', {
     LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
     LODGIFY_API_KEY_present: !!process.env.LODGIFY_API_KEY,
     mcpReadOnly_was: mcpReadOnly,
@@ -259,7 +259,7 @@ if (process.env.DEBUG_HTTP === '1') {
 if (mcpReadOnly !== undefined) {
   process.env.LODGIFY_READ_ONLY = mcpReadOnly
   if (process.env.DEBUG_HTTP === '1') {
-    console.info('[ENV DEBUG] Restored MCP value:', {
+    safeLogger.info('[ENV DEBUG] Restored MCP value:', {
       LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
     })
   }
@@ -289,7 +289,7 @@ function getEnvConfig(): EnvConfig {
 
     // Additional debug logging for read-only mode
     if (process.env.LODGIFY_READ_ONLY !== undefined) {
-      console.info(
+      safeLogger.info(
         '[ENV DEBUG] getEnvConfig called with LODGIFY_READ_ONLY:',
         process.env.LODGIFY_READ_ONLY,
       )

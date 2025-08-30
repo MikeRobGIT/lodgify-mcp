@@ -198,12 +198,11 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
       ),
     }
 
-    // Debug logging for read-only mode
+    // Debug logging for read-only mode via structured logger
     if (process.env.LODGIFY_READ_ONLY !== undefined) {
-      console.error(
-        '[ENV DEBUG] loadEnvironment received LODGIFY_READ_ONLY:',
-        process.env.LODGIFY_READ_ONLY,
-      )
+      safeLogger.debug('[ENV DEBUG] loadEnvironment received LODGIFY_READ_ONLY', {
+        LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
+      })
     }
 
     // Validate required variables are present
@@ -223,13 +222,11 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
     // Parse and validate all environment variables
     const config = envSchema.parse(rawEnv)
 
-    // Debug logging for parsed read-only value
+    // Debug logging for parsed read-only value via structured logger
     if (process.env.LODGIFY_READ_ONLY !== undefined || config.LODGIFY_READ_ONLY) {
-      console.error(
-        '[ENV DEBUG] After parsing, LODGIFY_READ_ONLY is:',
-        config.LODGIFY_READ_ONLY,
-        '(boolean)',
-      )
+      safeLogger.debug('[ENV DEBUG] After parsing, LODGIFY_READ_ONLY', {
+        LODGIFY_READ_ONLY: config.LODGIFY_READ_ONLY,
+      })
     }
 
     safeLogger.info('Environment configuration loaded successfully', {
