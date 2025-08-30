@@ -125,42 +125,65 @@ jobs:
           CURRENT="${{ steps.current.outputs.current }}"
           BASE="${{ steps.current.outputs.base }}"
           
-          # Check if current version is already a pre-release of the same type
-          if [[ "$CURRENT" == *"-$TAG."* ]]; then
-            # Increment the pre-release number
-            PRERELEASE_NUM=$(echo "$CURRENT" | sed -n "s/.*-$TAG\.\([0-9]*\).*/\1/p")
-            NEXT_NUM=$((PRERELEASE_NUM + 1))
-            NEW_VERSION="$BASE-$TAG.$NEXT_NUM"
+          # Get all published versions from NPM
+          echo "Fetching published versions from NPM..."
+          NPM_VERSIONS=$(npm view lodgify-mcp versions --json 2>/dev/null || echo "[]")
+          
+          # Determine base version for pre-release
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION_BUMP="${{ github.event.inputs.version }}"
+            case "$VERSION_BUMP" in
+              prepatch)
+                # Increment patch and add pre-release
+                IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                NEW_BASE="$MAJOR.$MINOR.$((PATCH + 1))"
+                ;;
+              preminor)
+                # Increment minor and add pre-release
+                IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                NEW_BASE="$MAJOR.$((MINOR + 1)).0"
+                ;;
+              premajor)
+                # Increment major and add pre-release
+                IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                NEW_BASE="$((MAJOR + 1)).0.0"
+                ;;
+              *)
+                NEW_BASE="$BASE"
+                ;;
+            esac
           else
-            # Start new pre-release series
-            if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-              VERSION_BUMP="${{ github.event.inputs.version }}"
-              case "$VERSION_BUMP" in
-                prepatch)
-                  # Increment patch and add pre-release
-                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
-                  NEW_BASE="$MAJOR.$MINOR.$((PATCH + 1))"
-                  ;;
-                preminor)
-                  # Increment minor and add pre-release
-                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
-                  NEW_BASE="$MAJOR.$((MINOR + 1)).0"
-                  ;;
-                premajor)
-                  # Increment major and add pre-release
-                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
-                  NEW_BASE="$((MAJOR + 1)).0.0"
-                  ;;
-                *)
-                  NEW_BASE="$BASE"
-                  ;;
-              esac
-            else
-              NEW_BASE="$BASE"
-            fi
-            NEW_VERSION="$NEW_BASE-$TAG.0"
+            NEW_BASE="$BASE"
           fi
           
+          # Find the highest existing pre-release number for this base version and tag
+          echo "Looking for existing $NEW_BASE-$TAG.* versions..."
+          HIGHEST_NUM=-1
+          
+          # Use jq to parse JSON and find matching versions
+          if command -v jq &> /dev/null && [ "$NPM_VERSIONS" != "[]" ]; then
+            MATCHING_VERSIONS=$(echo "$NPM_VERSIONS" | jq -r ".[] | select(. | startswith(\"$NEW_BASE-$TAG.\"))" 2>/dev/null || echo "")
+            
+            if [ -n "$MATCHING_VERSIONS" ]; then
+              echo "Found existing pre-release versions:"
+              echo "$MATCHING_VERSIONS"
+              
+              # Extract the highest number
+              for VERSION in $MATCHING_VERSIONS; do
+                NUM=$(echo "$VERSION" | sed -n "s/.*-$TAG\.\([0-9]*\).*/\1/p")
+                if [ -n "$NUM" ] && [ "$NUM" -gt "$HIGHEST_NUM" ]; then
+                  HIGHEST_NUM=$NUM
+                fi
+              done
+            fi
+          fi
+          
+          # Calculate next pre-release number
+          NEXT_NUM=$((HIGHEST_NUM + 1))
+          NEW_VERSION="$NEW_BASE-$TAG.$NEXT_NUM"
+          
+          echo "Highest existing pre-release number: $HIGHEST_NUM"
+          echo "Next pre-release number: $NEXT_NUM"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Next version: $NEW_VERSION"
       
