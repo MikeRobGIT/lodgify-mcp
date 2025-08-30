@@ -118,12 +118,33 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           echo "Base version: $BASE_VERSION"
       
+      - name: Check if package exists on npm
+        id: package_exists
+        run: |
+          if npm view @mikerob/lodgify-mcp version 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Package exists on npm"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Package does not exist on npm yet - will use initial version"
+          fi
+      
       - name: Calculate next pre-release version
         id: next
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           CURRENT="${{ steps.current.outputs.current }}"
           BASE="${{ steps.current.outputs.base }}"
+          PACKAGE_EXISTS="${{ steps.package_exists.outputs.exists }}"
+          
+          # If package doesn't exist, use current version for first publish
+          if [ "$PACKAGE_EXISTS" == "false" ]; then
+            echo "First time publishing - using version from package.json"
+            NEW_VERSION="$CURRENT"
+            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "First publish version: $NEW_VERSION"
+            exit 0
+          fi
           
           # Get all published versions from NPM
           echo "Fetching published versions from NPM..."
