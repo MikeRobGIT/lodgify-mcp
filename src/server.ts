@@ -5,6 +5,7 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { config } from 'dotenv'
 import { type ZodRawShape, z } from 'zod'
 import pkg from '../package.json' with { type: 'json' }
+import { ReadOnlyModeError } from './core/errors/read-only-error.js'
 import { type EnvConfig, isProduction, loadEnvironment } from './env.js'
 import {
   type AvailabilityQueryParams,
@@ -228,8 +229,44 @@ async function findProperties(
   }
 }
 
-// Load environment variables with dotenv first
-config()
+// Store MCP-provided environment variables before dotenv loads
+const mcpReadOnly = process.env.LODGIFY_READ_ONLY
+const mcpApiKey = process.env.LODGIFY_API_KEY
+
+// Debug logging to understand environment variable flow
+if (process.env.DEBUG_HTTP === '1') {
+  console.info('[ENV DEBUG] Before dotenv:', {
+    LODGIFY_READ_ONLY: mcpReadOnly,
+    LODGIFY_API_KEY_present: !!mcpApiKey,
+    source: 'MCP or pre-existing env',
+  })
+}
+
+// Load environment variables from .env file
+// Use override: false to prevent .env from overriding existing environment variables (like those from MCP)
+config({ override: false })
+
+// Debug logging after dotenv
+if (process.env.DEBUG_HTTP === '1') {
+  console.info('[ENV DEBUG] After dotenv:', {
+    LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
+    LODGIFY_API_KEY_present: !!process.env.LODGIFY_API_KEY,
+    mcpReadOnly_was: mcpReadOnly,
+  })
+}
+
+// Ensure MCP environment variables take precedence (belt and suspenders approach)
+if (mcpReadOnly !== undefined) {
+  process.env.LODGIFY_READ_ONLY = mcpReadOnly
+  if (process.env.DEBUG_HTTP === '1') {
+    console.info('[ENV DEBUG] Restored MCP value:', {
+      LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
+    })
+  }
+}
+if (mcpApiKey !== undefined) {
+  process.env.LODGIFY_API_KEY = mcpApiKey
+}
 
 // Load and validate environment configuration (only for production execution)
 let envConfig: EnvConfig | undefined
@@ -237,6 +274,27 @@ let envValidationError: Error | undefined
 
 function getEnvConfig(): EnvConfig {
   if (!envConfig) {
+    // Log environment variables for debugging (only on first load)
+    safeLogger.info('Server starting with environment:', {
+      LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
+      LODGIFY_READ_ONLY_type: typeof process.env.LODGIFY_READ_ONLY,
+      LODGIFY_READ_ONLY_value:
+        process.env.LODGIFY_READ_ONLY === undefined
+          ? 'undefined'
+          : `"${process.env.LODGIFY_READ_ONLY}"`,
+      LODGIFY_API_KEY_present: !!process.env.LODGIFY_API_KEY,
+      NODE_ENV: process.env.NODE_ENV,
+      source: process.env.LODGIFY_READ_ONLY ? 'MCP or ENV' : 'not set',
+    })
+
+    // Additional debug logging for read-only mode
+    if (process.env.LODGIFY_READ_ONLY !== undefined) {
+      console.info(
+        '[ENV DEBUG] getEnvConfig called with LODGIFY_READ_ONLY:',
+        process.env.LODGIFY_READ_ONLY,
+      )
+    }
+
     try {
       envConfig = loadEnvironment({
         allowTestKeys: process.env.NODE_ENV === 'test',
@@ -247,13 +305,27 @@ function getEnvConfig(): EnvConfig {
       // Store validation error for lazy client initialization
       envValidationError = error instanceof Error ? error : new Error(String(error))
 
+      // Log if using fallback config (keeping minimal logging for troubleshooting)
+      if (process.env.DEBUG_HTTP === '1') {
+        safeLogger.warn('Using fallback configuration', {
+          reason: envValidationError.message,
+        })
+      }
+
       // Provide fallback config to allow MCP server to start
       envConfig = {
         LODGIFY_API_KEY: process.env.LODGIFY_API_KEY || 'invalid-key',
         LOG_LEVEL: (process.env.LOG_LEVEL as EnvConfig['LOG_LEVEL']) || 'error',
         DEBUG_HTTP: process.env.DEBUG_HTTP === '1',
-        LODGIFY_READ_ONLY:
-          process.env.LODGIFY_READ_ONLY === '1' || process.env.LODGIFY_READ_ONLY === 'true',
+        // Handle all variations: '0', 'false', false (as string), undefined → write-enabled
+        // '1', 'true', true (as string) → read-only mode
+        LODGIFY_READ_ONLY: (() => {
+          const val = process.env.LODGIFY_READ_ONLY
+          if (!val || val === '' || val === '0' || val === 'false') {
+            return false // Write-enabled
+          }
+          return val === '1' || val === 'true' // Read-only
+        })(),
         NODE_ENV: (process.env.NODE_ENV as EnvConfig['NODE_ENV']) || 'production',
       }
     }
@@ -1992,6 +2064,14 @@ function handleToolError(error: unknown): never {
     })
   }
 
+  // Handle ReadOnlyModeError specially
+  if (error instanceof ReadOnlyModeError) {
+    throw new McpError(ErrorCode.InvalidRequest, error.message, {
+      ...(error.detail || {}),
+      type: 'ReadOnlyModeError',
+    })
+  }
+
   // Handle MCP errors (already properly formatted)
   if (error instanceof McpError) {
     // Sanitize existing MCP errors to ensure no sensitive data leaks
@@ -2431,6 +2511,12 @@ export function setupServer(injectedClient?: LodgifyOrchestrator) {
       }
 
       const config = getEnvConfig()
+
+      // Log read-only mode status if enabled (useful for operational awareness)
+      if (config.LODGIFY_READ_ONLY) {
+        safeLogger.info('Read-only mode is enabled - write operations will be blocked')
+      }
+
       clientInstance = new LodgifyOrchestrator({
         apiKey: config.LODGIFY_API_KEY,
         debugHttp: config.DEBUG_HTTP,
