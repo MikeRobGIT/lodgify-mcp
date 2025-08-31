@@ -48,3 +48,6 @@ temp/
 .mcp.json
 mcp_options.json
 .gemini/settings.json
+
+# Task Master files
+.taskmaster/
