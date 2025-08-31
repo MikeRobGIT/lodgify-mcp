@@ -33,8 +33,6 @@
     "pre-commit": "(bun run lint:src || echo '⚠️  Linting warnings found but continuing...') && bun run format:src",
     "pre-push": "bun test && bun run build",
     "sync-version": "node scripts/sync-version.js",
-    "version": "echo 'Version will be handled by /bump-version command'",
-    "postversion": "git push && git push --tags",
     "docker:mcp:build": "docker build -f Dockerfile.mcp -t lodgify-mcp:mcp ."
   },
   "keywords": [
