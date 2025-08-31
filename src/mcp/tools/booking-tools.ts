@@ -12,7 +12,11 @@ import {
   StayFilterEnum,
   TrashFilterEnum,
 } from '../schemas/common.js'
-import { createValidator, ToolCategory } from '../utils/date-validator.js'
+import {
+  createValidator,
+  type DateValidationFeedback,
+  ToolCategory,
+} from '../utils/date-validator.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -423,7 +427,7 @@ The transformation handles: guest name splitting, room structuring, status capit
         }
 
         // Prepare validation feedback if present
-        const feedbackMessages: { message: string; feedback: any }[] = []
+        const feedbackMessages: { message: string; feedback: DateValidationFeedback }[] = []
         if (rangeValidation.start.feedback) {
           feedbackMessages.push({
             message: `Arrival date: ${rangeValidation.start.feedback.message}`,
