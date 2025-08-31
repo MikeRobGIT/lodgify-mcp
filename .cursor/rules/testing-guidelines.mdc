@@ -1,0 +1,264 @@
+# Testing Guidelines for Lodgify MCP Server
+
+## Testing Framework
+- **Framework**: Bun test (built-in test runner)
+- **Test Files**: Located in [tests/](mdc:tests/) directory
+- **File Naming**: `*.test.ts` or `*.spec.ts`
+- **Coverage**: Aim for ≥90% for client code
+
+## Test Organization
+
+### Directory Structure
+Tests mirror the source structure:
+```
+tests/
+├── api/                    # API client tests
+│   ├── base-client.test.ts
+│   ├── client-orchestrator.test.ts
+│   └── v2/                 # API v2 tests
+├── core/                   # Core module tests
+│   ├── errors/
+│   ├── http/
+│   ├── rate-limiter/
+│   └── retry/
+├── mcp/                    # MCP module tests
+│   ├── tools/
+│   ├── resources/
+│   └── errors/
+└── integration/            # Integration tests
+```
+
+### Test Categories
+1. **Unit Tests**: Test individual functions and modules
+2. **Integration Tests**: Test module interactions
+3. **Contract Tests**: Validate API contracts
+4. **Smoke Tests**: End-to-end functionality tests
+
+## Test Patterns
+
+### Basic Test Structure
+```typescript
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { myFunction } from '../../src/my-module';
+
+describe('myFunction', () => {
+  beforeEach(() => {
+    // Setup test environment
+  });
+
+  afterEach(() => {
+    // Cleanup after each test
+  });
+
+  it('should handle valid input', async () => {
+    const result = await myFunction({ valid: 'input' });
+    expect(result).toBeDefined();
+    expect(result.success).toBe(true);
+  });
+
+  it('should throw error for invalid input', async () => {
+    await expect(myFunction({ invalid: 'input' }))
+      .rejects.toThrow('Invalid input');
+  });
+});
+```
+
+### MCP Tool Testing
+```typescript
+// tests/mcp/tools/property-tools.test.ts
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { listPropertiesTool } from '../../../src/mcp/tools/property-tools';
+
+describe('listPropertiesTool', () => {
+  beforeEach(() => {
+    // Mock the client
+    vi.mock('../../../src/mcp/utils/client', () => ({
+      getClient: () => ({
+        listProperties: vi.fn()
+      })
+    }));
+  });
+
+  it('should return properties list', async () => {
+    const mockProperties = [{ id: '1', name: 'Test Property' }];
+    const client = getClient();
+    client.listProperties.mockResolvedValue(mockProperties);
+
+    const result = await listPropertiesTool.handler({});
+    
+    expect(result).toEqual(mockProperties);
+    expect(client.listProperties).toHaveBeenCalled();
+  });
+
+  it('should validate input schema', async () => {
+    await expect(listPropertiesTool.handler({ invalid: 'param' }))
+      .rejects.toThrow();
+  });
+});
+```
+
+### API Client Testing
+```typescript
+// tests/api/client-orchestrator.test.ts
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { LodgifyOrchestrator } from '../../src/lodgify-orchestrator';
+
+describe('LodgifyOrchestrator', () => {
+  let client: LodgifyOrchestrator;
+
+  beforeEach(() => {
+    client = new LodgifyOrchestrator({
+      apiKey: 'test-key',
+      readOnly: true
+    });
+  });
+
+  it('should handle successful API calls', async () => {
+    // Mock fetch or use test mode
+    const result = await client.listProperties();
+    expect(result).toBeDefined();
+  });
+
+  it('should handle API errors', async () => {
+    // Test error scenarios
+    await expect(client.getProperty('invalid-id'))
+      .rejects.toThrow();
+  });
+});
+```
+
+## Mocking Strategies
+
+### HTTP Mocking
+```typescript
+// Mock fetch for API tests
+beforeEach(() => {
+  global.fetch = vi.fn();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+it('should make correct API call', async () => {
+  global.fetch.mockResolvedValue({
+    ok: true,
+    json: async () => ({ data: [] })
+  });
+
+  await client.listProperties();
+  
+  expect(global.fetch).toHaveBeenCalledWith(
+    expect.stringContaining('/v2/properties'),
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        'Authorization': 'Bearer test-key'
+      })
+    })
+  );
+});
+```
+
+### Environment Mocking
+```typescript
+// Mock environment variables
+beforeEach(() => {
+  process.env.LODGIFY_API_KEY = 'test-key';
+  process.env.LOG_LEVEL = 'error';
+});
+
+afterEach(() => {
+  delete process.env.LODGIFY_API_KEY;
+  delete process.env.LOG_LEVEL;
+});
+```
+
+## Test Data Management
+
+### Test Fixtures
+```typescript
+// tests/fixtures/property-data.ts
+export const mockProperty = {
+  id: '123',
+  name: 'Test Property',
+  location: 'Test Location',
+  status: 'active'
+};
+
+export const mockBooking = {
+  id: 'BK-001',
+  propertyId: '123',
+  checkIn: '2024-01-01',
+  checkOut: '2024-01-07',
+  status: 'confirmed'
+};
+```
+
+### Test Utilities
+```typescript
+// tests/utils/test-helpers.ts
+export const createMockClient = (overrides = {}) => ({
+  listProperties: vi.fn(),
+  getProperty: vi.fn(),
+  createBooking: vi.fn(),
+  ...overrides
+});
+
+export const createMockResponse = (data: any, status = 200) => ({
+  ok: status < 400,
+  status,
+  json: async () => data
+});
+```
+
+## Coverage Requirements
+
+### Coverage Targets
+- **Client Code**: ≥90% line coverage
+- **Error Handling**: 100% coverage for error paths
+- **Validation**: 100% coverage for input validation
+- **Integration**: ≥80% coverage for integration tests
+
+### Coverage Commands
+```bash
+# Run tests with coverage
+bun test --coverage
+
+# Generate coverage report
+bun test --coverage --reporter=html
+```
+
+## Performance Testing
+
+### Load Testing
+```typescript
+// tests/performance/load.test.ts
+describe('Performance Tests', () => {
+  it('should handle concurrent requests', async () => {
+    const promises = Array(10).fill(null).map(() => 
+      client.listProperties()
+    );
+    
+    const results = await Promise.all(promises);
+    expect(results).toHaveLength(10);
+  });
+});
+```
+
+## Continuous Integration
+
+### CI Test Requirements
+- All tests must pass before merging
+- Coverage must meet minimum thresholds
+- Performance tests must complete within time limits
+- Integration tests must pass with test credentials
+
+### Test Environment
+- **Node.js**: 18+ and Bun 1.0+
+- **Test Mode**: Use `TEST_MODE=mock` for CI
+- **Credentials**: Use test API keys for integration tests
+- **Isolation**: Each test should be independent
+description:
+globs:
+alwaysApply: true
+---

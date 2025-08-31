@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-08-31
+
+### Added
+
+- Complete modular architecture refactoring of server.ts
+- Registry pattern for centralized tool and resource management
+- 15+ focused modules, each under 250 lines for maintainability
+- Closure-based dependency injection via `getClient()` pattern
+- Tool deprecation system for graceful API evolution
+- Comprehensive documentation updates reflecting new architecture
+- New `docs/MODULAR_ARCHITECTURE.md` with detailed architecture documentation
+
+### Changed
+
+- Refactored monolithic 2600+ line server.ts into modular components
+- Organized tools by category (property, booking, availability, rate, webhook, messaging)
+- Centralized error handling with automatic sanitization
+- Improved type safety with proper TypeScript types throughout
+- Updated CLAUDE.md and AGENTS.md with new module structure
+- Enhanced README.md with architecture section
+
+### Technical Details
+
+- Zero breaking changes - all public APIs remain unchanged
+- 228 tests passing with complete backward compatibility
+- All TypeScript and lint warnings resolved
+- Documentation fully updated to reflect modular architecture
+
 ## [0.1.0] - 2025-08-31
 
 ### Added

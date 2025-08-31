@@ -1249,11 +1249,169 @@
             "parentTaskId": 22
           }
         ]
+      },
+      {
+        "id": 23,
+        "title": "Refactor and Modularize server.ts into Dedicated Modules",
+        "description": "Restructure the monolithic server.ts file by extracting its major responsibilities—tool registration, error handling, resource management, and server initialization—into well-defined, maintainable modules following SOLID and TypeScript best practices.",
+        "details": "1. Analyze the current server.ts file to identify and document all major responsibilities and tightly coupled logic blocks.\n\n2. Define a modular architecture:\n   - Create separate modules for tool registration, error handling, resource management, and server initialization.\n   - Each module should have a clear interface and responsibility, using TypeScript interfaces and types for strong typing and maintainability[4][5].\n   - Ensure each module is under 250 lines where possible, and avoid circular dependencies[1].\n\n3. Refactor code incrementally:\n   - Move each responsibility into its own file (e.g., toolRegistration.ts, errorHandler.ts, resourceManager.ts, serverBootstrap.ts).\n   - Use TypeScript classes or functions as appropriate, leveraging enums for fixed options and interfaces for contracts[1][4][5].\n   - Remove any remaining console.log statements and unnecessary warnings[1].\n   - Ensure file and class names are consistent and descriptive; update imports accordingly[3].\n\n4. Integrate ESLint and Prettier for code quality and formatting, and update lint/format scripts in package.json if not already present[5].\n\n5. Update documentation and code comments to reflect the new structure, and ensure all public APIs are unchanged for backward compatibility.\n\n6. Ensure all modules are covered by unit tests, and that integration tests validate the correct orchestration of modules.\n\n7. Use the TypeScript language service and IDE refactoring tools (e.g., Extract Method, Rename Symbol) to safely perform code moves and renames[2][3].",
+        "testStrategy": "1. Run all existing unit, integration, and end-to-end tests to ensure no regressions.\n2. Add or update unit tests for each new module, targeting at least 90% coverage.\n3. Verify that server initialization, tool registration, error handling, and resource management all function as before, with no change to public APIs.\n4. Use static analysis (ESLint) and formatting (Prettier) to enforce code quality and style.\n5. Manually review the new module boundaries to confirm clear separation of concerns and absence of cross-module leakage.\n6. Validate that the server starts, registers all tools, handles errors, and manages resources as expected in both development and production environments.",
+        "status": "done",
+        "dependencies": [
+          22
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Analyze and Document server.ts Responsibilities",
+            "description": "Review the current server.ts file to identify and document all major responsibilities, tightly coupled logic blocks, and areas of concern for modularization.",
+            "dependencies": [],
+            "details": "Perform a thorough code walkthrough, noting each responsibility (tool registration, error handling, resource management, server initialization) and any cross-cutting concerns or code smells.",
+            "status": "done",
+            "testStrategy": "Ensure all identified responsibilities are documented and mapped to future modules; validate by peer review."
+          },
+          {
+            "id": 2,
+            "title": "Design Modular Architecture and Interfaces",
+            "description": "Define a modular architecture by specifying clear module boundaries, interfaces, and dependencies for tool registration, error handling, resource management, and server initialization.",
+            "dependencies": [
+              "23.1"
+            ],
+            "details": "Draft TypeScript interfaces and types for each module, ensuring strong typing and maintainability. Plan for each module to be under 250 lines and avoid circular dependencies.",
+            "status": "done",
+            "testStrategy": "Review architecture diagram and interface definitions with the team; confirm alignment with SOLID and TypeScript best practices."
+          },
+          {
+            "id": 3,
+            "title": "Extract Tool Registration Logic into Module",
+            "description": "Refactor tool registration logic from server.ts into a dedicated module (e.g., toolRegistration.ts) with a clear interface and strong typing.",
+            "dependencies": [
+              "23.2"
+            ],
+            "details": "Move all tool registration code, define input/output types, and ensure the module is decoupled from unrelated logic. Use TypeScript classes or functions as appropriate.\n<info added on 2025-08-31T03:54:01.142Z>\nSignificant progress on extraction:\n- Established a centralized tool registry system in mcp/tools/registry.ts with category-based organization for scalable tool management.\n- Implemented a deprecation wrapper in mcp/tools/deprecation.ts to support graceful API evolution.\n- Moved helper functions such as findProperties and validateQuoteParams to mcp/tools/helper-tools.ts.\n- Defined comprehensive type definitions for tool registration in mcp/utils/types.ts to ensure strong typing and maintainability.\n\nNext steps:\n- Extract individual tool category modules (property, booking, availability, rate, webhook tools) from server.ts (lines 530–2000+) into dedicated modules, each registering with the central registry.\n</info added on 2025-08-31T03:54:01.142Z>\n<info added on 2025-08-31T04:02:45.169Z>\nCreated property-tools.ts with 5 property management tools, booking-tools.ts with 11 booking-related tools, availability-tools.ts with 4 availability tools, and rate-tools.ts with 4 rate management tools, totaling 24 tools extracted into organized category modules. Each module returns a ToolRegistration array for central registry integration. Remaining tasks: extract webhook tools (3), messaging tools (1), and update main server.ts to adopt the new modular structure.\n</info added on 2025-08-31T04:02:45.169Z>\n<info added on 2025-08-31T04:14:24.167Z>\nCompleted extraction of all tool categories into modular files: property-tools.ts (5 tools), booking-tools.ts (11 tools), availability-tools.ts (4 tools), rate-tools.ts (4 tools), webhook-tools.ts (3 tools), and messaging-tools.ts (1 tool). All 28 tools have been successfully extracted from server.ts into organized category modules using the central registry pattern. The modules are ready for integration with the main server.\n</info added on 2025-08-31T04:14:24.167Z>",
+            "status": "done",
+            "testStrategy": "Write unit tests for tool registration; verify all tools are registered correctly and module is under 250 lines."
+          },
+          {
+            "id": 4,
+            "title": "Extract Error Handling and Resource Management Modules",
+            "description": "Refactor error handling and resource management logic into separate modules (e.g., errorHandler.ts, resourceManager.ts), each with a clear interface and responsibility.",
+            "dependencies": [
+              "23.2"
+            ],
+            "details": "Isolate error handling and resource management code, define TypeScript interfaces, and ensure no circular dependencies. Remove any remaining console.log statements.",
+            "status": "done",
+            "testStrategy": "Write unit tests for error handling and resource management; confirm correct error propagation and resource lifecycle management."
+          },
+          {
+            "id": 5,
+            "title": "Extract Server Initialization Logic into Module",
+            "description": "Move server initialization and bootstrap logic into a dedicated module (e.g., serverBootstrap.ts), ensuring it orchestrates the other modules via dependency injection.",
+            "dependencies": [
+              "23.3",
+              "23.4"
+            ],
+            "details": "Refactor startup code, update imports, and use dependency injection to wire modules together. Ensure file and class names are consistent and descriptive.",
+            "status": "done",
+            "testStrategy": "Integration test to confirm server starts and all modules are initialized in the correct order."
+          },
+          {
+            "id": 6,
+            "title": "Integrate ESLint, Prettier, and Update Scripts",
+            "description": "Integrate ESLint and Prettier for code quality and formatting, and update lint/format scripts in package.json if not already present.",
+            "dependencies": [
+              "23.5"
+            ],
+            "details": "Configure ESLint and Prettier with recommended TypeScript rules. Ensure all code passes linting and formatting checks.",
+            "status": "done",
+            "testStrategy": "Run lint and format scripts; verify no errors or warnings remain."
+          },
+          {
+            "id": 7,
+            "title": "Update Documentation, Comments, and Tests",
+            "description": "Update documentation and code comments to reflect the new structure, ensure all public APIs are unchanged, and add or update unit and integration tests for all modules.",
+            "dependencies": [
+              "23.6"
+            ],
+            "details": "Revise README, inline comments, and API docs. Ensure at least 90% test coverage for each module and validate correct orchestration via integration tests.",
+            "status": "done",
+            "testStrategy": "Run all unit and integration tests; perform regression testing to confirm backward compatibility."
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "title": "Enhance GitHub Release Creation in CI/CD Workflows",
+        "description": "Improve the GitHub release process during CI/CD workflows by automating release notes generation, implementing changelog automation, ensuring proper semantic versioning, and adding release artifacts with documentation updates",
+        "details": "Implement comprehensive GitHub release automation:\n\n1. **Automated Release Notes Generation**:\n   - Parse commit messages since last tag using conventional commits format\n   - Group commits by type (feat, fix, chore, docs, etc.)\n   - Extract breaking changes from commit footers\n   - Generate markdown-formatted release notes with sections:\n     * Breaking Changes\n     * Features\n     * Bug Fixes\n     * Documentation\n     * Dependencies\n   - Include contributor acknowledgments\n\n2. **Changelog Automation**:\n   - Implement changelog generation using standard-version or semantic-release\n   - Auto-update CHANGELOG.md with each release\n   - Maintain historical changelog entries\n   - Support custom changelog templates\n   - Add changelog validation in CI pipeline\n\n3. **Semantic Versioning Enforcement**:\n   - Analyze commit types to determine version bump:\n     * feat: minor version bump\n     * fix: patch version bump\n     * BREAKING CHANGE: major version bump\n   - Validate version consistency across package.json, package-lock.json\n   - Auto-tag releases with proper semver format (v1.2.3)\n   - Prevent manual version overrides in CI\n\n4. **Release Artifacts**:\n   - Build and attach distribution files:\n     * Compiled JavaScript bundles (dist/)\n     * Source maps for debugging\n     * Type definition files (.d.ts)\n   - Generate and attach documentation:\n     * API documentation (TypeDoc output)\n     * Tool catalog markdown\n     * Configuration examples\n   - Create checksums (SHA256) for all artifacts\n   - Sign releases with GPG if configured\n\n5. **GitHub Actions Workflow**:\n   ```yaml\n   name: Release\n   on:\n     push:\n       branches: [main]\n   jobs:\n     release:\n       runs-on: ubuntu-latest\n       steps:\n         - uses: actions/checkout@v3\n           with:\n             fetch-depth: 0\n         - name: Setup Node\n           uses: actions/setup-node@v3\n         - name: Install dependencies\n           run: bun install\n         - name: Build\n           run: bun run build\n         - name: Generate changelog\n           run: bun run changelog\n         - name: Determine version\n           id: version\n           run: |\n             echo \"version=$(node -p \"require('./package.json').version\")\" >> $GITHUB_OUTPUT\n         - name: Create Release\n           uses: actions/create-release@v1\n           with:\n             tag_name: v${{ steps.version.outputs.version }}\n             release_name: Release v${{ steps.version.outputs.version }}\n             body_path: ./RELEASE_NOTES.md\n             draft: false\n             prerelease: false\n         - name: Upload artifacts\n           uses: actions/upload-release-asset@v1\n           with:\n             upload_url: ${{ steps.create_release.outputs.upload_url }}\n             asset_path: ./dist/lodgify-mcp.tar.gz\n             asset_name: lodgify-mcp-${{ steps.version.outputs.version }}.tar.gz\n             asset_content_type: application/gzip\n   ```\n\n6. **Release Scripts**:\n   - Create scripts/prepare-release.js:\n     * Validate commit messages\n     * Generate release notes\n     * Update version numbers\n     * Update changelog\n   - Create scripts/publish-release.js:\n     * Create GitHub release via API\n     * Upload artifacts\n     * Publish to npm registry\n     * Notify team channels\n\n7. **Documentation Updates**:\n   - Auto-update README with latest version badge\n   - Update installation instructions with new version\n   - Generate migration guide for breaking changes\n   - Update API documentation\n\n8. **Configuration**:\n   - .versionrc.json for standard-version config\n   - .releaserc.json for semantic-release config\n   - commitlint.config.js for commit message validation",
+        "testStrategy": "Comprehensive release testing:\n\n1. **Commit Message Validation**:\n   - Verify conventional commit format enforcement\n   - Test commit type detection (feat, fix, chore)\n   - Validate breaking change detection in footers\n   - Ensure invalid commits are rejected\n\n2. **Version Bump Logic**:\n   - Test patch version bump for fix commits\n   - Test minor version bump for feat commits\n   - Test major version bump for breaking changes\n   - Verify version consistency across files\n\n3. **Changelog Generation**:\n   - Verify changelog entries are properly grouped\n   - Test markdown formatting is correct\n   - Ensure previous entries are preserved\n   - Validate links to commits and issues\n\n4. **Release Notes**:\n   - Test release notes include all commit types\n   - Verify contributor list is accurate\n   - Check breaking changes are highlighted\n   - Ensure proper markdown formatting\n\n5. **GitHub Actions**:\n   - Test workflow triggers on main branch push\n   - Verify artifacts are built correctly\n   - Test release creation with proper tags\n   - Ensure artifacts upload successfully\n\n6. **Release Artifacts**:\n   - Verify dist files are included\n   - Test documentation generation\n   - Validate checksum generation\n   - Ensure all files are properly compressed\n\n7. **Integration Testing**:\n   - Create test release on feature branch\n   - Verify npm publish simulation works\n   - Test rollback procedures\n   - Validate release notifications",
+        "status": "pending",
+        "dependencies": [
+          10,
+          22
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Automated Release Notes Generation Script",
+            "description": "Create a script to parse commit messages since the last tag using the conventional commits format, group them by type, extract breaking changes, and generate markdown-formatted release notes with contributor acknowledgments.",
+            "dependencies": [],
+            "details": "Develop a Node.js script (e.g., scripts/prepare-release.js) that uses git log to collect commit messages since the last release tag. Parse messages according to the conventional commits specification, grouping them into sections: Breaking Changes, Features, Bug Fixes, Documentation, and Dependencies. Extract breaking changes from commit footers and list contributors. Output the results as RELEASE_NOTES.md in markdown format. Ensure the script can be run independently and is idempotent.",
+            "status": "pending",
+            "testStrategy": "Test with a variety of commit histories, including edge cases (multiple breaking changes, missing types, non-conventional commits). Validate that the generated RELEASE_NOTES.md matches expected structure and content."
+          },
+          {
+            "id": 2,
+            "title": "Integrate Changelog Automation with Custom Templates",
+            "description": "Set up changelog automation using standard-version or semantic-release, ensuring CHANGELOG.md is updated on each release with support for custom templates and validation in CI.",
+            "dependencies": [
+              "24.1"
+            ],
+            "details": "Configure standard-version or semantic-release in package.json or via .versionrc.json/.releaserc.json. Provide a custom changelog template to match project requirements. Ensure the changelog script updates CHANGELOG.md with each release, preserving historical entries. Add a CI step to validate that CHANGELOG.md is updated and correctly formatted on pull requests and releases.",
+            "status": "pending",
+            "testStrategy": "Run the changelog script after various commit scenarios and verify CHANGELOG.md updates. In CI, test that PRs without changelog updates are flagged. Confirm custom template rendering."
+          },
+          {
+            "id": 3,
+            "title": "Enforce Semantic Versioning and Version Consistency",
+            "description": "Implement logic to analyze commit types for version bumping, validate version consistency across package.json and package-lock.json, and auto-tag releases with proper semver format, preventing manual overrides in CI.",
+            "dependencies": [
+              "24.2"
+            ],
+            "details": "Extend the release script to determine the next version based on commit analysis (feat: minor, fix: patch, BREAKING CHANGE: major). Update package.json and package-lock.json with the new version. Ensure the CI workflow checks that version numbers are consistent and that manual version changes are rejected. Configure the workflow to create and push a git tag in the format vX.Y.Z.",
+            "status": "pending",
+            "testStrategy": "Test version bumping with different commit types. Attempt manual version changes and verify CI rejection. Confirm that tags are created and match the computed version."
+          },
+          {
+            "id": 4,
+            "title": "Build and Attach Release Artifacts with Documentation",
+            "description": "Automate the build of distribution files, source maps, type definitions, and documentation. Generate checksums and optionally sign artifacts, then attach all outputs to the GitHub release.",
+            "dependencies": [
+              "24.3"
+            ],
+            "details": "Update the build process (e.g., bun run build) to output compiled JS bundles, source maps, and .d.ts files to dist/. Generate API documentation using TypeDoc and include configuration examples and tool catalog markdown. Create SHA256 checksums for all artifacts. If GPG signing is configured, sign the artifacts. Modify the release script or workflow to upload all artifacts and documentation to the GitHub release as assets.",
+            "status": "pending",
+            "testStrategy": "Verify that all expected artifacts and documentation are generated and attached to the release. Check that checksums are correct and signatures (if present) are valid."
+          },
+          {
+            "id": 5,
+            "title": "Update and Validate GitHub Actions Release Workflow",
+            "description": "Create or update the GitHub Actions workflow to orchestrate the release process, integrating all scripts, enforcing checks, and ensuring documentation and badges are updated.",
+            "dependencies": [
+              "24.4"
+            ],
+            "details": "Define a .github/workflows/release.yml workflow triggered on push to main. Steps should include: checkout with full history, Node setup, dependency install, build, changelog generation, version determination, release creation with release notes, artifact upload, and documentation updates (README badge, migration guide, etc.). Ensure the workflow fails on any validation error (commit message, changelog, version mismatch).",
+            "status": "pending",
+            "testStrategy": "Run the workflow in a test branch and verify each step executes as expected. Confirm that releases are created with correct notes, artifacts, and documentation updates. Simulate failure scenarios to ensure proper error handling."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-08-13T22:02:17.495Z",
-      "updated": "2025-08-26T04:45:59.988Z",
+      "updated": "2025-08-31T04:43:45.050Z",
       "description": "Tasks for master context"
     }
   }

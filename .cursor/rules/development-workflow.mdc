@@ -1,0 +1,227 @@
+# Development Workflow
+
+## Development Environment Setup
+
+### Prerequisites
+- **Node.js**: 18+ or **Bun**: 1.0+
+- **Git**: For version control
+- **Editor**: VS Code with TypeScript support recommended
+
+### Initial Setup
+```bash
+# Clone and setup
+git clone https://github.com/mikerobgit/lodgify-mcp
+cd lodgify-mcp
+bun install
+
+# Environment configuration
+cp .env.example .env
+# Edit .env and add your LODGIFY_API_KEY
+```
+
+## Development Commands
+
+### Core Development Commands
+```bash
+# Development server (hot reload)
+bun dev
+
+# Build project
+bun run build
+
+# Run tests
+bun test
+
+# Watch tests
+bun test --watch
+
+# Code quality checks
+bun run check  # Lint, format, typecheck, build, test
+```
+
+### Code Quality Commands
+```bash
+# Linting
+bun run lint          # Check for issues
+bun run lint:fix      # Fix auto-fixable issues
+bun run lint:src      # Lint only source files
+
+# Formatting
+bun run format        # Format all files
+bun run format:src    # Format only source files
+
+# Type checking
+bun run typecheck     # TypeScript type checking
+```
+
+## Git Workflow
+
+### Branch Strategy
+- **main**: Production-ready code
+- **develop**: Integration branch
+- **feature/***: New features
+- **fix/***: Bug fixes
+- **docs/***: Documentation updates
+
+### Commit Standards
+Follow Conventional Commits:
+```bash
+# Feature
+git commit -m "feat: add new property listing tool"
+
+# Bug fix
+git commit -m "fix: handle API rate limiting correctly"
+
+# Documentation
+git commit -m "docs: update README with new examples"
+
+# Breaking change
+git commit -m "feat!: change API response format"
+```
+
+### Pre-commit Hooks
+Husky is configured to run:
+- Linting (with auto-fix)
+- Code formatting
+- Type checking (on push)
+
+## Feature Development Process
+
+### 1. Planning
+- Review existing tools in [src/mcp/tools/](mdc:src/mcp/tools/)
+- Check [docs/TOOL_CATALOG.md](mdc:docs/TOOL_CATALOG.md) for existing functionality
+- Plan tool category and implementation approach
+
+### 2. Implementation
+```bash
+# Create feature branch
+git checkout -b feature/new-tool
+
+# Implement the feature
+# - Add tool to appropriate category file
+# - Register tool in register-all.ts
+# - Add client method to orchestrator
+# - Write tests
+# - Update documentation
+```
+
+### 3. Testing
+```bash
+# Run all tests
+bun test
+
+# Run specific test file
+bun test tests/mcp/tools/new-tool.test.ts
+
+# Run with coverage
+bun test --coverage
+```
+
+### 4. Code Review
+- Ensure all tests pass
+- Check code coverage meets requirements
+- Verify documentation is updated
+- Run `bun run check` to ensure quality
+
+### 5. Merge
+- Create pull request
+- Ensure CI passes
+- Get code review approval
+- Merge to develop/main
+
+## Debugging
+
+### Local Development
+```bash
+# Run with debug logging
+DEBUG_HTTP=1 bun dev
+
+# Run with specific log level
+LOG_LEVEL=debug bun dev
+```
+
+### Testing MCP Server
+1. **Stop current server**: Ctrl+C if running
+2. **Restart locally**: `bun dev` or `bun run build && bun start`
+3. **Restart MCP client**: Restart Claude/VS Code MCP session
+4. **Test CLI**: `bin/lodgify-mcp.js` after changes
+
+### Common Issues
+- **Hot reload not working**: Restart MCP client session
+- **API errors**: Check `LODGIFY_API_KEY` in `.env`
+- **Type errors**: Run `bun run typecheck`
+- **Lint errors**: Run `bun run lint:fix`
+
+## Documentation Updates
+
+### When to Update Documentation
+- **New features**: Update [README.md](mdc:README.md) and [docs/TOOL_CATALOG.md](mdc:docs/TOOL_CATALOG.md)
+- **API changes**: Update [CHANGELOG.md](mdc:CHANGELOG.md)
+- **Examples**: Add to [examples/](mdc:examples/) directory
+- **Architecture changes**: Update [docs/MODULAR_ARCHITECTURE.md](mdc:docs/MODULAR_ARCHITECTURE.md)
+
+### Documentation Standards
+- **README**: User-facing documentation with examples
+- **Tool Catalog**: Complete API reference
+- **Changelog**: Follow [Keep a Changelog](https://keepachangelog.com/) format
+- **Examples**: Working code examples for each tool
+
+## Performance Considerations
+
+### Development Performance
+- **Module Size**: Keep modules under 250 lines
+- **Lazy Loading**: Only load what's needed
+- **Caching**: Cache frequently accessed data
+- **Bundle Size**: Monitor dist/ size
+
+### Runtime Performance
+- **Rate Limiting**: Respect Lodgify API limits
+- **Retry Logic**: Use exponential backoff
+- **Error Handling**: Fail fast with clear errors
+- **Memory Management**: Proper resource cleanup
+
+## Security Best Practices
+
+### API Key Management
+- **Never commit**: `.env` files with real keys
+- **Use examples**: `.env.example` for documentation
+- **Rotate keys**: Regularly rotate API keys
+- **Read-only mode**: Use for testing/demo
+
+### Input Validation
+- **Zod schemas**: Validate all inputs
+- **Sanitization**: Clean error messages
+- **Type safety**: Use TypeScript strict mode
+- **Error boundaries**: Prevent information leakage
+
+## Release Process
+
+### Version Management
+```bash
+# Check current version
+npm version
+
+# Bump version (patch/minor/major)
+npm version patch
+npm version minor
+npm version major
+```
+
+### Release Checklist
+- [ ] All tests pass
+- [ ] Documentation updated
+- [ ] Changelog updated
+- [ ] Version bumped
+- [ ] Build successful
+- [ ] Docker image built
+- [ ] NPM package published
+
+### CI/CD Pipeline
+- **Push to main**: Triggers CI build and test
+- **Tag v***: Triggers release workflow
+- **Docker**: Auto-publishes to GitHub Container Registry
+- **NPM**: Auto-publishes to npm registry
+description:
+globs:
+alwaysApply: true
+---

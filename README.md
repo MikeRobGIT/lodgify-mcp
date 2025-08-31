@@ -13,8 +13,7 @@
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-A Model Context Protocol (MCP) server that exposes Lodgify Public API
- endpoints as tools for AI assistants like Claude. Built using the high-level McpServer SDK with enhanced metadata, capabilities declaration, and robust error handling.
+A Model Context Protocol (MCP) server that exposes Lodgify Public API endpoints as tools for AI assistants like Claude. Built with a modular architecture using the registry pattern, featuring 15+ focused modules, centralized error handling, and comprehensive type safety.
 
 ## Read-Only Mode Enforcement
 
@@ -408,6 +407,18 @@ npm run build
   }
 }
 ```
+
+## Architecture
+
+The server uses a modular architecture with clear separation of concerns:
+
+- **Registry Pattern**: Central registries manage all tools and resources
+- **Tool Categories**: Tools organized by domain (property, booking, availability, rate, webhook, messaging)
+- **Error Handling**: Centralized error processing with automatic sanitization
+- **Type Safety**: Full TypeScript with Zod validation schemas
+- **Module Size**: Each module is under 250 lines for maintainability
+
+See [Modular Architecture Documentation](docs/MODULAR_ARCHITECTURE.md) for detailed information.
 
 ## Advanced Features
 

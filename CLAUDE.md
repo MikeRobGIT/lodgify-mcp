@@ -19,23 +19,32 @@ This is a Model Context Protocol (MCP) server that exposes Lodgify Public API v2
 ### Key Components
 
 1. **MCP Server** (`src/server.ts`)
-   - Registers all Lodgify tools with the MCP SDK
-   - Handles tool invocations and resource queries
-   - Manages stdio communication with MCP clients
+   - Minimal entry point that initializes the modular MCP server
+   - Coordinates server setup and starts the stdio transport
+   - Delegates all functionality to modular components
 
-2. **Lodgify Orchestrator** (`src/lodgify-orchestrator.ts`)
+2. **MCP Modules** (`src/mcp/`)
+   - **Registry Pattern**: Central registries for tools and resources
+   - **Tool Modules** (`src/mcp/tools/`): Organized by category (property, booking, availability, rate, webhook, messaging)
+   - **Resource Modules** (`src/mcp/resources/`): Health check and system monitoring
+   - **Error Handling** (`src/mcp/errors/`): Centralized error processing and sanitization
+   - **Server Setup** (`src/mcp/server-setup.ts`): Server initialization and configuration
+   - **Schemas** (`src/mcp/schemas/`): Shared Zod validation schemas
+   - **Utils** (`src/mcp/utils/`): TypeScript types and interfaces
+
+3. **Lodgify Orchestrator** (`src/lodgify-orchestrator.ts`)
    - Unified API for all Lodgify endpoints (v1 and v2)
    - Centralized authentication and configuration
    - Read-only mode support for operational safety
    - Health monitoring and status reporting
 
-3. **Core Modules** (`src/core/`)
+4. **Core Modules** (`src/core/`)
    - HTTP client (`src/core/http/`) with retry and rate limiting
    - Error handling (`src/core/errors/`) with structured error types
    - Rate limiter (`src/core/rate-limiter/`) with sliding window implementation
    - Retry logic (`src/core/retry/`) with exponential backoff
 
-4. **API Modules** (`src/api/v1/`, `src/api/v2/`)
+5. **API Modules** (`src/api/v1/`, `src/api/v2/`)
    - Modular API client implementations
    - TypeScript interfaces for all endpoints
    - Specialized clients for bookings, properties, rates, webhooks, etc.
@@ -68,22 +77,28 @@ Required environment variables in `.env`:
 
 ## Tool Implementation Pattern
 
-When implementing new Lodgify tools, follow this pattern:
+When implementing new Lodgify tools, follow this modular pattern:
 
-1. **Tool Registration** in `server.ts`:
+1. **Tool Module Creation** in appropriate category file (`src/mcp/tools/[category]-tools.ts`):
    - Define Zod schema for input validation
-   - Register tool with descriptive name and description
-   - Map to appropriate Lodgify client method
+   - Create tool registration object with name, category, config, and handler
+   - Use closure-based `getClient()` to access the Lodgify orchestrator
+   - Export tool registration for the registry
 
-2. **Client Method** in `lodgify.ts`:
+2. **Registry Integration** in `src/mcp/tools/register-all.ts`:
+   - Import the new tool module
+   - Add tool to the appropriate category registration
+   - Tools are automatically registered when server starts
+
+3. **Client Method** in `lodgify-orchestrator.ts`:
    - Build URL with path parameters
    - Pass query parameters through bracket notation flattener
    - Handle response and errors consistently
 
-3. **Error Handling**:
-   - Return structured errors with status, path, and details
-   - Preserve Lodgify error payloads when available
-   - Apply retry logic only for 429 responses
+4. **Error Handling**:
+   - Errors are automatically processed through centralized error handler
+   - Sanitization removes sensitive data before returning to user
+   - McpError codes are applied based on error type
 
 ## Testing Strategy
 

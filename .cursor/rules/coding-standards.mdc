@@ -1,0 +1,87 @@
+# Coding Standards for Lodgify MCP Server
+
+## Code Style (Biome Configuration)
+Follow the Biome configuration in [biome.json](mdc:biome.json):
+- **Indentation**: 2 spaces
+- **Line Width**: 100 characters
+- **Quotes**: Single quotes for strings
+- **Semicolons**: As needed (automatic)
+- **Trailing Commas**: Always
+- **Line Endings**: LF
+
+## TypeScript Standards
+Follow the strict configuration in [tsconfig.json](mdc:tsconfig.json):
+- **Strict Mode**: Enabled
+- **Target**: ES2022
+- **Module**: NodeNext
+- **No Unused Locals/Parameters**: Enabled
+- **No Implicit Returns**: Enabled
+
+## Naming Conventions
+- **Files**: `kebab-case` (e.g., `lodgify-orchestrator.ts`)
+- **Types/Classes**: `PascalCase` (e.g., `LodgifyOrchestrator`)
+- **Variables/Functions**: `camelCase` (e.g., `getClient`)
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `MAX_RETRY_ATTEMPTS`)
+
+## Module Organization
+- **Module Size**: Keep each module under 250 lines for maintainability
+- **Single Responsibility**: Each module should have one clear purpose
+- **Registry Pattern**: Use central registries for tools and resources
+- **Dependency Injection**: Use closure-based `getClient()` pattern
+
+## Error Handling
+- **Centralized**: All errors go through [src/mcp/errors/](mdc:src/mcp/errors/)
+- **Sanitization**: Remove sensitive data before returning to user
+- **Type Safety**: Use typed error classes from [src/core/errors/](mdc:src/core/errors/)
+- **Logging**: Use structured logging with appropriate levels
+
+## MCP Tool Implementation Pattern
+When creating new tools in [src/mcp/tools/](mdc:src/mcp/tools/):
+
+```typescript
+// 1. Define Zod schema for input validation
+const toolSchema = z.object({
+  propertyId: z.string().min(1),
+  // ... other parameters
+});
+
+// 2. Create tool registration object
+export const myTool = {
+  name: 'lodgify_my_tool',
+  description: 'Description of what this tool does',
+  inputSchema: toolSchema,
+  handler: async (params) => {
+    const client = getClient();
+    // Implementation
+  }
+};
+```
+
+## Testing Standards
+- **Test Location**: [tests/](mdc:tests/) mirroring [src/](mdc:src/) structure
+- **Framework**: Bun test
+- **Coverage**: Aim for ≥90% for client code
+- **Mocking**: Mock external HTTP calls
+- **Deterministic**: Tests should be deterministic and repeatable
+
+## Import Organization
+- **External Libraries**: First
+- **Internal Modules**: Second (alphabetical)
+- **Relative Imports**: Last
+- **Type Imports**: Use `import type` for type-only imports
+
+## Documentation
+- **JSDoc**: Use for public APIs and complex functions
+- **README**: Keep [README.md](mdc:README.md) updated with new features
+- **Changelog**: Update [CHANGELOG.md](mdc:CHANGELOG.md) for all changes
+- **Examples**: Add examples to [examples/](mdc:examples/) for new features
+
+## Security Guidelines
+- **API Keys**: Never log or expose API keys
+- **Input Validation**: Always validate inputs with Zod schemas
+- **Error Messages**: Sanitize error messages to avoid information leakage
+- **Read-Only Mode**: Respect `LODGIFY_READ_ONLY` environment variable
+description:
+globs:
+alwaysApply: true
+---

@@ -4,7 +4,7 @@
       "provider": "claude-code",
       "modelId": "opus",
       "maxTokens": 120000,
-      "temperature": 0.2
+      "temperature": 0.1
     },
     "research": {
       "provider": "perplexity",
@@ -13,10 +13,10 @@
       "temperature": 0.1
     },
     "fallback": {
-      "provider": "claude-code",
-      "modelId": "sonnet",
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4",
       "maxTokens": 120000,
-      "temperature": 0.1
+      "temperature": 0.2
     }
   },
   "global": {
