@@ -6,7 +6,7 @@ import { config } from 'dotenv'
 import { type ZodRawShape, z } from 'zod'
 import pkg from '../package.json' with { type: 'json' }
 import { ReadOnlyModeError } from './core/errors/read-only-error.js'
-import { type EnvConfig, isProduction, loadEnvironment } from './env.js'
+import { type EnvConfig, isProduction, loadEnvironment, normalizeBoolean } from './env.js'
 import {
   type AvailabilityQueryParams,
   type BookingSearchParams,
@@ -316,16 +316,9 @@ function getEnvConfig(): EnvConfig {
       envConfig = {
         LODGIFY_API_KEY: process.env.LODGIFY_API_KEY || 'invalid-key',
         LOG_LEVEL: (process.env.LOG_LEVEL as EnvConfig['LOG_LEVEL']) || 'error',
-        DEBUG_HTTP: process.env.DEBUG_HTTP === '1',
-        // Handle all variations: '0', 'false', false (as string), undefined → write-enabled
-        // '1', 'true', true (as string) → read-only mode
-        LODGIFY_READ_ONLY: (() => {
-          const val = process.env.LODGIFY_READ_ONLY
-          if (!val || val === '' || val === '0' || val === 'false') {
-            return false // Write-enabled
-          }
-          return val === '1' || val === 'true' // Read-only
-        })(),
+        DEBUG_HTTP: normalizeBoolean(process.env.DEBUG_HTTP),
+        // Use the centralized normalizeBoolean function for consistency
+        LODGIFY_READ_ONLY: normalizeBoolean(process.env.LODGIFY_READ_ONLY),
         NODE_ENV: (process.env.NODE_ENV as EnvConfig['NODE_ENV']) || 'production',
       }
     }

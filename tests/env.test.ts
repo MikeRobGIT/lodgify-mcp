@@ -3,19 +3,31 @@ import { loadEnvironment, normalizeBoolean } from '../src/env.js'
 
 // Test the normalizeBoolean function directly
 describe('Boolean Normalization', () => {
-  it.each(['1', 'true', 'TRUE', ' True ', '  1  '])(
+  it.each(['1', 'true', 'yes', 'on', 'TRUE', 'YES', 'ON', ' True ', ' Yes ', ' On ', '  1  '])(
     'should normalize truthy value "%s" to true',
     (input) => {
       expect(normalizeBoolean(input)).toBe(true)
     },
   )
 
-  it.each(['0', 'false', 'FALSE', ' False ', '  0  ', '', '   ', 'anything else'])(
-    'should normalize falsy value "%s" to false',
-    (input) => {
-      expect(normalizeBoolean(input)).toBe(false)
-    },
-  )
+  it.each([
+    '0',
+    'false',
+    'no',
+    'off',
+    'FALSE',
+    'NO',
+    'OFF',
+    ' False ',
+    ' No ',
+    ' Off ',
+    '  0  ',
+    '',
+    '   ',
+    'anything else',
+  ])('should normalize falsy value "%s" to false', (input) => {
+    expect(normalizeBoolean(input)).toBe(false)
+  })
 
   it('should handle null and undefined', () => {
     expect(normalizeBoolean(null)).toBe(false)
@@ -60,63 +72,81 @@ describe('Environment Loading with Boolean Normalization', () => {
   })
 
   it('should handle DEBUG_HTTP with various inputs', () => {
-    // Test with truthy values
+    // Test with all truthy values
     process.env.LODGIFY_API_KEY =
       'valid-sandbox-api-key-that-is-long-enough-to-pass-validation-12345'
-    process.env.DEBUG_HTTP = '1'
-    let config = loadEnvironment({ allowTestKeys: true })
-    expect(config.DEBUG_HTTP).toBe(true)
 
-    process.env.DEBUG_HTTP = 'true'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.DEBUG_HTTP).toBe(true)
+    const truthyValues = ['1', 'true', 'yes', 'on']
+    for (const value of truthyValues) {
+      process.env.DEBUG_HTTP = value
+      const config = loadEnvironment({ allowTestKeys: true })
+      expect(config.DEBUG_HTTP).toBe(true)
+    }
 
+    // Test with case variations and whitespace
     process.env.DEBUG_HTTP = ' TRUE '
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.DEBUG_HTTP).toBe(true)
+    const config1 = loadEnvironment({ allowTestKeys: true })
+    expect(config1.DEBUG_HTTP).toBe(true)
 
-    // Test with falsy values
-    process.env.DEBUG_HTTP = '0'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.DEBUG_HTTP).toBe(false)
+    process.env.DEBUG_HTTP = ' YES '
+    const config2 = loadEnvironment({ allowTestKeys: true })
+    expect(config2.DEBUG_HTTP).toBe(true)
 
-    process.env.DEBUG_HTTP = 'false'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.DEBUG_HTTP).toBe(false)
+    process.env.DEBUG_HTTP = ' ON '
+    const config3 = loadEnvironment({ allowTestKeys: true })
+    expect(config3.DEBUG_HTTP).toBe(true)
 
+    // Test with all falsy values
+    const falsyValues = ['0', 'false', 'no', 'off']
+    for (const value of falsyValues) {
+      process.env.DEBUG_HTTP = value
+      const config = loadEnvironment({ allowTestKeys: true })
+      expect(config.DEBUG_HTTP).toBe(false)
+    }
+
+    // Test with unknown values
     process.env.DEBUG_HTTP = 'anything else'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.DEBUG_HTTP).toBe(false)
+    const config4 = loadEnvironment({ allowTestKeys: true })
+    expect(config4.DEBUG_HTTP).toBe(false)
   })
 
   it('should handle LODGIFY_READ_ONLY with various inputs', () => {
-    // Test with truthy values
+    // Test with all truthy values
     process.env.LODGIFY_API_KEY =
       'valid-sandbox-api-key-that-is-long-enough-to-pass-validation-12345'
-    process.env.LODGIFY_READ_ONLY = '1'
-    let config = loadEnvironment({ allowTestKeys: true })
-    expect(config.LODGIFY_READ_ONLY).toBe(true)
 
-    process.env.LODGIFY_READ_ONLY = 'true'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.LODGIFY_READ_ONLY).toBe(true)
+    const truthyValues = ['1', 'true', 'yes', 'on']
+    for (const value of truthyValues) {
+      process.env.LODGIFY_READ_ONLY = value
+      const config = loadEnvironment({ allowTestKeys: true })
+      expect(config.LODGIFY_READ_ONLY).toBe(true)
+    }
 
+    // Test with case variations and whitespace
     process.env.LODGIFY_READ_ONLY = ' TRUE '
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.LODGIFY_READ_ONLY).toBe(true)
+    const config5 = loadEnvironment({ allowTestKeys: true })
+    expect(config5.LODGIFY_READ_ONLY).toBe(true)
 
-    // Test with falsy values
-    process.env.LODGIFY_READ_ONLY = '0'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.LODGIFY_READ_ONLY).toBe(false)
+    process.env.LODGIFY_READ_ONLY = ' YES '
+    const config6 = loadEnvironment({ allowTestKeys: true })
+    expect(config6.LODGIFY_READ_ONLY).toBe(true)
 
-    process.env.LODGIFY_READ_ONLY = 'false'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.LODGIFY_READ_ONLY).toBe(false)
+    process.env.LODGIFY_READ_ONLY = ' ON '
+    const config7 = loadEnvironment({ allowTestKeys: true })
+    expect(config7.LODGIFY_READ_ONLY).toBe(true)
 
+    // Test with all falsy values
+    const falsyValues = ['0', 'false', 'no', 'off']
+    for (const value of falsyValues) {
+      process.env.LODGIFY_READ_ONLY = value
+      const config = loadEnvironment({ allowTestKeys: true })
+      expect(config.LODGIFY_READ_ONLY).toBe(false)
+    }
+
+    // Test with unknown values
     process.env.LODGIFY_READ_ONLY = 'anything else'
-    config = loadEnvironment({ allowTestKeys: true })
-    expect(config.LODGIFY_READ_ONLY).toBe(false)
+    const config8 = loadEnvironment({ allowTestKeys: true })
+    expect(config8.LODGIFY_READ_ONLY).toBe(false)
   })
 
   it('should default boolean values when not set', () => {
