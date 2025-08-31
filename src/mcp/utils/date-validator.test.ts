@@ -232,7 +232,7 @@ describe('DateValidator', () => {
       expect(result.start.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.start.validatedDate).toBe('2024-09-01') // Original input preserved
       expect(result.start.feedback).toBeDefined()
-      expect(result.end.wasAutoCorrected).toBe(false) // Never auto-correct  
+      expect(result.end.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.end.validatedDate).toBe('2024-09-10') // Original input preserved
       expect(result.end.feedback).toBeDefined()
       expect(result.rangeValid).toBe(true) // Range is valid for original dates

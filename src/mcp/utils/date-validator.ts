@@ -293,14 +293,18 @@ export function createDateValidationFeedback(options: {
   i18n?: InternationalizationOptions
 }): DateValidationFeedback {
   // Generate accessibility enhancements if not provided
-  const accessibility = options.accessibility ?? generateAccessibilityEnhancements(options.severity, options.detectedIssue, options.message)
-  
+  const accessibility =
+    options.accessibility ??
+    generateAccessibilityEnhancements(options.severity, options.detectedIssue, options.message)
+
   // Apply internationalization if provided
   const message = options.i18n ? localizeMessage(options.message, options.i18n) : options.message
-  const suggestions = options.i18n 
-    ? options.suggestions.map(s => localizeMessage(s, options.i18n as InternationalizationOptions))
+  const suggestions = options.i18n
+    ? options.suggestions.map((s) =>
+        localizeMessage(s, options.i18n as InternationalizationOptions),
+      )
     : options.suggestions
-  
+
   return {
     message,
     severity: options.severity,
@@ -321,24 +325,24 @@ export function createDateValidationFeedback(options: {
 function generateAccessibilityEnhancements(
   severity: FeedbackSeverity,
   issue: ValidationIssueCode,
-  message: string
+  message: string,
 ): AccessibilityEnhancements {
   const roleMap: Record<FeedbackSeverity, 'alert' | 'status' | 'log'> = {
     [FeedbackSeverity.ERROR]: 'alert',
     [FeedbackSeverity.WARNING]: 'status',
-    [FeedbackSeverity.INFO]: 'log'
+    [FeedbackSeverity.INFO]: 'log',
   }
-  
+
   const priorityMap: Record<FeedbackSeverity, 'high' | 'medium' | 'low'> = {
     [FeedbackSeverity.ERROR]: 'high',
     [FeedbackSeverity.WARNING]: 'medium',
-    [FeedbackSeverity.INFO]: 'low'
+    [FeedbackSeverity.INFO]: 'low',
   }
-  
+
   const ariaLabel = `Date validation ${severity}: ${issue.replace(/_/g, ' ')}`
   const plainLanguage = simplifyLanguage(message)
   const structuredDescription = createStructuredDescription(severity, issue, message)
-  
+
   return {
     ariaLabel,
     ariaDescription: `Date validation feedback for input validation`,
@@ -348,8 +352,8 @@ function generateAccessibilityEnhancements(
     alternativeFormats: {
       plainLanguage,
       phoneticHints: generatePhoneticHints(message),
-      structuredDescription
-    }
+      structuredDescription,
+    },
   }
 }
 
@@ -382,13 +386,17 @@ function generatePhoneticHints(message: string): string {
 function createStructuredDescription(
   severity: FeedbackSeverity,
   issue: ValidationIssueCode,
-  message: string
+  message: string,
 ): string {
-  const severityText = severity === FeedbackSeverity.ERROR ? 'Error' : 
-                      severity === FeedbackSeverity.WARNING ? 'Warning' : 'Information'
-  
-  const issueText = issue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-  
+  const severityText =
+    severity === FeedbackSeverity.ERROR
+      ? 'Error'
+      : severity === FeedbackSeverity.WARNING
+        ? 'Warning'
+        : 'Information'
+
+  const issueText = issue.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+
   return `${severityText}: ${issueText}. ${message}`
 }
 
@@ -412,7 +420,7 @@ function localizeMessage(message: string, i18n: InternationalizationOptions): st
       .replace(/Date appears to be from/g, 'La date semble provenir de')
       .replace(/Current date:/g, 'Date actuelle:')
   }
-  
+
   return message // Default to English
 }
 
@@ -423,7 +431,11 @@ export const FeedbackTemplates = {
   /**
    * Create feedback for suspected LLM cutoff dates
    */
-  llmCutoffSuspected: (originalInput: string, currentYear: number, cutoffYear: number = 2024): DateValidationFeedback => {
+  llmCutoffSuspected: (
+    originalInput: string,
+    currentYear: number,
+    cutoffYear: number = 2024,
+  ): DateValidationFeedback => {
     // Extract the year from the input and replace it with current year
     const inputYear = new Date(`${originalInput}T12:00:00Z`).getFullYear()
     const suggestedDate = originalInput.replace(String(inputYear), String(currentYear))
@@ -435,19 +447,23 @@ export const FeedbackTemplates = {
       suggestions: [
         `If you meant this year, use: ${suggestedDate}`,
         `If you meant the historical date ${originalInput}, please confirm`,
-        `Current date: ${new Date().toISOString().split('T')[0]}`
+        `Current date: ${new Date().toISOString().split('T')[0]}`,
       ],
       confirmationRequired: true,
       context: {
         cutoffYear,
-      }
+      },
     })
   },
 
   /**
    * Create feedback for dates in the past when future expected
    */
-  dateInPast: (originalInput: string, daysPast: number, toolCategory: string): DateValidationFeedback => {
+  dateInPast: (
+    originalInput: string,
+    daysPast: number,
+    toolCategory: string,
+  ): DateValidationFeedback => {
     const todayDate = new Date().toISOString().split('T')[0]
     return createDateValidationFeedback({
       message: `The date "${originalInput}" is ${daysPast} days in the past. ${toolCategory} operations typically require future dates.`,
@@ -457,13 +473,13 @@ export const FeedbackTemplates = {
       suggestions: [
         `Did you mean a future date?`,
         `Today's date: ${todayDate}`,
-        `If you need past data, please confirm this is intentional`
+        `If you need past data, please confirm this is intentional`,
       ],
       confirmationRequired: true,
       context: {
         daysDifference: -daysPast,
         toolCategory,
-      }
+      },
     })
   },
 
@@ -479,7 +495,7 @@ export const FeedbackTemplates = {
       suggestions: [
         `Ensure the end date is after the start date`,
         `Check if the dates were entered in the correct order`,
-        `Current date: ${new Date().toISOString().split('T')[0]}`
+        `Current date: ${new Date().toISOString().split('T')[0]}`,
       ],
       confirmationRequired: false,
     })
@@ -573,7 +589,7 @@ export class DateValidator {
         suggestions: [
           'Use YYYY-MM-DD format (e.g., 2025-08-31)',
           'Ensure the date is valid (check month/day ranges)',
-        ]
+        ],
       })
 
       return {
@@ -589,8 +605,8 @@ export class DateValidator {
 
     // Check for LLM cutoff issues (no auto-correction)
     const llmCutoffResult = this.detectLLMCutoffIssues(date, dateString)
-    
-    // Validate against past/future constraints (no auto-correction)  
+
+    // Validate against past/future constraints (no auto-correction)
     const constraintResult = this.validateTimeConstraints(date, dateString)
 
     // Combine results with feedback prioritization
@@ -622,9 +638,9 @@ export class DateValidator {
       // Use original dates for range comparison (never modified in feedback mode)
       const startDateObj = new Date(`${startResult.validatedDate}T12:00:00Z`)
       const endDateObj = new Date(`${endResult.validatedDate}T12:00:00Z`)
-      
+
       rangeValid = endDateObj > startDateObj
-      
+
       if (!rangeValid) {
         rangeFeedback = FeedbackTemplates.invalidRange(startDate, endDate)
         rangeError = rangeFeedback.message
@@ -682,7 +698,7 @@ export class DateValidator {
     // Detect if date is from a past year that might be LLM cutoff
     if (dateYear <= llmCutoffYear && dateYear < currentYear) {
       const feedback = FeedbackTemplates.llmCutoffSuspected(dateString, currentYear, llmCutoffYear)
-      
+
       return {
         feedback,
         // Legacy fields for backward compatibility
@@ -709,7 +725,7 @@ export class DateValidator {
     if (daysDiff < 0 && !this.config.allowPast) {
       const absDays = Math.abs(daysDiff)
       const toolCategory = this.config.category || 'this operation'
-      
+
       if (this.config.mode === ValidationMode.HARD) {
         const feedback = createDateValidationFeedback({
           message: `Date is ${absDays} days in the past. Past dates are not allowed for ${toolCategory}.`,
@@ -723,9 +739,9 @@ export class DateValidator {
           context: {
             daysDifference: daysDiff,
             toolCategory,
-          }
+          },
         })
-        
+
         return {
           isValid: false,
           feedback,
@@ -734,7 +750,7 @@ export class DateValidator {
       } else {
         // SOFT mode: provide feedback but allow processing
         const feedback = FeedbackTemplates.dateInPast(originalInput, absDays, toolCategory)
-        
+
         return {
           isValid: true,
           feedback,
@@ -747,7 +763,10 @@ export class DateValidator {
     if (daysDiff > 0 && !this.config.allowFuture) {
       const feedback = createDateValidationFeedback({
         message: `Date is ${daysDiff} days in the future. Future dates may not be intended for this operation.`,
-        severity: this.config.mode === ValidationMode.HARD ? FeedbackSeverity.ERROR : FeedbackSeverity.WARNING,
+        severity:
+          this.config.mode === ValidationMode.HARD
+            ? FeedbackSeverity.ERROR
+            : FeedbackSeverity.WARNING,
         originalInput,
         detectedIssue: ValidationIssueCode.DATE_IN_FUTURE,
         suggestions: [
@@ -757,7 +776,7 @@ export class DateValidator {
         context: {
           daysDifference: daysDiff,
           toolCategory: this.config.category,
-        }
+        },
       })
 
       return {
@@ -772,7 +791,10 @@ export class DateValidator {
     if (this.config.maxPastDays && daysDiff < 0 && Math.abs(daysDiff) > this.config.maxPastDays) {
       const feedback = createDateValidationFeedback({
         message: `Date is too far in the past (${Math.abs(daysDiff)} days). Maximum allowed: ${this.config.maxPastDays} days.`,
-        severity: this.config.mode === ValidationMode.HARD ? FeedbackSeverity.ERROR : FeedbackSeverity.WARNING,
+        severity:
+          this.config.mode === ValidationMode.HARD
+            ? FeedbackSeverity.ERROR
+            : FeedbackSeverity.WARNING,
         originalInput,
         detectedIssue: ValidationIssueCode.TOO_FAR_PAST,
         suggestions: [
@@ -782,9 +804,13 @@ export class DateValidator {
         context: {
           daysDifference: daysDiff,
           allowedRange: {
-            minDate: new Date(this.referenceDate.getTime() - (this.config.maxPastDays * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]
-          }
-        }
+            minDate: new Date(
+              this.referenceDate.getTime() - this.config.maxPastDays * 24 * 60 * 60 * 1000,
+            )
+              .toISOString()
+              .split('T')[0],
+          },
+        },
       })
 
       return {
@@ -799,7 +825,10 @@ export class DateValidator {
     if (this.config.maxFutureDays && daysDiff > this.config.maxFutureDays) {
       const feedback = createDateValidationFeedback({
         message: `Date is too far in the future (${daysDiff} days). Maximum allowed: ${this.config.maxFutureDays} days.`,
-        severity: this.config.mode === ValidationMode.HARD ? FeedbackSeverity.ERROR : FeedbackSeverity.WARNING,
+        severity:
+          this.config.mode === ValidationMode.HARD
+            ? FeedbackSeverity.ERROR
+            : FeedbackSeverity.WARNING,
         originalInput,
         detectedIssue: ValidationIssueCode.TOO_FAR_FUTURE,
         suggestions: [
@@ -809,9 +838,13 @@ export class DateValidator {
         context: {
           daysDifference: daysDiff,
           allowedRange: {
-            maxDate: new Date(this.referenceDate.getTime() + (this.config.maxFutureDays * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]
-          }
-        }
+            maxDate: new Date(
+              this.referenceDate.getTime() + this.config.maxFutureDays * 24 * 60 * 60 * 1000,
+            )
+              .toISOString()
+              .split('T')[0],
+          },
+        },
       })
 
       return {
