@@ -7,6 +7,37 @@ import { z } from 'zod'
 import { safeLogger } from './logger.js'
 
 /**
+ * Normalizes a value to a boolean with consistent handling
+ * @param val - The value to normalize
+ * @returns Boolean value
+ */
+export function normalizeBoolean(val: unknown): boolean {
+  if (val === null || val === undefined) {
+    return false
+  }
+
+  // Convert to string, trim whitespace, and lowercase
+  const normalized = String(val).trim().toLowerCase()
+
+  // Define explicit sets of truthy and falsy values
+  const truthyValues = ['1', 'true', 'yes', 'on']
+  const falsyValues = ['0', 'false', 'no', 'off']
+
+  // Check against truthy values first
+  if (truthyValues.includes(normalized)) {
+    return true
+  }
+
+  // Check against falsy values
+  if (falsyValues.includes(normalized)) {
+    return false
+  }
+
+  // Default to false for unknown inputs
+  return false
+}
+
+/**
  * Lodgify API key validation schema
  * Validates format, length, and basic structure
  */
@@ -27,21 +58,15 @@ const logLevelSchema = z.enum(['error', 'warn', 'info', 'debug']).optional().def
 
 /**
  * Debug HTTP flag validation schema
+ * Uses consistent boolean normalization with proper boolean default
  */
-const debugHttpSchema = z
-  .string()
-  .optional()
-  .default('0')
-  .transform((val) => val === '1' || val === 'true')
+const debugHttpSchema = z.unknown().optional().default(false).transform(normalizeBoolean)
 
 /**
  * Read-only mode validation schema
+ * Uses consistent boolean normalization with proper boolean default
  */
-const readOnlySchema = z
-  .string()
-  .optional()
-  .default('0')
-  .transform((val) => val === '1' || val === 'true')
+const readOnlySchema = z.unknown().optional().default(false).transform(normalizeBoolean)
 
 /**
  * Complete environment schema
@@ -158,13 +183,26 @@ export function validateApiKey(
  */
 export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): EnvConfig {
   try {
-    // Parse environment variables
-    const rawEnv = {
+    // Build raw environment object, excluding undefined values
+    // This allows Zod's default values to work properly
+    const optionalKeys = ['LOG_LEVEL', 'DEBUG_HTTP', 'LODGIFY_READ_ONLY', 'NODE_ENV'] as const
+
+    const rawEnv: Record<string, string | undefined> = {
+      // Always include LODGIFY_API_KEY (required)
       LODGIFY_API_KEY: process.env.LODGIFY_API_KEY,
-      LOG_LEVEL: process.env.LOG_LEVEL,
-      DEBUG_HTTP: process.env.DEBUG_HTTP,
-      LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
-      NODE_ENV: process.env.NODE_ENV,
+      // Merge in only present, non-empty optional vars (trimmed)
+      ...Object.fromEntries(
+        optionalKeys
+          .map((key) => [key, process.env[key]?.trim()])
+          .filter(([, value]) => value !== undefined && value !== ''),
+      ),
+    }
+
+    // Debug logging for read-only mode via structured logger
+    if (process.env.LODGIFY_READ_ONLY !== undefined) {
+      safeLogger.debug('[ENV DEBUG] loadEnvironment received LODGIFY_READ_ONLY', {
+        LODGIFY_READ_ONLY: process.env.LODGIFY_READ_ONLY,
+      })
     }
 
     // Validate required variables are present
@@ -184,6 +222,14 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
     // Parse and validate all environment variables
     const config = envSchema.parse(rawEnv)
 
+    // Debug logging for parsed read-only value via structured logger
+    if (process.env.LODGIFY_READ_ONLY !== undefined || config.LODGIFY_READ_ONLY) {
+      safeLogger.debug('[ENV DEBUG] After parsing, LODGIFY_READ_ONLY', {
+        LODGIFY_READ_ONLY: config.LODGIFY_READ_ONLY,
+      })
+    }
+
+    // Log successful environment configuration loading
     safeLogger.info('Environment configuration loaded successfully', {
       logLevel: config.LOG_LEVEL,
       debugHttp: config.DEBUG_HTTP,
@@ -269,4 +315,4 @@ export class EnvironmentError extends Error {
 }
 
 // Export the schemas for testing
-export { apiKeySchema, logLevelSchema, debugHttpSchema, readOnlySchema, envSchema }
+export { apiKeySchema, debugHttpSchema, envSchema, logLevelSchema, readOnlySchema }

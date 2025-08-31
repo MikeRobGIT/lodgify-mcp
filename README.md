@@ -1,11 +1,11 @@
 # Lodgify MCP Server
 
-[![npm version](https://badge.fury.io/js/lodgify-mcp.svg)](https://www.npmjs.com/package/lodgify-mcp)
+[![npm version](https://badge.fury.io/js/%40mikerob%2Flodgify-mcp.svg)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/MikeRobGIT/lodgify-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeRobGIT/lodgify-mcp/actions)
-[![npm downloads](https://img.shields.io/npm/dm/lodgify-mcp)](https://www.npmjs.com/package/lodgify-mcp)
-[![npm bundle size](https://img.shields.io/bundlephobia/minzip/lodgify-mcp)](https://bundlephobia.com/package/lodgify-mcp)
-[![node-current](https://img.shields.io/node/v/lodgify-mcp)](https://www.npmjs.com/package/lodgify-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/%40mikerob%2Flodgify-mcp)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/%40mikerob%2Flodgify-mcp)](https://bundlephobia.com/package/@mikerob/lodgify-mcp)
+[![node-current](https://img.shields.io/node/v/%40mikerob%2Flodgify-mcp)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
 
 [![GitHub stars](https://img.shields.io/github/stars/MikeRobGIT/lodgify-mcp?style=social)](https://github.com/MikeRobGIT/lodgify-mcp)
 [![GitHub issues](https://img.shields.io/github/issues/MikeRobGIT/lodgify-mcp)](https://github.com/MikeRobGIT/lodgify-mcp/issues)
@@ -16,19 +16,65 @@
 A Model Context Protocol (MCP) server that exposes Lodgify Public API
  endpoints as tools for AI assistants like Claude. Built using the high-level McpServer SDK with enhanced metadata, capabilities declaration, and robust error handling.
 
+## Read-Only Mode Enforcement
+
+The Lodgify MCP server includes comprehensive read-only mode enforcement to prevent accidental or unauthorized write operations. When enabled, all write operations (POST, PUT, PATCH, DELETE) are blocked before any network requests are made.
+
+### Enabling Read-Only Mode
+
+**Environment Variable:**
+```bash
+LODGIFY_READ_ONLY=1
+```
+
+**Constructor Parameter:**
+```typescript
+const client = new LodgifyOrchestrator({
+  apiKey: 'your-api-key',
+  readOnly: true
+})
+```
+
+### Protected Operations
+
+The following operations are blocked in read-only mode:
+- Creating, updating, or deleting bookings
+- Creating or updating rates
+- Subscribing/unsubscribing to webhooks
+- Sending messages or updating thread status
+- Updating property availability settings
+- All V1 API write operations
+
+### Allowed Operations
+
+Read operations are always allowed:
+- Listing properties, bookings, and webhooks
+- Getting property details, booking information, and rates
+- Checking availability and getting quotes
+- Retrieving message threads and payment links
+
+### Error Handling
+
+When a write operation is attempted in read-only mode, a `ReadOnlyModeError` is thrown with:
+- Status code 403 (Forbidden)
+- Clear explanation of the restriction
+- Guidance on how to enable write mode
+
+For detailed information, see [Security Documentation](docs/SECURITY.md).
+
 ## Quick Start
 
 ### Installation
 
 ```bash
 # Using bun (recommended)
-bun add lodgify-mcp
+bun add @mikerob/lodgify-mcp
 
 # Using npm
-npm install lodgify-mcp
+npm install @mikerob/lodgify-mcp
 
 # Using yarn
-yarn add lodgify-mcp
+yarn add @mikerob/lodgify-mcp
 ```
 
 ### Configuration
@@ -42,7 +88,7 @@ Configure your MCP client (like Claude Desktop) to connect to the Lodgify MCP Se
   "mcpServers": {
     "lodgify": {
       "command": "bunx",
-      "args": ["-y", "lodgify-mcp"],
+      "args": ["-y", "@mikerob/lodgify-mcp"],
       "env": {
         "LODGIFY_API_KEY": "your_lodgify_api_key_here"
       }
@@ -58,7 +104,7 @@ Configure your MCP client (like Claude Desktop) to connect to the Lodgify MCP Se
   "mcpServers": {
     "lodgify": {
       "command": "npx",
-      "args": ["-y", "lodgify-mcp"],
+      "args": ["-y", "@mikerob/lodgify-mcp"],
       "env": {
         "LODGIFY_API_KEY": "your_lodgify_api_key_here"
       }
@@ -73,10 +119,10 @@ Configure your MCP client (like Claude Desktop) to connect to the Lodgify MCP Se
 
 ```bash
 # Install globally with bun
-bun install -g lodgify-mcp
+bun install -g @mikerob/lodgify-mcp
 
 # Or with npm
-npm install -g lodgify-mcp
+npm install -g @mikerob/lodgify-mcp
 
 # Then use in MCP config:
 ```

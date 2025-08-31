@@ -3,6 +3,7 @@
  * Manages and coordinates all API modules
  */
 
+import { ReadOnlyModeError } from '../core/errors/read-only-error.js'
 import type { Logger } from '../core/http/types.js'
 import { BaseApiClient } from './base-client.js'
 import { ApiModuleFactory } from './base-module.js'
@@ -115,6 +116,21 @@ export class ApiClientOrchestrator extends BaseApiClient {
       options?: Record<string, unknown>
     }>,
   ): Promise<T[]> {
+    // Check for write operations in read-only mode
+    if (this.readOnly) {
+      const writeOperations = operations.filter((op) =>
+        ['POST', 'PUT', 'PATCH', 'DELETE'].includes(op.method.toUpperCase()),
+      )
+      if (writeOperations.length > 0) {
+        const firstWriteOp = writeOperations[0]
+        throw ReadOnlyModeError.forApiOperation(
+          firstWriteOp.method.toUpperCase(),
+          firstWriteOp.path,
+          `Batch operation containing ${writeOperations.length} write operations`,
+        )
+      }
+    }
+
     // Execute all operations in parallel with rate limiting
     const results = await Promise.all(
       operations.map((op) => this.request<T>(op.method, op.path, op.options)),
@@ -132,6 +148,10 @@ export class ApiClientOrchestrator extends BaseApiClient {
       rollback?: () => Promise<void>
     }>,
   ): Promise<T[]> {
+    // Note: We can't easily check if operations are write operations since they're functions
+    // The read-only check will happen at the individual request level in each operation
+    // This is acceptable since the transaction itself doesn't bypass the read-only checks
+
     const results: T[] = []
     const executed: Array<{ rollback?: () => Promise<void> }> = []
 

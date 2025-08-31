@@ -118,49 +118,93 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           echo "Base version: $BASE_VERSION"
       
+      - name: Check if package exists on npm
+        id: package_exists
+        run: |
+          if npm view @mikerob/lodgify-mcp version 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Package exists on npm"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Package does not exist on npm yet - will use initial version"
+          fi
+      
       - name: Calculate next pre-release version
         id: next
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           CURRENT="${{ steps.current.outputs.current }}"
           BASE="${{ steps.current.outputs.base }}"
+          PACKAGE_EXISTS="${{ steps.package_exists.outputs.exists }}"
           
-          # Check if current version is already a pre-release of the same type
-          if [[ "$CURRENT" == *"-$TAG."* ]]; then
-            # Increment the pre-release number
-            PRERELEASE_NUM=$(echo "$CURRENT" | sed -n "s/.*-$TAG\.\([0-9]*\).*/\1/p")
-            NEXT_NUM=$((PRERELEASE_NUM + 1))
-            NEW_VERSION="$BASE-$TAG.$NEXT_NUM"
-          else
-            # Start new pre-release series
-            if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-              VERSION_BUMP="${{ github.event.inputs.version }}"
-              case "$VERSION_BUMP" in
-                prepatch)
-                  # Increment patch and add pre-release
-                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
-                  NEW_BASE="$MAJOR.$MINOR.$((PATCH + 1))"
-                  ;;
-                preminor)
-                  # Increment minor and add pre-release
-                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
-                  NEW_BASE="$MAJOR.$((MINOR + 1)).0"
-                  ;;
-                premajor)
-                  # Increment major and add pre-release
-                  IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
-                  NEW_BASE="$((MAJOR + 1)).0.0"
-                  ;;
-                *)
-                  NEW_BASE="$BASE"
-                  ;;
-              esac
-            else
-              NEW_BASE="$BASE"
-            fi
-            NEW_VERSION="$NEW_BASE-$TAG.0"
+          # If package doesn't exist, use current version for first publish
+          if [ "$PACKAGE_EXISTS" == "false" ]; then
+            echo "First time publishing - using version from package.json"
+            NEW_VERSION="$CURRENT"
+            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "First publish version: $NEW_VERSION"
+            exit 0
           fi
           
+          # Get all published versions from NPM
+          echo "Fetching published versions from NPM..."
+          NPM_VERSIONS=$(npm view @mikerob/lodgify-mcp versions --json 2>/dev/null || echo "[]")
+          
+          # Determine base version for pre-release
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION_BUMP="${{ github.event.inputs.version }}"
+            case "$VERSION_BUMP" in
+              prepatch)
+                # Increment patch and add pre-release
+                IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                NEW_BASE="$MAJOR.$MINOR.$((PATCH + 1))"
+                ;;
+              preminor)
+                # Increment minor and add pre-release
+                IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                NEW_BASE="$MAJOR.$((MINOR + 1)).0"
+                ;;
+              premajor)
+                # Increment major and add pre-release
+                IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+                NEW_BASE="$((MAJOR + 1)).0.0"
+                ;;
+              *)
+                NEW_BASE="$BASE"
+                ;;
+            esac
+          else
+            NEW_BASE="$BASE"
+          fi
+          
+          # Find the highest existing pre-release number for this base version and tag
+          echo "Looking for existing $NEW_BASE-$TAG.* versions..."
+          HIGHEST_NUM=-1
+          
+          # Use jq to parse JSON and find matching versions
+          if command -v jq &> /dev/null && [ "$NPM_VERSIONS" != "[]" ]; then
+            MATCHING_VERSIONS=$(echo "$NPM_VERSIONS" | jq -r ".[] | select(. | startswith(\"$NEW_BASE-$TAG.\"))" 2>/dev/null || echo "")
+            
+            if [ -n "$MATCHING_VERSIONS" ]; then
+              echo "Found existing pre-release versions:"
+              echo "$MATCHING_VERSIONS"
+              
+              # Extract the highest number
+              for VERSION in $MATCHING_VERSIONS; do
+                NUM=$(echo "$VERSION" | sed -n "s/.*-$TAG\.\([0-9]*\).*/\1/p")
+                if [ -n "$NUM" ] && [ "$NUM" -gt "$HIGHEST_NUM" ]; then
+                  HIGHEST_NUM=$NUM
+                fi
+              done
+            fi
+          fi
+          
+          # Calculate next pre-release number
+          NEXT_NUM=$((HIGHEST_NUM + 1))
+          NEW_VERSION="$NEW_BASE-$TAG.$NEXT_NUM"
+          
+          echo "Highest existing pre-release number: $HIGHEST_NUM"
+          echo "Next pre-release number: $NEXT_NUM"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Next version: $NEW_VERSION"
       
@@ -170,11 +214,44 @@ jobs:
           npm version "$NEW_VERSION" --no-git-tag-version
           echo "Updated package.json to version $NEW_VERSION"
       
+      - name: Verify NPM authentication
+        run: |
+          echo "Verifying NPM authentication..."
+          npm whoami || (echo "❌ NPM authentication failed. Please check NPM_TOKEN secret." && exit 1)
+          echo "✅ NPM authentication successful"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Run npm publish dry-run
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          echo "Running dry-run for version ${{ steps.next.outputs.version }} with tag: $TAG"
+          npm publish --dry-run --tag "$TAG" --access public 2>&1 | tee dry-run.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Dry-run failed. See output above for details."
+            exit 1
+          fi
+          echo "✅ Dry-run successful"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
       - name: Publish to npm with beta tag
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          npm publish --tag "$TAG" --provenance --access public
-          echo "✅ Published with tag: $TAG"
+          echo "Publishing version ${{ steps.next.outputs.version }} with tag: $TAG"
+          
+          # Capture both stdout and stderr, and preserve exit code
+          npm publish --tag "$TAG" --provenance --access public 2>&1 | tee publish.log
+          PUBLISH_EXIT_CODE=${PIPESTATUS[0]}
+          
+          if [ $PUBLISH_EXIT_CODE -ne 0 ]; then
+            echo "❌ npm publish failed with exit code $PUBLISH_EXIT_CODE"
+            echo "Error output:"
+            grep -i error publish.log || echo "No specific error message found"
+            exit $PUBLISH_EXIT_CODE
+          fi
+          
+          echo "✅ Successfully published @mikerob/lodgify-mcp@${{ steps.next.outputs.version }} with tag: $TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
@@ -212,17 +289,17 @@ jobs:
             
             #### Install specific pre-release version:
             ```bash
-            npm install lodgify-mcp@${{ steps.next.outputs.version }}
+            npm install @mikerob/lodgify-mcp@${{ steps.next.outputs.version }}
             ```
             
             #### Install latest ${{ steps.tag.outputs.tag }} version:
             ```bash
-            npm install lodgify-mcp@${{ steps.tag.outputs.tag }}
+            npm install @mikerob/lodgify-mcp@${{ steps.tag.outputs.tag }}
             ```
             
             #### Use with npx:
             ```bash
-            npx lodgify-mcp@${{ steps.next.outputs.version }}
+            npx @mikerob/lodgify-mcp@${{ steps.next.outputs.version }}
             ```
             
             ### Testing
@@ -240,9 +317,15 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: \`${{ steps.next.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag**: \`${{ steps.tag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **NPM Package**: [lodgify-mcp@${{ steps.next.outputs.version }}](https://www.npmjs.com/package/lodgify-mcp/v/${{ steps.next.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **NPM Package**: [@mikerob/lodgify-mcp@${{ steps.next.outputs.version }}](https://www.npmjs.com/package/@mikerob/lodgify-mcp/v/${{ steps.next.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Installation" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npm install lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "npm install @mikerob/lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verification" >> $GITHUB_STEP_SUMMARY
+          echo "Package was successfully published and can be verified with:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm view @mikerob/lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

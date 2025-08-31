@@ -18,36 +18,36 @@ let readme = readFileSync(readmePath, 'utf8');
 
 // Update npm badge URL with specific version
 readme = readme.replace(
-  /\[!\[npm version\]\(https:\/\/badge\.fury\.io\/js\/lodgify-mcp\.svg\)\]/g,
-  `[![npm version](https://badge.fury.io/js/lodgify-mcp.svg)](https://www.npmjs.com/package/lodgify-mcp)`
+  /\[!\[npm version\]\(https:\/\/badge\.fury\.io\/js\/%40mikerob%2Flodgify-mcp\.svg\)\]/g,
+  `[![npm version](https://badge.fury.io/js/%40mikerob%2Flodgify-mcp.svg)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)`
 );
 
 // Update any versioned npm install commands (if you add them in the future)
 // Example: npm install lodgify-mcp@0.2.6 -> npm install lodgify-mcp@0.2.7
 readme = readme.replace(
-  /npm install lodgify-mcp@[\d\.]+/g,
-  `npm install lodgify-mcp@${version}`
+  /npm install @mikerob\/lodgify-mcp@[\d\.]+/g,
+  `npm install @mikerob/lodgify-mcp@${version}`
 );
 
 readme = readme.replace(
-  /bun add lodgify-mcp@[\d\.]+/g,
-  `bun add lodgify-mcp@${version}`
+  /bun add @mikerob\/lodgify-mcp@[\d\.]+/g,
+  `bun add @mikerob/lodgify-mcp@${version}`
 );
 
 readme = readme.replace(
-  /yarn add lodgify-mcp@[\d\.]+/g,
-  `yarn add lodgify-mcp@${version}`
+  /yarn add @mikerob\/lodgify-mcp@[\d\.]+/g,
+  `yarn add @mikerob/lodgify-mcp@${version}`
 );
 
 // Update any npx commands with specific versions (if present)
 readme = readme.replace(
-  /npx -y lodgify-mcp@[\d\.]+/g,
-  `npx -y lodgify-mcp@${version}`
+  /npx -y @mikerob\/lodgify-mcp@[\d\.]+/g,
+  `npx -y @mikerob/lodgify-mcp@${version}`
 );
 
 readme = readme.replace(
-  /bunx -y lodgify-mcp@[\d\.]+/g,
-  `bunx -y lodgify-mcp@${version}`
+  /bunx -y @mikerob\/lodgify-mcp@[\d\.]+/g,
+  `bunx -y @mikerob/lodgify-mcp@${version}`
 );
 
 // Write updated README

@@ -77,6 +77,18 @@ export abstract class BaseApiClient extends BaseHttpClient {
       throw new Error('API key is required')
     }
 
+    // Validate HTTPS protocol for security
+    let parsedUrl: URL
+    try {
+      parsedUrl = new URL(baseUrl)
+    } catch {
+      throw new Error(`Invalid baseUrl format: ${baseUrl}`)
+    }
+
+    if (parsedUrl.protocol !== 'https:') {
+      throw new Error('baseUrl must use HTTPS protocol for security')
+    }
+
     // Initialize base HTTP client
     super(
       {
@@ -95,13 +107,17 @@ export abstract class BaseApiClient extends BaseHttpClient {
     this.readOnly = readOnly
     this.rateLimiter = createLodgifyRateLimiter()
     this.errorHandler = new ErrorHandler()
-    this.retryHandler = new ExponentialBackoffRetry({
-      maxRetries: 5,
-      maxRetryDelay: 30000,
-      shouldRetry: (status: number) => {
-        return status === 429 || (status >= 500 && status < 600)
+    this.retryHandler = new ExponentialBackoffRetry(
+      {
+        maxRetries: 5,
+        maxRetryDelay: 30000,
+        shouldRetry: (status: number) => {
+          return status === 429 || (status >= 500 && status < 600)
+        },
       },
-    })
+      undefined,
+      this.readOnly,
+    )
   }
 
   /**
