@@ -7,6 +7,12 @@ import { z } from 'zod'
 import type { AvailabilityQueryParams } from '../../api/v2/availability/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { DateStringSchema } from '../schemas/common.js'
+import {
+  createValidator,
+  type DateValidationInfo,
+  DateValidator,
+  ToolCategory,
+} from '../utils/date-validator.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -98,16 +104,47 @@ Example response:
         },
       },
       handler: async ({ propertyId, fromDate, daysToCheck }) => {
+        let validatedFromDate = fromDate
+        let dateValidationInfo: DateValidationInfo | null = null
+
+        // Validate the fromDate if provided
+        if (fromDate) {
+          const validator = createValidator(ToolCategory.AVAILABILITY)
+          const validation = validator.validateDate(fromDate)
+
+          if (!validation.isValid) {
+            throw new Error(`Date validation failed: ${validation.error}`)
+          }
+
+          validatedFromDate = validation.validatedDate
+
+          // Include validation info if there's feedback to show
+          if (validation.feedback) {
+            dateValidationInfo = {
+              dateValidation: {
+                feedback: validation.feedback,
+                originalDate: validation.originalDate,
+                validatedDate: validation.validatedDate,
+                message: DateValidator.formatUserMessage(validation),
+              },
+            }
+          }
+        }
+
         const result = await getClient().availability.getNextAvailableDate(
           propertyId,
-          fromDate,
+          validatedFromDate,
           daysToCheck,
         )
+
+        // Merge validation info with result if present
+        const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(finalResult, null, 2),
             },
           ],
         }
@@ -129,16 +166,56 @@ Example response:
         },
       },
       handler: async ({ propertyId, checkInDate, checkOutDate }) => {
+        const validator = createValidator(ToolCategory.AVAILABILITY)
+        const rangeValidation = validator.validateDateRange(checkInDate, checkOutDate)
+
+        // Check if dates are valid
+        if (!rangeValidation.start.isValid) {
+          throw new Error(`Check-in date validation failed: ${rangeValidation.start.error}`)
+        }
+        if (!rangeValidation.end.isValid) {
+          throw new Error(`Check-out date validation failed: ${rangeValidation.end.error}`)
+        }
+        if (!rangeValidation.rangeValid) {
+          throw new Error(rangeValidation.rangeError || 'Invalid date range')
+        }
+
+        // Prepare validation info if there's feedback to show
+        let dateValidationInfo: DateValidationInfo | null = null
+        if (rangeValidation.start.feedback || rangeValidation.end.feedback) {
+          dateValidationInfo = {
+            dateValidation: {
+              checkIn: {
+                original: rangeValidation.start.originalDate,
+                validated: rangeValidation.start.validatedDate,
+                feedback: rangeValidation.start.feedback,
+                message: rangeValidation.start.warning,
+              },
+              checkOut: {
+                original: rangeValidation.end.originalDate,
+                validated: rangeValidation.end.validatedDate,
+                feedback: rangeValidation.end.feedback,
+                message: rangeValidation.end.warning,
+              },
+              summary: `${rangeValidation.start.feedback || rangeValidation.end.feedback ? '⚠️ Date validation feedback available' : '✅ Dates validated'}`,
+            },
+          }
+        }
+
         const result = await getClient().availability.checkDateRangeAvailability(
           propertyId,
-          checkInDate,
-          checkOutDate,
+          rangeValidation.start.validatedDate,
+          rangeValidation.end.validatedDate,
         )
+
+        // Merge validation info with result if present
+        const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(finalResult, null, 2),
             },
           ],
         }
@@ -167,16 +244,47 @@ Example response:
         },
       },
       handler: async ({ propertyId, fromDate, daysToShow }) => {
+        let validatedFromDate = fromDate
+        let dateValidationInfo: DateValidationInfo | null = null
+
+        // Validate the fromDate if provided
+        if (fromDate) {
+          const validator = createValidator(ToolCategory.AVAILABILITY)
+          const validation = validator.validateDate(fromDate)
+
+          if (!validation.isValid) {
+            throw new Error(`Date validation failed: ${validation.error}`)
+          }
+
+          validatedFromDate = validation.validatedDate
+
+          // Include validation info if there's feedback to show
+          if (validation.feedback) {
+            dateValidationInfo = {
+              dateValidation: {
+                feedback: validation.feedback,
+                originalDate: validation.originalDate,
+                validatedDate: validation.validatedDate,
+                message: DateValidator.formatUserMessage(validation),
+              },
+            }
+          }
+        }
+
         const result = await getClient().availability.getAvailabilityCalendar(
           propertyId,
-          fromDate,
+          validatedFromDate,
           daysToShow,
         )
+
+        // Merge validation info with result if present
+        const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(finalResult, null, 2),
             },
           ],
         }

@@ -12,6 +12,7 @@ import {
   StayFilterEnum,
   TrashFilterEnum,
 } from '../schemas/common.js'
+import { createValidator, ToolCategory } from '../utils/date-validator.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -404,14 +405,46 @@ The transformation handles: guest name splitting, room structuring, status capit
         },
       },
       handler: async (params) => {
+        // Validate arrival and departure dates
+        const validator = createValidator(ToolCategory.BOOKING)
+        const rangeValidation = validator.validateDateRange(params.arrival, params.departure)
+
+        // Check if dates are valid
+        if (!rangeValidation.start.isValid) {
+          throw new Error(`Arrival date validation failed: ${rangeValidation.start.error}`)
+        }
+        if (!rangeValidation.end.isValid) {
+          throw new Error(`Departure date validation failed: ${rangeValidation.end.error}`)
+        }
+        if (!rangeValidation.rangeValid) {
+          throw new Error(
+            rangeValidation.rangeError || 'Invalid date range: departure must be after arrival',
+          )
+        }
+
+        // Prepare validation feedback if present
+        const feedbackMessages: { message: string; feedback: any }[] = []
+        if (rangeValidation.start.feedback) {
+          feedbackMessages.push({
+            message: `Arrival date: ${rangeValidation.start.feedback.message}`,
+            feedback: rangeValidation.start.feedback,
+          })
+        }
+        if (rangeValidation.end.feedback) {
+          feedbackMessages.push({
+            message: `Departure date: ${rangeValidation.end.feedback.message}`,
+            feedback: rangeValidation.end.feedback,
+          })
+        }
+
         // Transform flat params to nested API structure
         const [firstName, ...lastNameParts] = params.guest_name.split(' ')
         const lastName = lastNameParts.join(' ') || firstName
 
         const apiRequest = {
           property_id: params.property_id,
-          arrival: params.arrival,
-          departure: params.departure,
+          arrival: rangeValidation.start.validatedDate,
+          departure: rangeValidation.end.validatedDate,
           guest: {
             guest_name: {
               first_name: firstName,
@@ -438,11 +471,32 @@ The transformation handles: guest name splitting, room structuring, status capit
         }
 
         const result = await getClient().bookingsV1.createBookingV1(apiRequest)
+
+        // Add validation feedback to result if present
+        const finalResult =
+          feedbackMessages.length > 0
+            ? {
+                ...result,
+                dateValidation: {
+                  feedback: feedbackMessages.map((fm) => fm.feedback),
+                  messages: feedbackMessages.map((fm) => fm.message),
+                  originalDates: {
+                    arrival: params.arrival,
+                    departure: params.departure,
+                  },
+                  validatedDates: {
+                    arrival: rangeValidation.start.validatedDate,
+                    departure: rangeValidation.end.validatedDate,
+                  },
+                },
+              }
+            : result
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(finalResult, null, 2),
             },
           ],
         }

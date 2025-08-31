@@ -92,6 +92,51 @@ Ask Claude natural language questions about your Lodgify properties:
 - **📝 Type-Safe**: Full TypeScript with input validation
 - **🔄 Smart Retries**: Automatic rate limit handling with exponential backoff
 - **📊 Comprehensive**: Properties, bookings, availability, rates, quotes, and more
+- **📅 Intelligent Date Validation**: Feedback-based system that helps LLMs self-correct date issues
+
+## Intelligent Date Validation
+
+The MCP server includes sophisticated date validation with feedback-based correction to handle LLM date cutoff issues:
+
+### How It Works
+
+- **Issue Detection**: Identifies when LLMs provide outdated dates (e.g., 2024 when current year is 2025)
+- **Structured Feedback**: Provides detailed validation feedback instead of silent corrections
+- **Context-Aware Guidance**: Different validation rules based on tool context:
+  - **Availability searches**: Warns about past dates, suggests current date
+  - **Booking creation**: Validates future dates with detailed suggestions
+  - **Rate queries**: Allows past/future dates with appropriate context
+- **Self-Correction Support**: Returns actionable suggestions for LLMs to fix issues
+
+### Example Scenarios
+
+1. **LLM provides outdated year**:
+   - Input: `"2024-09-15"` (when current year is 2025)
+   - Feedback: `{ "message": "The date '2024-09-15' appears to be from a previous year (2024). Current year is 2025.", "suggestions": ["If you meant this year, use: 2025-09-15", "Current date: 2025-08-31"], "severity": "warning" }`
+
+2. **Past date for availability search**:
+   - Input: Check availability from `"2025-08-01"` (if today is 2025-08-31)
+   - Feedback: `{ "message": "The date '2025-08-01' is 30 days in the past. Availability operations typically require future dates.", "suggestions": ["Did you mean a future date?", "Today's date: 2025-08-31"], "severity": "warning" }`
+
+3. **Invalid date range**:
+   - Input: Check-in `"2025-09-20"`, Check-out `"2025-09-15"`
+   - Error: `{ "message": "Invalid date range: end date '2025-09-15' is before start date '2025-09-20'.", "suggestions": ["Ensure the end date is after the start date", "Check if the dates were entered in the correct order"], "severity": "error" }`
+
+### Validation Modes
+
+Date validation uses different approaches per tool type:
+- **HARD**: Rejects invalid dates with clear error feedback
+- **SOFT**: Warns about issues but allows processing with feedback messages
+- **Context-Aware**: Adapts validation rules based on business logic and tool requirements
+
+### Feedback Structure
+
+All validation feedback includes:
+- **Message**: Human-readable description of the issue
+- **Severity**: `error`, `warning`, or `info`
+- **Suggestions**: Actionable steps to resolve the issue
+- **Current Date**: System date for context
+- **Original Input**: Exact input provided for traceability
 
 ## Documentation
 

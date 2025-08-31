@@ -10,6 +10,11 @@ import type { QuoteParams } from '../../api/v2/quotes/types.js'
 import type { DailyRatesParams } from '../../api/v2/rates/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { DateStringSchema } from '../schemas/common.js'
+import {
+  createValidator,
+  ToolCategory as DateToolCategory,
+  type DateValidationInfo,
+} from '../utils/date-validator.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
 
@@ -48,19 +53,64 @@ Example request:
         },
       },
       handler: async ({ roomTypeId, houseId, startDate, endDate }) => {
-        // Map MCP parameters to API parameters
+        // Validate date range for rates
+        const validator = createValidator(DateToolCategory.RATE)
+        const rangeValidation = validator.validateDateRange(startDate, endDate)
+
+        // Check if dates are valid
+        if (!rangeValidation.start.isValid) {
+          throw new Error(`Start date validation failed: ${rangeValidation.start.error}`)
+        }
+        if (!rangeValidation.end.isValid) {
+          throw new Error(`End date validation failed: ${rangeValidation.end.error}`)
+        }
+        if (!rangeValidation.rangeValid) {
+          throw new Error(rangeValidation.rangeError || 'Invalid date range')
+        }
+
+        // Prepare validation info if there's feedback to show
+        let dateValidationInfo: DateValidationInfo | null = null
+        if (rangeValidation.start.feedback || rangeValidation.end.feedback) {
+          dateValidationInfo = {
+            dateValidation: {
+              startDate: {
+                original: rangeValidation.start.originalDate,
+                validated: rangeValidation.start.validatedDate,
+                feedback: rangeValidation.start.feedback,
+                warning: rangeValidation.start.warning,
+              },
+              endDate: {
+                original: rangeValidation.end.originalDate,
+                validated: rangeValidation.end.validatedDate,
+                feedback: rangeValidation.end.feedback,
+                warning: rangeValidation.end.warning,
+              },
+              message:
+                rangeValidation.start.feedback || rangeValidation.end.feedback
+                  ? '⚠️ Date validation feedback available'
+                  : '✅ Dates validated',
+            },
+          }
+        }
+
+        // Map MCP parameters to API parameters with validated dates
         const params: DailyRatesParams = {
           propertyId: houseId.toString(),
           roomTypeId: roomTypeId.toString(),
-          from: startDate,
-          to: endDate,
+          from: rangeValidation.start.validatedDate,
+          to: rangeValidation.end.validatedDate,
         }
+
         const result = await getClient().rates.getDailyRates(params)
+
+        // Merge validation info with result if present
+        const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(finalResult, null, 2),
             },
           ],
         }
