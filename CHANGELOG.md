@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2025-08-31
+
+### Added
+- Comprehensive read-only mode enforcement to prevent unauthorized write operations
+- Environment variable normalization for boolean values (DEBUG_HTTP, LODGIFY_READ_ONLY)
+- Enhanced logging for environment variable flow in server initialization
+- Improved NPM beta workflow with better error handling and authentication verification
+- NPM publish dry-run validation before actual publish
+- First-time package publishing support in GitHub workflows
+
+### Changed
+- Updated package name to @mikerob/lodgify-mcp (scoped package)
+- Enhanced GitHub workflows to handle scoped package publishing
+- Improved error capture in workflows using tee and PIPESTATUS
+- Adjusted default rate limits from 100 to 60 requests per window
+
+### Fixed
+- NPM scripts interference with version command (removed custom version/postversion scripts)
+- GitHub workflow authentication issues with NPM_TOKEN
+- Package name preservation during npm version operations
+- Rate limit adjustments for better API abuse prevention
+
+### Security
+- Read-only mode implementation blocking all write requests when enabled
+- Enhanced environment variable handling for safer configuration
+
 ## [0.0.1] - 2025-08-30
 
 ### Added
