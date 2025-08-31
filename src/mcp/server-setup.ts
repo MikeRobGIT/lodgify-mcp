@@ -7,6 +7,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import pkg from '../../package.json' with { type: 'json' }
 import { LodgifyOrchestrator } from '../lodgify-orchestrator.js'
+import { safeLogger } from '../logger.js'
 import { ResourceRegistry } from './resources/registry.js'
 import { registerResources } from './resources/resources.js'
 import { registerAllTools } from './tools/register-all.js'
@@ -88,7 +89,8 @@ export async function startServer(server: McpServer): Promise<void> {
 
   // Handle transport errors
   transport.onerror = (error) => {
-    console.error('Transport error:', error)
+    // Use safeLogger instead of console.error to avoid MCP stdio interference
+    safeLogger.error('Transport error:', error)
   }
 
   await server.connect(transport)

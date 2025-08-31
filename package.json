@@ -16,7 +16,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "dev": "tsx src/server.ts",
+    "dev": "bun src/server.ts",
     "build": "tsc --strict true && chmod +x dist/server.js && chmod +x bin/lodgify-mcp.js",
     "start": "node dist/server.js",
     "check": "bun run lint --fix && bun run typecheck && bun run format && bun run build && bun run test",

@@ -22,11 +22,13 @@ The Lodgify MCP server includes comprehensive read-only mode enforcement to prev
 ### Enabling Read-Only Mode
 
 **Environment Variable:**
+
 ```bash
 LODGIFY_READ_ONLY=1
 ```
 
 **Constructor Parameter:**
+
 ```typescript
 const client = new LodgifyOrchestrator({
   apiKey: 'your-api-key',
@@ -37,6 +39,7 @@ const client = new LodgifyOrchestrator({
 ### Protected Operations
 
 The following operations are blocked in read-only mode:
+
 - Creating, updating, or deleting bookings
 - Creating or updating rates
 - Subscribing/unsubscribing to webhooks
@@ -47,6 +50,7 @@ The following operations are blocked in read-only mode:
 ### Allowed Operations
 
 Read operations are always allowed:
+
 - Listing properties, bookings, and webhooks
 - Getting property details, booking information, and rates
 - Checking availability and getting quotes
@@ -55,6 +59,7 @@ Read operations are always allowed:
 ### Error Handling
 
 When a write operation is attempted in read-only mode, a `ReadOnlyModeError` is thrown with:
+
 - Status code 403 (Forbidden)
 - Clear explanation of the restriction
 - Guidance on how to enable write mode

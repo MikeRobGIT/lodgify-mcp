@@ -9,6 +9,7 @@ This is a Model Context Protocol (MCP) server that exposes Lodgify Public API v2
 ## Core Architecture
 
 ### Technology Stack
+
 - **Runtime**: Bun ≥ 1.0 (or Node.js ≥ 18)
 - **Language**: TypeScript
 - **Protocol**: MCP over stdio
@@ -71,6 +72,7 @@ bun start            # Run compiled server from dist/
 ## Environment Configuration
 
 Required environment variables in `.env`:
+
 - `LODGIFY_API_KEY`: Your Lodgify API key (required)
 - `LOG_LEVEL`: Logging level (error|warn|info|debug, default: info)
 - `DEBUG_HTTP`: Set to "1" for verbose HTTP debugging (optional)
@@ -112,16 +114,19 @@ When implementing new Lodgify tools, follow this modular pattern:
 The server implements these Lodgify v2 endpoints as MCP tools:
 
 ### Properties
+
 - `lodgify.list_properties` - GET /v2/properties
 - `lodgify.get_property` - GET /v2/properties/{id}
 - `lodgify.list_property_rooms` - GET /v2/properties/{id}/rooms
 - `lodgify.list_deleted_properties` - GET /v2/deletedProperties
 
 ### Rates
+
 - `lodgify.daily_rates` - GET /v2/rates/calendar
 - `lodgify.rate_settings` - GET /v2/rates/settings
 
 ### Bookings
+
 - `lodgify.list_bookings` - GET /v2/reservations/bookings
 - `lodgify.get_booking` - GET /v2/reservations/bookings/{id}
 - `lodgify.get_booking_payment_link` - GET /v2/reservations/bookings/{id}/quote/paymentLink
@@ -129,19 +134,23 @@ The server implements these Lodgify v2 endpoints as MCP tools:
 - `lodgify.update_key_codes` - PUT /v2/reservations/bookings/{id}/keyCodes
 
 ### Availability
+
 - `lodgify.availability_room` - GET /v2/availability/{propertyId}/{roomTypeId}
 - `lodgify.availability_property` - GET /v2/availability/{propertyId}
 
 ### Quotes & Messaging
+
 - `lodgify.get_quote` - GET /v2/quote/{propertyId}
 - `lodgify.get_thread` - GET /v2/messaging/{threadGuid}
 
 ### Resources
+
 - `lodgify://health` - Health check resource
 
 ## Query Parameter Handling
 
 The client supports bracket notation for complex nested parameters:
+
 ```javascript
 // Example: roomTypes[0].Id=123&guest_breakdown[adults]=2
 params = {
@@ -178,6 +187,7 @@ params = {
 ## Debugging
 
 When testing the MCP server during development:
+
 1) Stop the currently running server process (Ctrl+C).
 2) Restart locally via:
    - `bun dev` (hot re-run) or
@@ -189,4 +199,5 @@ When testing the MCP server during development:
 
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
+
 - The owner of the repository is mikerobgit. the repository name is lodgify-mcp (package: @mikerob/lodgify-mcp)
