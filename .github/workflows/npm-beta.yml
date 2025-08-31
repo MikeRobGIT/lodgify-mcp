@@ -214,11 +214,44 @@ jobs:
           npm version "$NEW_VERSION" --no-git-tag-version
           echo "Updated package.json to version $NEW_VERSION"
       
+      - name: Verify NPM authentication
+        run: |
+          echo "Verifying NPM authentication..."
+          npm whoami || (echo "❌ NPM authentication failed. Please check NPM_TOKEN secret." && exit 1)
+          echo "✅ NPM authentication successful"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Run npm publish dry-run
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          echo "Running dry-run for version ${{ steps.next.outputs.version }} with tag: $TAG"
+          npm publish --dry-run --tag "$TAG" --access public 2>&1 | tee dry-run.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Dry-run failed. See output above for details."
+            exit 1
+          fi
+          echo "✅ Dry-run successful"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
       - name: Publish to npm with beta tag
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          npm publish --tag "$TAG" --provenance --access public
-          echo "✅ Published with tag: $TAG"
+          echo "Publishing version ${{ steps.next.outputs.version }} with tag: $TAG"
+          
+          # Capture both stdout and stderr, and preserve exit code
+          npm publish --tag "$TAG" --provenance --access public 2>&1 | tee publish.log
+          PUBLISH_EXIT_CODE=${PIPESTATUS[0]}
+          
+          if [ $PUBLISH_EXIT_CODE -ne 0 ]; then
+            echo "❌ npm publish failed with exit code $PUBLISH_EXIT_CODE"
+            echo "Error output:"
+            grep -i error publish.log || echo "No specific error message found"
+            exit $PUBLISH_EXIT_CODE
+          fi
+          
+          echo "✅ Successfully published @mikerob/lodgify-mcp@${{ steps.next.outputs.version }} with tag: $TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
@@ -289,4 +322,10 @@ jobs:
           echo "### Installation" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "npm install @mikerob/lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verification" >> $GITHUB_STEP_SUMMARY
+          echo "Package was successfully published and can be verified with:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm view @mikerob/lodgify-mcp@${{ steps.next.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
