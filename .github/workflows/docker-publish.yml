@@ -35,7 +35,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -118,7 +118,7 @@ jobs:
           sarif_file: 'trivy-results.sarif'
       
       - name: Build and push multi-platform Docker image
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -134,7 +134,7 @@ jobs:
             VERSION=${{ steps.meta.outputs.version }}
       
       - name: Normalize image name for SBOM
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         id: normalize
         run: |
           # Convert repository name to lowercase for registry compatibility
@@ -142,7 +142,7 @@ jobs:
           echo "image=$NORMALIZED_IMAGE" >> $GITHUB_OUTPUT
       
       - name: Generate SBOM
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
@@ -151,7 +151,7 @@ jobs:
           output-file: sbom.spdx.json
       
       - name: Upload SBOM
-        if: github.event_name != 'pull_request' && hashFiles('sbom.spdx.json') != ''
+        if: startsWith(github.ref, 'refs/tags/v') && hashFiles('sbom.spdx.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: sbom
