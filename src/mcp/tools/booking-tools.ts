@@ -18,6 +18,8 @@ import {
   DateToolCategory,
   type DateValidationFeedback,
 } from '../utils/date-validator.js'
+import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -169,17 +171,21 @@ Example response:
           id: z.string().min(1).describe('Booking ID to get payment link for'),
         },
       },
-      handler: async ({ id }) => {
+      handler: wrapToolHandler(async ({ id }) => {
         const result = await getClient().bookings.getBookingPaymentLink(id)
+
+        // Debug logging
+        debugLogResponse('Booking payment link response', result)
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: safeJsonStringify(result),
             },
           ],
         }
-      },
+      }, 'lodgify_get_booking_payment_link'),
     },
 
     // Create Booking Payment Link Tool
@@ -205,17 +211,21 @@ Example response:
             .describe('Payment link configuration - amount, currency, and description'),
         },
       },
-      handler: async ({ id, payload }) => {
+      handler: wrapToolHandler(async ({ id, payload }) => {
         const result = await getClient().bookings.createBookingPaymentLink(id, payload)
+
+        // Debug logging
+        debugLogResponse('Create payment link response', result)
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: safeJsonStringify(result),
             },
           ],
         }
-      },
+      }, 'lodgify_create_booking_payment_link'),
     },
 
     // Update Key Codes Tool

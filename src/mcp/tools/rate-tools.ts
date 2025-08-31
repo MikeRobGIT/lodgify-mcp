@@ -15,6 +15,8 @@ import {
   DateToolCategory,
   type DateValidationInfo,
 } from '../utils/date-validator.js'
+import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
 
@@ -52,7 +54,7 @@ Example request:
           endDate: DateStringSchema.describe('End date for rates calendar (YYYY-MM-DD)'),
         },
       },
-      handler: async ({ roomTypeId, houseId, startDate, endDate }) => {
+      handler: wrapToolHandler(async ({ roomTypeId, houseId, startDate, endDate }) => {
         // Validate date range for rates
         const validator = createValidator(DateToolCategory.RATE)
         const rangeValidation = validator.validateDateRange(startDate, endDate)
@@ -111,6 +113,9 @@ Example request:
 
         const result = await getClient().rates.getDailyRates(params)
 
+        // Debug logging
+        debugLogResponse('Daily rates API response', result)
+
         // Merge validation info with result if present
         const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
 
@@ -118,11 +123,11 @@ Example request:
           content: [
             {
               type: 'text',
-              text: JSON.stringify(finalResult, null, 2),
+              text: safeJsonStringify(finalResult),
             },
           ],
         }
-      },
+      }, 'lodgify_daily_rates'),
     },
 
     // Rate settings tool
@@ -174,7 +179,7 @@ Example request:
             ),
         },
       },
-      handler: async ({ propertyId, params }) => {
+      handler: wrapToolHandler(async ({ propertyId, params }) => {
         try {
           // Validate and format parameters before making the API call
           const validatedParams = validateQuoteParams(params)
@@ -183,11 +188,15 @@ Example request:
             propertyId,
             validatedParams as QuoteParams,
           )
+
+          // Debug logging
+          debugLogResponse('Quote API response', result)
+
           return {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(result, null, 2),
+                text: safeJsonStringify(result),
               },
             ],
           }
@@ -226,7 +235,7 @@ Example request:
           // Re-throw for standard error handling
           throw error
         }
-      },
+      }, 'lodgify_get_quote'),
     },
 
     // Update rates V1 tool
