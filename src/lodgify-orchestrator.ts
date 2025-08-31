@@ -97,11 +97,20 @@ export class LodgifyOrchestrator {
     // Store read-only mode - default to false (write-enabled) when not set
     this.readOnly = config.readOnly === true
 
-    // Debug logging for read-only mode
-    if (config.debugHttp && config.readOnly !== undefined) {
-      safeLogger.debug('[LodgifyOrchestrator] Read-only mode configuration', {
-        readOnlyProvided: !!config.readOnly,
-        readOnly: this.readOnly,
+    // Debug logging for read-only mode (always log this critical config)
+    safeLogger.info('[LodgifyOrchestrator] Read-only mode configuration', {
+      readOnlyProvided: config.readOnly !== undefined,
+      readOnlyValue: config.readOnly,
+      readOnlyFinal: this.readOnly,
+    })
+
+    // Additional debug logging when HTTP debug is enabled
+    if (config.debugHttp) {
+      safeLogger.debug('[LodgifyOrchestrator] Full config received', {
+        hasApiKey: !!config.apiKey,
+        readOnly: config.readOnly,
+        debugHttp: config.debugHttp,
+        baseUrl: config.baseUrl,
       })
     }
 

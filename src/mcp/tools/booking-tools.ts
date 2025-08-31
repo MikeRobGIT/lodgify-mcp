@@ -437,40 +437,24 @@ The transformation handles: guest name splitting, room structuring, status capit
           })
         }
 
-        // Transform flat params to nested API structure
-        const [firstName, ...lastNameParts] = params.guest_name.split(' ')
-        const lastName = lastNameParts.join(' ') || firstName
-
+        // Pass flat structure - the V1 client will transform it to nested API structure
         const apiRequest = {
           property_id: params.property_id,
+          room_type_id: params.room_type_id,
           arrival: rangeValidation.start.validatedDate,
           departure: rangeValidation.end.validatedDate,
-          guest: {
-            guest_name: {
-              first_name: firstName,
-              last_name: lastName,
-            },
-            ...(params.guest_email && { email: params.guest_email }),
-            ...(params.guest_phone && { phone: params.guest_phone }),
-          },
-          rooms: [
-            {
-              room_type_id: params.room_type_id,
-              guest_breakdown: {
-                adults: params.adults,
-                children: params.children,
-                ...(params.infants !== undefined && { infants: params.infants }),
-              },
-            },
-          ],
-          ...(params.status && {
-            status: params.status.charAt(0).toUpperCase() + params.status.slice(1),
-          }),
-          ...(params.source && { source_text: params.source }),
+          guest_name: params.guest_name,
+          ...(params.guest_email && { guest_email: params.guest_email }),
+          ...(params.guest_phone && { guest_phone: params.guest_phone }),
+          adults: params.adults,
+          children: params.children,
+          ...(params.infants !== undefined && { infants: params.infants }),
+          ...(params.status && { status: params.status }),
+          ...(params.source && { source: params.source }),
           ...(params.notes && { notes: params.notes }),
         }
 
-        const result = await getClient().bookingsV1.createBookingV1(apiRequest)
+        const result = await getClient().createBookingV1(apiRequest)
 
         // Add validation feedback to result if present
         const finalResult =
@@ -545,83 +529,8 @@ This gets automatically transformed to the nested API structure with guest objec
       },
       handler: async (params) => {
         const { id, ...updates } = params
-        // Using specific type structure for the API request
-        const apiRequest: {
-          guest?: {
-            guest_name?: {
-              first_name: string
-              last_name: string
-            }
-            email?: string
-            phone?: string
-          }
-          property_id?: number
-          arrival?: string
-          departure?: string
-          rooms?: Array<{
-            room_type_id?: number
-            guest_breakdown?: {
-              adults?: number
-              children?: number
-              infants?: number
-            }
-          }>
-          status?: 'booked' | 'tentative' | 'declined' | 'confirmed'
-          source_text?: string
-          notes?: string
-        } = {}
-
-        // Transform flat params to nested API structure
-        if (updates.guest_name) {
-          const [firstName, ...lastNameParts] = updates.guest_name.split(' ')
-          const lastName = lastNameParts.join(' ') || firstName
-          apiRequest.guest = {
-            guest_name: {
-              first_name: firstName,
-              last_name: lastName,
-            },
-          }
-        }
-
-        if (updates.guest_email) {
-          apiRequest.guest = apiRequest.guest || {}
-          apiRequest.guest.email = updates.guest_email
-        }
-
-        if (updates.guest_phone) {
-          apiRequest.guest = apiRequest.guest || {}
-          apiRequest.guest.phone = updates.guest_phone
-        }
-
-        if (updates.property_id) apiRequest.property_id = updates.property_id
-        if (updates.arrival) apiRequest.arrival = updates.arrival
-        if (updates.departure) apiRequest.departure = updates.departure
-
-        if (
-          updates.room_type_id ||
-          updates.adults !== undefined ||
-          updates.children !== undefined
-        ) {
-          apiRequest.rooms = [
-            {
-              ...(updates.room_type_id && { room_type_id: updates.room_type_id }),
-              guest_breakdown: {
-                ...(updates.adults !== undefined && { adults: updates.adults }),
-                ...(updates.children !== undefined && { children: updates.children }),
-                ...(updates.infants !== undefined && { infants: updates.infants }),
-              },
-            },
-          ]
-        }
-
-        if (updates.status) {
-          apiRequest.status = updates.status.charAt(0).toUpperCase() + updates.status.slice(1)
-        }
-
-        if (updates.source) apiRequest.source_text = updates.source
-        if (updates.notes) apiRequest.notes = updates.notes
-
-        const result = await getClient().bookingsV1.updateBookingV1(id.toString(), apiRequest)
+        // Pass flat structure - the V1 client will transform it to nested API structure
+        const result = await getClient().updateBookingV1(id, updates)
         return {
           content: [
             {
