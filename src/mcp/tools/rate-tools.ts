@@ -59,15 +59,23 @@ Example request:
 
         // Check if dates are valid
         if (!rangeValidation.start.isValid) {
-          throw new Error(`Start date validation failed: ${rangeValidation.start.error}`)
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Invalid startDate: ${rangeValidation.start.error}`,
+          )
         }
         if (!rangeValidation.end.isValid) {
-          throw new Error(`End date validation failed: ${rangeValidation.end.error}`)
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Invalid endDate: ${rangeValidation.end.error}`,
+          )
         }
         if (!rangeValidation.rangeValid) {
-          throw new Error(rangeValidation.rangeError || 'Invalid date range')
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            rangeValidation.rangeError || 'Invalid date range',
+          )
         }
-
         // Prepare validation info if there's feedback to show
         let dateValidationInfo: DateValidationInfo | null = null
         if (rangeValidation.start.feedback || rangeValidation.end.feedback) {

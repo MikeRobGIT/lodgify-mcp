@@ -16,21 +16,23 @@ The Lodgify MCP server implements an intelligent feedback-based date validation 
 
 ### Validation Modes
 
-The system uses context-specific validation modes based on tool categories:
+The system uses three validation modes that determine how date issues are handled:
 
-- **HARD**: Strict validation with error rejection for critical operations
-- **SOFT**: Warning-based validation that allows processing while providing feedback
-- **Context-Aware**: Adaptive validation that changes rules based on business logic
+- **HARD**: Reject invalid dates with error - prevents processing when validation fails
+- **SOFT**: Warn about issues but allow processing - provides feedback while continuing with the operation
+- **AUTO_CORRECT**: Auto-correct when safe to do so - automatically fixes common issues (note: this mode has been largely replaced by feedback-based validation)
+
+**Note**: Context-aware behavior is provided through ToolCategory configuration rather than a separate validation mode. Each tool category has specific validation rules and business logic that determine appropriate date handling.
 
 ### Tool Categories
 
-| Category | Mode | Purpose | Date Requirements |
-|----------|------|---------|------------------|
+| Category       | Mode | Purpose               | Date Requirements                        |
+| -------------- | ---- | --------------------- | ---------------------------------------- |
 | `AVAILABILITY` | SOFT | Availability checking | Warns on past dates, allows future dates |
-| `BOOKING` | HARD | Reservation creation | Requires future dates for check-in |
-| `RATE` | SOFT | Pricing information | Allows past/future dates with context |
-| `QUOTE` | HARD | Quote generation | Validates against booking requirements |
-| `HISTORICAL` | SOFT | Historical data | Allows past dates with validation |
+| `BOOKING`      | SOFT | Reservation creation  | Requires future dates for check-in       |
+| `RATE`         | SOFT | Pricing information   | Allows past/future dates with context    |
+| `QUOTE`        | SOFT | Quote generation      | Validates against booking requirements   |
+| `HISTORICAL`   | SOFT | Historical data       | Allows past dates with validation        |
 
 ## Feedback Object Schema
 
@@ -59,16 +61,18 @@ interface DateValidationFeedback {
 ### Issue Codes
 
 - **`llm_cutoff_suspected`**: Date appears to be from LLM training cutoff
-- **`past_date_warning`**: Past date provided where future expected
+- **`date_in_past`**: Past date provided where future expected
+- **`date_in_future`**: Future date provided where past expected
+- **`too_far_past`**: Date exceeds maximum allowed past range
+- **`too_far_future`**: Date exceeds maximum allowed future range
 - **`invalid_format`**: Date format doesn't match required pattern
-- **`invalid_range`**: Date outside acceptable range
-- **`business_logic_violation`**: Date violates business rules
-
+- **`invalid_range`**: End date before start date
+- **`ambiguous_date`**: Date ambiguous and needs clarification
 ### Feedback Styles
 
-- **`minimal`**: Concise feedback for simple corrections
+- **`concise`**: Brief feedback for simple corrections
 - **`detailed`**: Comprehensive feedback with examples and context
-
+- **`prompt`**: Interactive prompts that may require explicit confirmation
 ## Validation Examples
 
 ### Example 1: LLM Cutoff Detection
@@ -329,6 +333,16 @@ This provides detailed logs of:
 
 ### Extensibility
 
+The system is designed for extension:
+
+- **New Tool Categories**: Easy addition of validation modes
+- **Custom Validators**: Plugin-style validator registration
+- **Feedback Formatters**: Customizable feedback presentation
+- **Context Providers**: Additional validation context sources
+
+---
+
+*This guide provides comprehensive documentation for the feedback-based date validation system. For implementation details, see the source code in `src/mcp/utils/date-validator.ts`.*
 The system is designed for extension:
 
 - **New Tool Categories**: Easy addition of validation modes

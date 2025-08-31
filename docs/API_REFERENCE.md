@@ -636,20 +636,23 @@ When date validation issues are detected, tools return a `dateValidation` field 
 ### Feedback Fields
 
 - **`message`** (string): Human-readable description of the validation issue
-- **`severity`** (enum): Issue severity level - `"error"`, `"warning"`, or `"info"`
+- **`severity`** (enum): Issue severity level – `"error"`, `"warning"`, or `"info"`
+  - `error`: request is not processed; no side effects; caller must correct and retry
+  - `warning`: request is processed; feedback included for correction/awareness
+  - `info`: request is processed; informational context only
 - **`currentDate`** (string): Current system date (ISO 8601 UTC) for context
 - **`originalInput`** (string): Exact date string provided by user for traceability
 - **`detectedIssue`** (enum): Machine-readable issue code:
-  - `"llm_cutoff_suspected"` - Date appears to be from LLM training cutoff period
-  - `"date_in_past"` - Date is in the past when future expected
-  - `"date_in_future"` - Date is in the future when past expected
-  - `"too_far_past"` - Date exceeds maximum past days allowed
-  - `"too_far_future"` - Date exceeds maximum future days allowed
-  - `"invalid_format"` - Date format is invalid
-  - `"invalid_range"` - End date is before start date
+  - `"llm_cutoff_suspected"` – Date appears to be from LLM training cutoff period
+  - `"date_in_past"` – Date is in the past when future expected
+  - `"date_in_future"` – Date is in the future when past expected
+  - `"too_far_past"` – Date exceeds maximum past days allowed
+  - `"too_far_future"` – Date exceeds maximum future days allowed
+  - `"invalid_format"` – Date format is invalid
+  - `"invalid_range"` – End date is before start date
 - **`suggestions`** (array): Actionable steps to resolve the issue
 - **`confirmationRequired`** (boolean): Whether explicit user confirmation is needed
-- **`feedbackStyle`** (enum): Feedback verbosity - `"concise"`, `"detailed"`, or `"prompt"`
+- **`feedbackStyle`** (enum): Feedback verbosity – `"concise"`, `"detailed"`, or `"prompt"`
 
 ### Common Validation Scenarios
 
@@ -688,21 +691,7 @@ When date validation issues are detected, tools return a `dateValidation` field 
 ```
 
 #### Invalid Date Range
-```json
-{
-  "dateValidation": {
-    "rangeFeedback": {
-      "message": "Invalid date range: end date '2025-09-15' is before start date '2025-09-20'.",
-      "severity": "error",
-      "detectedIssue": "invalid_range",
-      "suggestions": [
-        "Ensure the end date is after the start date",
-        "Check if the dates were entered in the correct order"
-      ]
-    }
-  }
-}
-```
+
 
 ### Tool-Specific Validation
 

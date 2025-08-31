@@ -226,13 +226,15 @@ export const myTool: ToolRegistration = {
     }
     
     const client = getClient()
+    // Destructure out any passed dates so they can’t sneak through
+    const { startDate: _sd, endDate: _ed, ...rest } = args
     const result = await client.myMethod({
-      ...args,
+      ...rest,
       startDate: rangeValidation.start.validatedDate,
-      endDate: rangeValidation.end.validatedDate
+      endDate: rangeValidation.end.validatedDate,
     })
-    
-    // Include feedback in response
+
+    // Include feedback in response (namespaced)
     return dateValidationInfo ? { ...result, ...dateValidationInfo } : result
   }
 }

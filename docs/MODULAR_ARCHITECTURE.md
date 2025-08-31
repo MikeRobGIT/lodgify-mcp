@@ -31,7 +31,8 @@ src/mcp/
 ├── schemas/
 │   └── common.ts              # Common Zod validation schemas
 └── utils/
-    ├── date-validator.ts      # Feedback-based date validation system
+    ├── date-validator.ts      # LLM cutoff-aware, feedback-based date validation (no silent auto-correct)
+
     └── types.ts               # TypeScript interfaces and types
 ```
 

@@ -533,8 +533,25 @@ This gets automatically transformed to the nested API structure with guest objec
       },
       handler: async (params) => {
         const { id, ...updates } = params
+        // Validate/sanitize dates if both are present on update (keep single-date updates as-is)
+        const sanitizedUpdates = { ...updates }
+        if (updates.arrival !== undefined && updates.departure !== undefined) {
+          const validator = createValidator(ToolCategory.BOOKING)
+          const rv = validator.validateDateRange(updates.arrival, updates.departure)
+          if (!rv.start.isValid) {
+            throw new Error(`Arrival date validation failed: ${rv.start.error}`)
+          }
+          if (!rv.end.isValid) {
+            throw new Error(`Departure date validation failed: ${rv.end.error}`)
+          }
+          if (!rv.rangeValid) {
+            throw new Error(rv.rangeError || 'Invalid date range: departure must be after arrival')
+          }
+          sanitizedUpdates.arrival = rv.start.validatedDate
+          sanitizedUpdates.departure = rv.end.validatedDate
+        }
         // Pass flat structure - the V1 client will transform it to nested API structure
-        const result = await getClient().updateBookingV1(id, updates)
+        const result = await getClient().updateBookingV1(id, sanitizedUpdates)
         return {
           content: [
             {

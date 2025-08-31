@@ -862,8 +862,10 @@ export class DateValidator {
    * Calculate difference in days between two dates
    */
   private getDaysDifference(date1: Date, date2: Date): number {
+    const d1 = Date.UTC(date1.getUTCFullYear(), date1.getUTCMonth(), date1.getUTCDate())
+    const d2 = Date.UTC(date2.getUTCFullYear(), date2.getUTCMonth(), date2.getUTCDate())
     const msPerDay = 24 * 60 * 60 * 1000
-    return Math.floor((date1.getTime() - date2.getTime()) / msPerDay)
+    return Math.round((d1 - d2) / msPerDay)
   }
 
   /**

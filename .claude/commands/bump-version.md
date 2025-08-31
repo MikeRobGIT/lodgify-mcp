@@ -43,7 +43,7 @@ Bump the package version and update all version references. Usage: `/bump-versio
      - `yarn add @mikerob/lodgify-mcp@X.X.X` → use new version
      - `npx -y @mikerob/lodgify-mcp@X.X.X` → use new version
      - `bunx -y @mikerob/lodgify-mcp@X.X.X` → use new version
-     - `npx -y -p @mikerob/lodgify-mcp@X.X.X` → use new version
+     - `npx -y -p @mikerob/lodgify-mcp@X.X.X lodgify-mcp` → use new version
    - Update CHANGELOG.md examples that reference specific versions
    - Check for any other files that might contain version references
 

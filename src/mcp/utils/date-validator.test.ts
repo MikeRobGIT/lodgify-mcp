@@ -18,8 +18,8 @@ describe('DateValidator', () => {
 
   beforeEach(() => {
     // Mock current date to a known value for consistent testing
-    originalDate = global.Date
-    global.Date = class extends originalDate {
+    originalDate = globalThis.Date
+    globalThis.Date = class extends originalDate {
       constructor(...args: unknown[]) {
         if (args.length === 0) {
           super('2025-08-31T12:00:00Z')
@@ -35,7 +35,7 @@ describe('DateValidator', () => {
 
   afterEach(() => {
     // Restore original Date
-    global.Date = originalDate
+    globalThis.Date = originalDate
   })
 
   describe('Basic date format validation', () => {
