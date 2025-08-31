@@ -59,6 +59,17 @@ LOG_LEVEL="info"        # Options: error | warn | info | debug
 DEBUG_HTTP="0"          # Set to "1" for verbose HTTP debugging
 ```
 
+### API Key Rotation
+
+To rotate your LODGIFY_API_KEY safely:
+
+1. Create a new API key in your Lodgify account settings
+2. Deploy the new key as `LODGIFY_API_KEY` (keep the old key valid temporarily)
+3. Verify server health and tool calls are working correctly
+4. Revoke the old key in Lodgify
+
+**Tip**: For zero-downtime rotation, use a two-step rollout (staging → production) and monitor error rates during the transition.
+
 ## What You Can Do
 
 Ask Claude natural language questions about your Lodgify properties:

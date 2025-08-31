@@ -12,7 +12,7 @@ import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { DateStringSchema } from '../schemas/common.js'
 import {
   createValidator,
-  ToolCategory as DateToolCategory,
+  DateToolCategory,
   type DateValidationInfo,
 } from '../utils/date-validator.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'

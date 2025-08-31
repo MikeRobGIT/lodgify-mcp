@@ -343,13 +343,3 @@ The system is designed for extension:
 ---
 
 *This guide provides comprehensive documentation for the feedback-based date validation system. For implementation details, see the source code in `src/mcp/utils/date-validator.ts`.*
-The system is designed for extension:
-
-- **New Tool Categories**: Easy addition of validation modes
-- **Custom Validators**: Plugin-style validator registration
-- **Feedback Formatters**: Customizable feedback presentation
-- **Context Providers**: Additional validation context sources
-
----
-
-*This guide provides comprehensive documentation for the feedback-based date validation system. For implementation details, see the source code in `src/mcp/utils/date-validator.ts`.*

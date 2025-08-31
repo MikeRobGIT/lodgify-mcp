@@ -5,8 +5,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   createValidator,
+  DateToolCategory,
   DateValidator,
-  ToolCategory,
   ValidationMode,
   type ValidationResult,
   validators,
@@ -276,7 +276,7 @@ describe('DateValidator', () => {
 
   describe('Tool category configurations with feedback', () => {
     test('AVAILABILITY category should provide feedback for past dates (no auto-correction)', () => {
-      const validator = createValidator(ToolCategory.AVAILABILITY)
+      const validator = createValidator(DateToolCategory.AVAILABILITY)
       const result = validator.validateDate('2025-08-01')
 
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
@@ -287,7 +287,7 @@ describe('DateValidator', () => {
     })
 
     test('BOOKING category should warn but allow processing with feedback', () => {
-      const validator = createValidator(ToolCategory.BOOKING)
+      const validator = createValidator(DateToolCategory.BOOKING)
       const result = validator.validateDate('2024-09-15')
 
       expect(result.isValid).toBe(true)
@@ -298,7 +298,7 @@ describe('DateValidator', () => {
     })
 
     test('RATE category should allow both past and future dates', () => {
-      const validator = createValidator(ToolCategory.RATE)
+      const validator = createValidator(DateToolCategory.RATE)
 
       const pastResult = validator.validateDate('2025-07-01')
       expect(pastResult.isValid).toBe(true)
@@ -308,7 +308,7 @@ describe('DateValidator', () => {
     })
 
     test('QUOTE category should provide feedback for past dates (no auto-correction)', () => {
-      const validator = createValidator(ToolCategory.QUOTE)
+      const validator = createValidator(DateToolCategory.QUOTE)
       const result = validator.validateDate('2025-08-01')
 
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
@@ -319,7 +319,7 @@ describe('DateValidator', () => {
     })
 
     test('HISTORICAL category should allow all dates without LLM detection', () => {
-      const validator = createValidator(ToolCategory.HISTORICAL)
+      const validator = createValidator(DateToolCategory.HISTORICAL)
       const result = validator.validateDate('2020-01-01')
 
       expect(result.isValid).toBe(true)
@@ -451,7 +451,7 @@ describe('DateValidator', () => {
     })
 
     test('should handle configuration overrides', () => {
-      const validator = createValidator(ToolCategory.AVAILABILITY, {
+      const validator = createValidator(DateToolCategory.AVAILABILITY, {
         mode: ValidationMode.HARD,
         maxFutureDays: 30,
       })

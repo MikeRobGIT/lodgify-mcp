@@ -3,15 +3,16 @@
  * MCP tools for managing property availability and calendars
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { AvailabilityQueryParams } from '../../api/v2/availability/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { DateStringSchema } from '../schemas/common.js'
 import {
   createValidator,
+  DateToolCategory,
   type DateValidationInfo,
   DateValidator,
-  ToolCategory,
 } from '../utils/date-validator.js'
 import type { ToolRegistration } from '../utils/types.js'
 
@@ -109,11 +110,14 @@ Example response:
 
         // Validate the fromDate if provided
         if (fromDate) {
-          const validator = createValidator(ToolCategory.AVAILABILITY)
+          const validator = createValidator(DateToolCategory.AVAILABILITY)
           const validation = validator.validateDate(fromDate)
 
           if (!validation.isValid) {
-            throw new Error(`Date validation failed: ${validation.error}`)
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Date validation failed: ${validation.error}`,
+            )
           }
 
           validatedFromDate = validation.validatedDate
@@ -166,18 +170,27 @@ Example response:
         },
       },
       handler: async ({ propertyId, checkInDate, checkOutDate }) => {
-        const validator = createValidator(ToolCategory.AVAILABILITY)
+        const validator = createValidator(DateToolCategory.AVAILABILITY)
         const rangeValidation = validator.validateDateRange(checkInDate, checkOutDate)
 
         // Check if dates are valid
         if (!rangeValidation.start.isValid) {
-          throw new Error(`Check-in date validation failed: ${rangeValidation.start.error}`)
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Check-in date validation failed: ${rangeValidation.start.error}`,
+          )
         }
         if (!rangeValidation.end.isValid) {
-          throw new Error(`Check-out date validation failed: ${rangeValidation.end.error}`)
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Check-out date validation failed: ${rangeValidation.end.error}`,
+          )
         }
         if (!rangeValidation.rangeValid) {
-          throw new Error(rangeValidation.rangeError || 'Invalid date range')
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            rangeValidation.rangeError || 'Invalid date range',
+          )
         }
 
         // Prepare validation info if there's feedback to show
@@ -249,11 +262,14 @@ Example response:
 
         // Validate the fromDate if provided
         if (fromDate) {
-          const validator = createValidator(ToolCategory.AVAILABILITY)
+          const validator = createValidator(DateToolCategory.AVAILABILITY)
           const validation = validator.validateDate(fromDate)
 
           if (!validation.isValid) {
-            throw new Error(`Date validation failed: ${validation.error}`)
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Date validation failed: ${validation.error}`,
+            )
           }
 
           validatedFromDate = validation.validatedDate

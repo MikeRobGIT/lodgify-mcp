@@ -3,6 +3,7 @@
  * MCP tools for managing Lodgify bookings and reservations
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
@@ -14,8 +15,8 @@ import {
 } from '../schemas/common.js'
 import {
   createValidator,
+  DateToolCategory,
   type DateValidationFeedback,
-  ToolCategory,
 } from '../utils/date-validator.js'
 import type { ToolRegistration } from '../utils/types.js'
 
@@ -410,18 +411,25 @@ The transformation handles: guest name splitting, room structuring, status capit
       },
       handler: async (params) => {
         // Validate arrival and departure dates
-        const validator = createValidator(ToolCategory.BOOKING)
+        const validator = createValidator(DateToolCategory.BOOKING)
         const rangeValidation = validator.validateDateRange(params.arrival, params.departure)
 
         // Check if dates are valid
         if (!rangeValidation.start.isValid) {
-          throw new Error(`Arrival date validation failed: ${rangeValidation.start.error}`)
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Arrival date validation failed: ${rangeValidation.start.error}`,
+          )
         }
         if (!rangeValidation.end.isValid) {
-          throw new Error(`Departure date validation failed: ${rangeValidation.end.error}`)
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Departure date validation failed: ${rangeValidation.end.error}`,
+          )
         }
         if (!rangeValidation.rangeValid) {
-          throw new Error(
+          throw new McpError(
+            ErrorCode.InvalidParams,
             rangeValidation.rangeError || 'Invalid date range: departure must be after arrival',
           )
         }
@@ -536,16 +544,25 @@ This gets automatically transformed to the nested API structure with guest objec
         // Validate/sanitize dates if both are present on update (keep single-date updates as-is)
         const sanitizedUpdates = { ...updates }
         if (updates.arrival !== undefined && updates.departure !== undefined) {
-          const validator = createValidator(ToolCategory.BOOKING)
+          const validator = createValidator(DateToolCategory.BOOKING)
           const rv = validator.validateDateRange(updates.arrival, updates.departure)
           if (!rv.start.isValid) {
-            throw new Error(`Arrival date validation failed: ${rv.start.error}`)
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Arrival date validation failed: ${rv.start.error}`,
+            )
           }
           if (!rv.end.isValid) {
-            throw new Error(`Departure date validation failed: ${rv.end.error}`)
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Departure date validation failed: ${rv.end.error}`,
+            )
           }
           if (!rv.rangeValid) {
-            throw new Error(rv.rangeError || 'Invalid date range: departure must be after arrival')
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              rv.rangeError || 'Invalid date range: departure must be after arrival',
+            )
           }
           sanitizedUpdates.arrival = rv.start.validatedDate
           sanitizedUpdates.departure = rv.end.validatedDate

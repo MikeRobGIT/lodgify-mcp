@@ -18,9 +18,9 @@ export enum ValidationMode {
 }
 
 /**
- * Tool categories with different date handling requirements
+ * Date validation tool categories with different date handling requirements
  */
-export enum ToolCategory {
+export enum DateToolCategory {
   /** Availability searches - typically need future dates */
   AVAILABILITY = 'availability',
   /** Booking operations - context-dependent */
@@ -72,7 +72,7 @@ export interface ValidationConfig {
   /** Validation mode to use */
   mode?: ValidationMode
   /** Tool category for context-aware validation */
-  category?: ToolCategory
+  category?: DateToolCategory
   /** Allow dates in the past */
   allowPast?: boolean
   /** Allow dates in the future */
@@ -506,22 +506,22 @@ export const FeedbackTemplates = {
  * Default configurations for different tool categories
  * Note: AUTO_CORRECT mode has been eliminated in favor of feedback-based validation
  */
-const DEFAULT_CONFIGS: Record<ToolCategory, Partial<ValidationConfig>> = {
-  [ToolCategory.AVAILABILITY]: {
+const DEFAULT_CONFIGS: Record<DateToolCategory, Partial<ValidationConfig>> = {
+  [DateToolCategory.AVAILABILITY]: {
     mode: ValidationMode.SOFT, // Changed from AUTO_CORRECT - provides feedback instead
     allowPast: false,
     allowFuture: true,
     maxFutureDays: 730, // 2 years
     detectLLMCutoff: true,
   },
-  [ToolCategory.BOOKING]: {
+  [DateToolCategory.BOOKING]: {
     mode: ValidationMode.SOFT,
     allowPast: false,
     allowFuture: true,
     maxFutureDays: 365,
     detectLLMCutoff: true,
   },
-  [ToolCategory.RATE]: {
+  [DateToolCategory.RATE]: {
     mode: ValidationMode.SOFT,
     allowPast: true,
     allowFuture: true,
@@ -529,14 +529,14 @@ const DEFAULT_CONFIGS: Record<ToolCategory, Partial<ValidationConfig>> = {
     maxFutureDays: 365,
     detectLLMCutoff: true,
   },
-  [ToolCategory.QUOTE]: {
+  [DateToolCategory.QUOTE]: {
     mode: ValidationMode.SOFT, // Changed from AUTO_CORRECT - provides feedback instead
     allowPast: false,
     allowFuture: true,
     maxFutureDays: 365,
     detectLLMCutoff: true,
   },
-  [ToolCategory.HISTORICAL]: {
+  [DateToolCategory.HISTORICAL]: {
     mode: ValidationMode.SOFT,
     allowPast: true,
     allowFuture: true,
@@ -590,6 +590,7 @@ export class DateValidator {
           'Use YYYY-MM-DD format (e.g., 2025-08-31)',
           'Ensure the date is valid (check month/day ranges)',
         ],
+        i18n: this.config.i18n,
       })
 
       return {
@@ -740,6 +741,7 @@ export class DateValidator {
             daysDifference: daysDiff,
             toolCategory,
           },
+          i18n: this.config.i18n,
         })
 
         return {
@@ -777,6 +779,7 @@ export class DateValidator {
           daysDifference: daysDiff,
           toolCategory: this.config.category,
         },
+        i18n: this.config.i18n,
       })
 
       return {
@@ -811,6 +814,7 @@ export class DateValidator {
               .split('T')[0],
           },
         },
+        i18n: this.config.i18n,
       })
 
       return {
@@ -845,6 +849,7 @@ export class DateValidator {
               .split('T')[0],
           },
         },
+        i18n: this.config.i18n,
       })
 
       return {
@@ -934,7 +939,7 @@ export class DateValidator {
  * Factory function to create validators for specific tool categories
  */
 export function createValidator(
-  category: ToolCategory,
+  category: DateToolCategory,
   overrides?: Partial<ValidationConfig>,
 ): DateValidator {
   return new DateValidator({
@@ -947,9 +952,9 @@ export function createValidator(
  * Convenience validators for common use cases
  */
 export const validators = {
-  availability: () => createValidator(ToolCategory.AVAILABILITY),
-  booking: () => createValidator(ToolCategory.BOOKING),
-  rate: () => createValidator(ToolCategory.RATE),
-  quote: () => createValidator(ToolCategory.QUOTE),
-  historical: () => createValidator(ToolCategory.HISTORICAL),
+  availability: () => createValidator(DateToolCategory.AVAILABILITY),
+  booking: () => createValidator(DateToolCategory.BOOKING),
+  rate: () => createValidator(DateToolCategory.RATE),
+  quote: () => createValidator(DateToolCategory.QUOTE),
+  historical: () => createValidator(DateToolCategory.HISTORICAL),
 }
