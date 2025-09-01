@@ -15,6 +15,41 @@ The Lodgify MCP Server exposes 20+ tools organized into logical categories. Each
 - [Webhooks & Notifications](#webhooks--notifications) - Event subscriptions and messaging
 - [Resources](#resources) - Health checks and system monitoring
 
+## Messaging & Communication
+
+### `lodgify_list_threads`
+
+List conversation threads with optional filters.
+
+Parameters:
+- `params.includeMessages` (boolean, optional)
+- `params.includeParticipants` (boolean, optional)
+- `params.messageLimit` (number, optional)
+- `params.since` (string, optional, ISO date-time)
+
+### `lodgify_send_message`
+
+Send a message to a thread (WRITE; blocked in read-only mode).
+
+Parameters:
+- `threadGuid` (string, required)
+- `message.content` (string, required)
+- `message.attachments[]` (array, optional: fileName, fileUrl, fileType)
+
+### `lodgify_mark_thread_read`
+
+Mark a thread as read (WRITE; blocked in read-only mode).
+
+Parameters:
+- `threadGuid` (string, required)
+
+### `lodgify_archive_thread`
+
+Archive a thread (WRITE; blocked in read-only mode).
+
+Parameters:
+- `threadGuid` (string, required)
+
 ## Property Management
 
 ### `lodgify_list_properties`
@@ -800,3 +835,21 @@ The server automatically handles:
 - **Troubleshooting Guide**: Common issues and solutions
 - **GitHub Issues**: Report bugs and request features
 - **Lodgify API Documentation**: Official API reference
+### `lodgify_get_property_availability`
+
+Get availability for a specific property over a period.
+
+Parameters:
+- `propertyId` (string, required)
+- `params.from` (string, optional)
+- `params.to` (string, optional)
+
+### `lodgify_get_room_availability`
+
+Get availability for a specific room type within a property over a period.
+
+Parameters:
+- `propertyId` (string, required)
+- `roomTypeId` (string, required)
+- `params.from` (string, optional)
+- `params.to` (string, optional)

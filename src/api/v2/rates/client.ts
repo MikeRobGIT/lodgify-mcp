@@ -44,12 +44,22 @@ export class RatesClient extends BaseApiModule {
     }
 
     const response = await this.request<unknown>('GET', 'calendar', {
-      params: params as Record<string, unknown>,
+      params: { ...params } as Record<string, unknown>,
     })
+
+    // Debug log the actual response
+    if (process.env.DEBUG_HTTP === '1') {
+      console.log('Daily rates raw response:', JSON.stringify(response, null, 2))
+    }
 
     // Validate response using Zod schema
     const parseResult = safeParseDailyRates(response)
     if (!parseResult.success) {
+      // Log the actual response when validation fails for debugging
+      console.error(
+        'Daily rates response validation failed. Raw response:',
+        JSON.stringify(response, null, 2),
+      )
       throw new Error(
         `Invalid daily rates response format: ${parseResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -73,9 +83,19 @@ export class RatesClient extends BaseApiModule {
       params: params as Record<string, unknown>,
     })
 
+    // Debug log the actual response
+    if (process.env.DEBUG_HTTP === '1') {
+      console.log('Rate settings raw response:', JSON.stringify(response, null, 2))
+    }
+
     // Validate response using Zod schema
     const parseResult = safeParseRateSettings(response)
     if (!parseResult.success) {
+      // Log the actual response when validation fails for debugging
+      console.error(
+        'Rate settings response validation failed. Raw response:',
+        JSON.stringify(response, null, 2),
+      )
       throw new Error(
         `Invalid rate settings response format: ${parseResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)

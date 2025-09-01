@@ -159,6 +159,30 @@ export function createTestServer(mockClient: unknown): TestServer {
       },
     },
 
+    // New Availability fetch tools
+    {
+      name: 'lodgify_get_property_availability',
+      description: 'Get property availability',
+      inputSchema: {
+        type: 'object',
+        properties: { propertyId: { type: 'string' }, params: { type: 'object' } },
+        required: ['propertyId'],
+      },
+    },
+    {
+      name: 'lodgify_get_room_availability',
+      description: 'Get room availability',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          propertyId: { type: 'string' },
+          roomTypeId: { type: 'string' },
+          params: { type: 'object' },
+        },
+        required: ['propertyId', 'roomTypeId'],
+      },
+    },
+
     // Quote and Messaging Tools
     {
       name: 'lodgify_get_quote',
@@ -177,6 +201,35 @@ export function createTestServer(mockClient: unknown): TestServer {
         properties: { threadGuid: { type: 'string' } },
         required: ['threadGuid'],
       },
+    },
+
+    // New Messaging tools
+    {
+      name: 'lodgify_list_threads',
+      description: 'List messaging threads',
+      inputSchema: { type: 'object', properties: { params: { type: 'object' } } },
+    },
+    {
+      name: 'lodgify_send_message',
+      description: 'Send message to thread',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          threadGuid: { type: 'string' },
+          message: { type: 'object' },
+        },
+        required: ['threadGuid', 'message'],
+      },
+    },
+    {
+      name: 'lodgify_mark_thread_read',
+      description: 'Mark thread as read',
+      inputSchema: { type: 'object', properties: { threadGuid: { type: 'string' } } },
+    },
+    {
+      name: 'lodgify_archive_thread',
+      description: 'Archive thread',
+      inputSchema: { type: 'object', properties: { threadGuid: { type: 'string' } } },
     },
 
     // v1 Webhook Management Tools

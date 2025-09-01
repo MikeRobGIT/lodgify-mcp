@@ -91,7 +91,7 @@ Example request:
           event,
           target_url,
         }
-        const result = await getClient().webhooks.subscribeWebhook(subscribeData)
+        const result = await getClient().subscribeWebhook(subscribeData)
         return {
           content: [
             {
@@ -120,7 +120,7 @@ Example request:
         },
       },
       handler: async ({ id }) => {
-        await getClient().webhooks.unsubscribeWebhook({ id })
+        await getClient().unsubscribeWebhook({ id })
         return {
           content: [
             {

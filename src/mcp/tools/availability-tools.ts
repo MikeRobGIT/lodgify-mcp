@@ -64,6 +64,83 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
       },
     },
 
+    // Get Property Availability Tool
+    {
+      name: 'lodgify_get_property_availability',
+      category: 'Availability & Calendar',
+      config: {
+        title: 'Get Property Availability',
+        description:
+          'Get availability for a specific property over a period. Useful for granular checks before booking or blocking dates.',
+        inputSchema: {
+          propertyId: z.string().min(1).describe('Property ID'),
+          params: z
+            .object({
+              from: z.string().optional().describe('Start date (ISO date-time or YYYY-MM-DD)'),
+              to: z.string().optional().describe('End date (ISO date-time or YYYY-MM-DD)'),
+            })
+            .optional(),
+        },
+      },
+      handler: async ({ propertyId, params }) => {
+        const queryParams: AvailabilityQueryParams = {
+          from: params?.from,
+          to: params?.to,
+        }
+        const result = await getClient().availability.getAvailabilityForProperty(
+          propertyId,
+          queryParams,
+        )
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        }
+      },
+    },
+
+    // Get Room Availability Tool
+    {
+      name: 'lodgify_get_room_availability',
+      category: 'Availability & Calendar',
+      config: {
+        title: 'Get Room Availability',
+        description: 'Get availability for a specific room type within a property over a period.',
+        inputSchema: {
+          propertyId: z.string().min(1).describe('Property ID'),
+          roomTypeId: z.string().min(1).describe('Room Type ID'),
+          params: z
+            .object({
+              from: z.string().optional().describe('Start date (ISO date-time or YYYY-MM-DD)'),
+              to: z.string().optional().describe('End date (ISO date-time or YYYY-MM-DD)'),
+            })
+            .optional(),
+        },
+      },
+      handler: async ({ propertyId, roomTypeId, params }) => {
+        const queryParams: AvailabilityQueryParams = {
+          from: params?.from,
+          to: params?.to,
+        }
+        const result = await getClient().availability.getAvailabilityForRoom(
+          propertyId,
+          roomTypeId,
+          queryParams,
+        )
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        }
+      },
+    },
+
     // Check Next Availability Tool
     {
       name: 'lodgify_check_next_availability',

@@ -172,7 +172,7 @@ Example response:
         },
       },
       handler: wrapToolHandler(async ({ id }) => {
-        const result = await getClient().bookings.getBookingPaymentLink(id)
+        const result = await getClient().getBookingPaymentLink(id)
 
         // Debug logging
         debugLogResponse('Booking payment link response', result)
@@ -212,7 +212,7 @@ Example response:
         },
       },
       handler: wrapToolHandler(async ({ id, payload }) => {
-        const result = await getClient().bookings.createBookingPaymentLink(id, payload)
+        const result = await getClient().createBookingPaymentLink(id, payload)
 
         // Debug logging
         debugLogResponse('Create payment link response', result)
@@ -245,8 +245,8 @@ Example response:
             .describe('Access key codes and entry information'),
         },
       },
-      handler: async ({ id, payload }) => {
-        const result = await getClient().bookings.updateKeyCodes(id.toString(), payload)
+      handler: wrapToolHandler(async ({ id, payload }) => {
+        const result = await getClient().updateKeyCodes(id.toString(), payload)
         return {
           content: [
             {
@@ -255,7 +255,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_update_key_codes'),
     },
 
     // Checkin Booking Tool
@@ -274,8 +274,8 @@ Example response:
             .describe('Check-in time in ISO 8601 date-time format (required)'),
         },
       },
-      handler: async ({ id, time }) => {
-        const result = await getClient().bookings.checkinBooking(id.toString(), time)
+      handler: wrapToolHandler(async ({ id, time }) => {
+        const result = await getClient().checkinBooking(id.toString(), time)
         return {
           content: [
             {
@@ -284,7 +284,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_checkin_booking'),
     },
 
     // Checkout Booking Tool
@@ -303,8 +303,8 @@ Example response:
             .describe('Check-out time in ISO 8601 date-time format (required)'),
         },
       },
-      handler: async ({ id, time }) => {
-        const result = await getClient().bookings.checkoutBooking(id.toString(), time)
+      handler: wrapToolHandler(async ({ id, time }) => {
+        const result = await getClient().checkoutBooking(id.toString(), time)
         return {
           content: [
             {
@@ -313,7 +313,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_checkout_booking'),
     },
 
     // Get External Bookings Tool
@@ -606,8 +606,8 @@ Example request:
           id: z.number().int().describe('Booking ID to delete permanently'),
         },
       },
-      handler: async ({ id }) => {
-        const result = await getClient().bookingsV1.deleteBookingV1(id.toString())
+      handler: wrapToolHandler(async ({ id }) => {
+        const result = await getClient().deleteBookingV1(id)
         return {
           content: [
             {
@@ -616,7 +616,7 @@ Example request:
             },
           ],
         }
-      },
+      }, 'lodgify_delete_booking'),
     },
   ]
 }
