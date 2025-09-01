@@ -21,10 +21,43 @@ export const DailyRateEntrySchema = z.object({
 
 /**
  * Daily rates calendar response schema
- * The API returns an array of rate entries directly, not wrapped in an object
+ * The API returns a structured object with calendar_items and rate_settings
  */
 export const DailyRatesResponseSchema = z.union([
-  // Handle array response (actual API format)
+  // Handle the actual API response format
+  z.object({
+    calendar_items: z.array(
+      z.object({
+        date: z.string(),
+        is_default: z.boolean(),
+        prices: z.array(
+          z.object({
+            min_stay: z.number(),
+            max_stay: z.number(),
+            price_per_day: z.number(),
+            price_per_additional_guest: z.number(),
+            additional_guests_starts_from: z.number(),
+          }).passthrough()
+        ),
+      }).passthrough()
+    ),
+    rate_settings: z.object({
+      bookability: z.number().optional(),
+      check_in_hour: z.number().optional(),
+      check_out_hour: z.number().optional(),
+      booking_window_days: z.number().optional(),
+      advance_notice_days: z.number().optional(),
+      advance_notice_hours: z.number().optional(),
+      preparation_time_days: z.number().optional(),
+      currency_code: z.string().optional(),
+      vat: z.number().optional(),
+      is_vat_exclusive: z.boolean().optional(),
+      fees: z.array(z.any()).optional(),
+      taxes: z.array(z.any()).optional(),
+      promotions: z.array(z.any()).optional(),
+    }).passthrough(),
+  }),
+  // Handle array response (older API format or different endpoints)
   z.array(
     z
       .object({
@@ -44,6 +77,8 @@ export const DailyRatesResponseSchema = z.union([
       })
       .passthrough(), // Allow additional fields
   ),
+  // Handle empty array response
+  z.array(z.any()).length(0),
   // Fallback to handle object formats
   z
     .object({

@@ -152,7 +152,7 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
 Example request:
 {
   "propertyId": "123",
-  "fromDate": "2024-03-15",
+  "fromDate": "2024-03-15", // optional, defaults to today
   "daysToCheck": 90
 }
 
