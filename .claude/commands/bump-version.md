@@ -37,6 +37,7 @@ Bump the package version and update all version references. Usage: `/bump-versio
 
 6. **Update Version References**
    - Read the new version from package.json
+   - **IMPORTANT**: Always use the scoped package name `@mikerob/lodgify-mcp`, NOT the deprecated `lodgify-mcp`
    - Update README.md to replace all version references:
      - `npm install @mikerob/lodgify-mcp@X.X.X` → use new version
      - `bun add @mikerob/lodgify-mcp@X.X.X` → use new version  
@@ -46,6 +47,7 @@ Bump the package version and update all version references. Usage: `/bump-versio
      - `npx -y -p @mikerob/lodgify-mcp@X.X.X lodgify-mcp` → use new version
    - Update CHANGELOG.md examples that reference specific versions
    - Check for any other files that might contain version references
+   - **Note**: The deprecated `lodgify-mcp` package (without @mikerob scope) should never be used
 
 7. **Git Operations**
    - Stage all changes: `git add .`
