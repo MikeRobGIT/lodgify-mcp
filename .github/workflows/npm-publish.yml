@@ -1,4 +1,9 @@
-name: Automated NPM Publish
+name: NPM Publish Safety Net
+
+# This workflow publishes to npm if the version in package.json
+# is not yet published. It serves as a safety net for when
+# manual version bumps are committed but not tagged/released.
+# Primary releases should use the release.yml workflow via git tags.
 
 on:
   push:
@@ -10,16 +15,6 @@ on:
       - 'package.json'
       - 'tsconfig.json'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version type (patch, minor, major)'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
 
 permissions:
   contents: write
@@ -28,12 +23,12 @@ permissions:
   pull-requests: write
 
 jobs:
-  check-changes:
-    name: Check for publishable changes
+  check-version:
+    name: Check if version needs publishing
     runs-on: ubuntu-latest
     outputs:
       should-publish: ${{ steps.check.outputs.should-publish }}
-      version-bump: ${{ steps.analyze.outputs.version }}
+      version: ${{ steps.check.outputs.version }}
     
     steps:
       - name: Checkout code
@@ -51,77 +46,36 @@ jobs:
         id: check
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Current version: $CURRENT_VERSION"
+          echo "Current version in package.json: $CURRENT_VERSION"
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           
-          # Check if package exists and if version already exists on npm
-          if npm view @mikerob/lodgify-mcp version 2>/dev/null; then
-            # Package exists, check if specific version exists
-            if npm view @mikerob/lodgify-mcp@$CURRENT_VERSION version 2>/dev/null; then
-              echo "Version $CURRENT_VERSION already published"
-              echo "should-publish=false" >> $GITHUB_OUTPUT
-            else
-              echo "Version $CURRENT_VERSION not published yet"
-              echo "should-publish=true" >> $GITHUB_OUTPUT
-            fi
+          # Check if this version is already published on npm
+          if npm view @mikerob/lodgify-mcp@$CURRENT_VERSION version 2>/dev/null; then
+            echo "✅ Version $CURRENT_VERSION is already published on npm"
+            echo "should-publish=false" >> $GITHUB_OUTPUT
           else
-            # Package doesn't exist yet - first time publishing
-            echo "Package does not exist on npm yet - will publish initial version"
+            echo "📦 Version $CURRENT_VERSION is not on npm yet - will publish"
             echo "should-publish=true" >> $GITHUB_OUTPUT
           fi
-      
-      - name: Analyze commits for version bump
-        id: analyze
-        if: github.event_name == 'push'
-        run: |
-          # Simple commit analysis (you could use semantic-release for more sophistication)
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Last tag: $LAST_TAG"
           
-          # Check commit messages since last tag
-          BREAKING=$(git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -c "BREAKING CHANGE:" || true)
-          FEAT=$(git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -c "^feat:" || true)
-          FIX=$(git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -c "^fix:" || true)
-          
-          if [ "$BREAKING" -gt 0 ]; then
-            echo "version=major" >> $GITHUB_OUTPUT
-            echo "Detected breaking changes - major version bump"
-          elif [ "$FEAT" -gt 0 ]; then
-            echo "version=minor" >> $GITHUB_OUTPUT
-            echo "Detected new features - minor version bump"
-          elif [ "$FIX" -gt 0 ]; then
-            echo "version=patch" >> $GITHUB_OUTPUT
-            echo "Detected fixes - patch version bump"
+          # Check if there's a git tag for this version
+          if git tag -l "v$CURRENT_VERSION" | grep -q .; then
+            echo "ℹ️  Git tag v$CURRENT_VERSION exists"
           else
-            echo "version=patch" >> $GITHUB_OUTPUT
-            echo "Default to patch version bump"
+            echo "⚠️  No git tag found for v$CURRENT_VERSION"
+            echo "   Consider creating a tag to trigger the primary release workflow"
           fi
 
   publish:
     name: Publish to NPM
     runs-on: ubuntu-latest
-    needs: check-changes
-    if: needs.check-changes.outputs.should-publish == 'true' || github.event_name == 'workflow_dispatch'
+    needs: check-version
+    if: needs.check-version.outputs.should-publish == 'true'
     
     steps:
-      # Validate that the PAT secret is configured
-      # This is required to push version bumps to protected branches
-      - name: Validate PAT Configuration
-        run: |
-          if [ -z "${{ secrets.RELEASE_PAT }}" ]; then
-            echo "❌ Error: RELEASE_PAT secret is not configured"
-            echo "ℹ️  A Personal Access Token is required to push version bumps to protected branches"
-            echo "ℹ️  Please create a PAT with 'repo' scope and add it as RELEASE_PAT secret"
-            exit 1
-          fi
-          echo "✅ RELEASE_PAT is configured"
-      
-      # Checkout with PAT to enable pushing to protected branches
-      # Using PAT instead of GITHUB_TOKEN allows bypassing branch protection rules
-      # for automated version bumps and tag creation
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.RELEASE_PAT }}
           fetch-depth: 0
       
       - name: Setup Bun
@@ -135,11 +89,7 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
       
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global core.hooksPath /dev/null
+      # No need to configure Git since we're not making commits
       
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -153,116 +103,36 @@ jobs:
       - name: Build
         run: bun run build
       
-      - name: Determine version bump
+      - name: Get version from package.json
         id: version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION_BUMP="${{ github.event.inputs.version }}"
-          else
-            VERSION_BUMP="${{ needs.check-changes.outputs.version-bump }}"
-          fi
-          echo "bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
-          echo "Will bump: $VERSION_BUMP"
-      
-      - name: Bump version
-        id: bump
-        run: |
-          # Get current version
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Current version: $CURRENT_VERSION"
-          
-          # Bump version
-          npm version ${{ steps.version.outputs.bump }} --no-git-tag-version
-          
-          # Get new version
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "New version: $NEW_VERSION"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-      
-      - name: Update CHANGELOG
-        run: |
-          VERSION=${{ steps.bump.outputs.version }}
-          DATE=$(date +%Y-%m-%d)
-          
-          # Create a new changelog entry
-          cat > /tmp/new-changelog.md << EOF
-          # Changelog
-          
-          All notable changes to this project will be documented in this file.
-          
-          The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-          and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-          
-          ## [$VERSION] - $DATE
-          
-          ### Changed
-          - Automated release via GitHub Actions
-          
-          EOF
-          
-          # Append the rest of the changelog
-          tail -n +7 CHANGELOG.md >> /tmp/new-changelog.md
-          mv /tmp/new-changelog.md CHANGELOG.md
-          
-          echo "Updated CHANGELOG.md for version $VERSION"
-      
-      - name: Commit changes
-        run: |
-          git add package.json CHANGELOG.md
-          git commit -m "chore: release v${{ steps.bump.outputs.version }} [skip ci]"
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
       
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
-      - name: Push changes
+      - name: Create git tag (if missing)
         run: |
-          # Attempt to push version bump to main
-          if ! git push origin main; then
-            echo "⚠️  Warning: Could not push version bump to main branch"
-            echo "This may be due to branch protection rules or PAT permissions"
-            echo "The package has been published to NPM, but version bump commit was not pushed"
-            echo "Please manually create a PR with the version bump or check PAT permissions"
-            # Don't fail the workflow since NPM publish succeeded
-            echo "skip_tag=true" >> $GITHUB_ENV
+          VERSION=${{ steps.version.outputs.version }}
+          if ! git tag -l "v$VERSION" | grep -q .; then
+            echo "🎯 Creating git tag v$VERSION"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "v$VERSION" -m "Release v$VERSION (automated)"
+            git push origin "v$VERSION" || echo "⚠️  Could not push tag"
           else
-            echo "✅ Successfully pushed version bump to main"
-            echo "skip_tag=false" >> $GITHUB_ENV
+            echo "ℹ️  Tag v$VERSION already exists"
           fi
-      
-      - name: Create git tag
-        if: env.skip_tag != 'true'
-        run: |
-          git tag -a "v${{ steps.bump.outputs.version }}" -m "Release v${{ steps.bump.outputs.version }}"
-          if ! git push origin "v${{ steps.bump.outputs.version }}"; then
-            echo "⚠️  Warning: Could not push tag to origin"
-            echo "The package has been published to NPM, but tag was not pushed"
-          else
-            echo "✅ Successfully pushed tag v${{ steps.bump.outputs.version }}"
-          fi
-      
-      - name: Create GitHub Release
-        if: env.skip_tag != 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.bump.outputs.version }}
-          generate_release_notes: true
-          body: |
-            ## Lodgify MCP Server v${{ steps.bump.outputs.version }}
-            
-            ### Installation
-            ```bash
-            npx -y @mikerob/lodgify-mcp@${{ steps.bump.outputs.version }}
-            ```
-            
-            ### Changes
-            See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Notify success
         if: success()
         run: |
-          echo "✅ Successfully published @mikerob/lodgify-mcp@${{ steps.bump.outputs.version }} to npm!"
-          echo "View at: https://www.npmjs.com/package/@mikerob/lodgify-mcp/v/${{ steps.bump.outputs.version }}"
+          echo "✅ Successfully published @mikerob/lodgify-mcp@${{ steps.version.outputs.version }} to npm!"
+          echo "View at: https://www.npmjs.com/package/@mikerob/lodgify-mcp/v/${{ steps.version.outputs.version }}"
+          echo ""
+          echo "💡 Note: This workflow serves as a safety net."
+          echo "   For primary releases, use git tags to trigger the release.yml workflow."
