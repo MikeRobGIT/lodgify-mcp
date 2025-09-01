@@ -391,15 +391,16 @@ Example request:
       category: CATEGORY,
       config: {
         title: 'Create Custom Quote for Booking',
-        description: `[${CATEGORY}] Create a custom quote for an existing booking with pricing adjustments, discounts, and custom terms. This allows property managers to provide personalized pricing for specific bookings.
+        description: `[${CATEGORY}] Create a custom quote for an existing booking with pricing adjustments. This allows property managers to provide personalized pricing for specific bookings.
 
 ⚠️ **Important**: This is a WRITE operation that modifies booking data. It will be blocked in read-only mode.
 
+⚠️ **Note**: Fees and discounts are not currently supported by this tool. The adjustments field is included for future compatibility but will not be processed.
+
 **Use Cases**:
-- Apply custom discounts or promotional rates
-- Add special fees or charges
-- Provide modified pricing for extended stays
-- Create seasonal or event-based pricing adjustments
+- Provide modified total pricing for bookings
+- Create custom quotes with specific validity periods
+- Send personalized pricing to guests
 
 Example request:
 {
