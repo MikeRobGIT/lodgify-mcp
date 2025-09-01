@@ -38,12 +38,12 @@ Bump the package version and update all version references. Usage: `/bump-versio
 6. **Update Version References**
    - Read the new version from package.json
    - Update README.md to replace all version references:
-     - `npm install lodgify-mcp@X.X.X` → use new version
-     - `bun add lodgify-mcp@X.X.X` → use new version  
-     - `yarn add lodgify-mcp@X.X.X` → use new version
-     - `npx -y lodgify-mcp@X.X.X` → use new version
-     - `bunx -y lodgify-mcp@X.X.X` → use new version
-     - `npx -y -p lodgify-mcp@X.X.X` → use new version
+     - `npm install @mikerob/lodgify-mcp@X.X.X` → use new version
+     - `bun add @mikerob/lodgify-mcp@X.X.X` → use new version  
+     - `yarn add @mikerob/lodgify-mcp@X.X.X` → use new version
+     - `npx -y @mikerob/lodgify-mcp@X.X.X` → use new version
+     - `bunx -y @mikerob/lodgify-mcp@X.X.X` → use new version
+     - `npx -y -p @mikerob/lodgify-mcp@X.X.X lodgify-mcp` → use new version
    - Update CHANGELOG.md examples that reference specific versions
    - Check for any other files that might contain version references
 

@@ -7,6 +7,8 @@ import type { BaseApiClient } from '../../base-client.js'
 import { BaseApiModule, type ModuleConfig } from '../../base-module.js'
 import type {
   BookingV1Response,
+  CreateBookingQuoteRequest,
+  CreateBookingQuoteResponse,
   CreateBookingV1ApiRequest,
   CreateBookingV1Request,
   DeleteBookingV1Response,
@@ -290,6 +292,32 @@ export class BookingsV1Client extends BaseApiModule {
     const getPath = `reservation/booking/${id}`
     return this.client.request<BookingV1Response>('GET', getPath, {
       apiVersion: 'v1',
+    })
+  }
+
+  /**
+   * Create a quote for an existing booking (v1 API)
+   * POST /v1/reservation/booking/{bookingId}/quote
+   *
+   * This endpoint creates a new quote for an existing booking,
+   * allowing custom pricing adjustments, discounts, and fees.
+   */
+  async createBookingQuote(
+    bookingId: string,
+    payload: CreateBookingQuoteRequest,
+  ): Promise<CreateBookingQuoteResponse> {
+    if (!bookingId) {
+      throw new Error('Booking ID is required')
+    }
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Valid quote creation payload is required')
+    }
+
+    // Use the specific path for creating a booking quote
+    const quotePath = `reservation/booking/${bookingId}/quote`
+    return this.client.request<CreateBookingQuoteResponse>('POST', quotePath, {
+      apiVersion: 'v1',
+      body: payload,
     })
   }
 }

@@ -119,7 +119,7 @@ describe('MCP Server Integration Tests', () => {
     test('should register all Lodgify tools', async () => {
       const response = await testServer.listTools()
 
-      expect(response.tools).toHaveLength(28)
+      expect(response.tools).toHaveLength(34)
 
       const toolNames = response.tools.map((t: { name: string }) => t.name)
       expect(toolNames).toContain('lodgify_list_properties')
@@ -135,6 +135,11 @@ describe('MCP Server Integration Tests', () => {
       expect(toolNames).toContain('lodgify_update_key_codes')
       expect(toolNames).toContain('lodgify_get_quote')
       expect(toolNames).toContain('lodgify_get_thread')
+      // New messaging tools
+      expect(toolNames).toContain('lodgify_list_threads')
+      expect(toolNames).toContain('lodgify_send_message')
+      expect(toolNames).toContain('lodgify_mark_thread_read')
+      expect(toolNames).toContain('lodgify_archive_thread')
       expect(toolNames).toContain('lodgify_find_properties')
 
       // v1 Webhook endpoints
@@ -160,6 +165,9 @@ describe('MCP Server Integration Tests', () => {
       expect(toolNames).toContain('lodgify_check_next_availability')
       expect(toolNames).toContain('lodgify_check_date_range_availability')
       expect(toolNames).toContain('lodgify_get_availability_calendar')
+      // New availability fetch tools
+      expect(toolNames).toContain('lodgify_get_property_availability')
+      expect(toolNames).toContain('lodgify_get_room_availability')
     })
 
     test('should include proper descriptions for each tool', async () => {

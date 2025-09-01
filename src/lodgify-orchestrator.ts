@@ -8,6 +8,8 @@ import { ApiClientOrchestrator } from './api/client-orchestrator.js'
 import { BookingsV1Client } from './api/v1/bookings/index.js'
 import type {
   BookingV1Response,
+  CreateBookingQuoteRequest,
+  CreateBookingQuoteResponse,
   CreateBookingV1Request,
   DeleteBookingV1Response,
   UpdateBookingV1Request,
@@ -97,11 +99,20 @@ export class LodgifyOrchestrator {
     // Store read-only mode - default to false (write-enabled) when not set
     this.readOnly = config.readOnly === true
 
-    // Debug logging for read-only mode
-    if (config.debugHttp && config.readOnly !== undefined) {
-      safeLogger.debug('[LodgifyOrchestrator] Read-only mode configuration', {
-        readOnlyProvided: !!config.readOnly,
-        readOnly: this.readOnly,
+    // Debug logging for read-only mode (always log this critical config)
+    safeLogger.info('[LodgifyOrchestrator] Read-only mode configuration', {
+      readOnlyProvided: config.readOnly !== undefined,
+      readOnlyValue: config.readOnly,
+      readOnlyFinal: this.readOnly,
+    })
+
+    // Additional debug logging when HTTP debug is enabled
+    if (config.debugHttp) {
+      safeLogger.debug('[LodgifyOrchestrator] Full config received', {
+        hasApiKey: !!config.apiKey,
+        readOnly: config.readOnly,
+        debugHttp: config.debugHttp,
+        baseUrl: config.baseUrl,
       })
     }
 
@@ -265,6 +276,22 @@ export class LodgifyOrchestrator {
     return this.quotes.getQuoteRaw(propertyId, params)
   }
 
+  /**
+   * Create a quote for an existing booking
+   * POST /v1/reservation/booking/{id}/quote
+   *
+   * This endpoint creates a new quote for an existing booking,
+   * allowing custom pricing adjustments, discounts, and fees.
+   * Note: This is a v1 API endpoint.
+   */
+  async createBookingQuote(
+    bookingId: string,
+    payload: CreateBookingQuoteRequest,
+  ): Promise<CreateBookingQuoteResponse> {
+    this.checkReadOnly('Create Booking Quote', `/v1/reservation/booking/${bookingId}/quote`)
+    return this.bookingsV1.createBookingQuote(bookingId, payload)
+  }
+
   // Availability backward compatibility
   async getNextAvailableDate(
     propertyId: string,
@@ -312,6 +339,32 @@ export class LodgifyOrchestrator {
   // Messaging backward compatibility
   async getThread(threadGuid: string): Promise<MessageThread> {
     return this.messaging.getThread(threadGuid)
+  }
+
+  // Messaging
+  async listThreads(params?: Record<string, unknown>): Promise<MessageThread[]> {
+    return this.messaging.listThreads<MessageThread[]>(params)
+  }
+
+  async sendMessage(
+    threadGuid: string,
+    message: {
+      content: string
+      attachments?: Array<{ fileName: string; fileUrl: string; fileType?: string }>
+    },
+  ): Promise<unknown> {
+    this.checkReadOnly('Send Message', `/v2/messaging/${threadGuid}/messages`)
+    return this.messaging.sendMessage(threadGuid, message)
+  }
+
+  async markThreadAsRead(threadGuid: string): Promise<unknown> {
+    this.checkReadOnly('Mark Thread As Read', `/v2/messaging/${threadGuid}/read`)
+    return this.messaging.markThreadAsRead(threadGuid)
+  }
+
+  async archiveThread(threadGuid: string): Promise<unknown> {
+    this.checkReadOnly('Archive Thread', `/v2/messaging/${threadGuid}/archive`)
+    return this.messaging.archiveThread(threadGuid)
   }
 
   // Webhooks backward compatibility
@@ -405,6 +458,8 @@ export type {
   // Properties
   Property,
   PropertySearchParams,
+  CreateBookingQuoteRequest,
+  CreateBookingQuoteResponse,
   QuoteParams,
   // Quotes
   QuoteRequest,

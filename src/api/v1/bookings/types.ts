@@ -180,3 +180,78 @@ export interface DeleteBookingV1Response {
   message?: string
   deleted_booking_id?: number
 }
+
+/**
+ * Create Booking Quote Request
+ * POST /v1/reservation/booking/{bookingId}/quote
+ */
+export interface CreateBookingQuoteRequest {
+  // Pricing adjustments
+  totalPrice?: number
+  subtotal?: number
+  currency?: string
+
+  // Price breakdown
+  breakdown?: {
+    accommodation?: number
+    taxes?: number
+    fees?: number
+    extras?: number
+    discount?: number
+  }
+
+  // Custom adjustments
+  adjustments?: Array<{
+    type: 'discount' | 'fee' | 'tax' | 'extra'
+    description: string
+    amount: number
+    isPercentage?: boolean
+  }>
+
+  // Quote metadata
+  validUntil?: string // ISO date
+  notes?: string
+  customTerms?: string
+
+  // Policy references
+  policyId?: string
+  rentalAgreementId?: string
+
+  // Optional flags
+  sendToGuest?: boolean
+  replaceExisting?: boolean
+}
+
+/**
+ * Create Booking Quote Response
+ * Response from POST /v1/reservation/booking/{bookingId}/quote
+ */
+export interface CreateBookingQuoteResponse {
+  id: string
+  bookingId: string
+  status: 'created' | 'sent' | 'accepted' | 'rejected' | 'expired'
+
+  // Quote details
+  totalPrice: number
+  currency: string
+  breakdown?: {
+    accommodation?: number
+    taxes?: number
+    fees?: number
+    extras?: number
+    discount?: number
+  }
+
+  // Metadata
+  createdAt: string
+  validUntil?: string
+  sentAt?: string
+  acceptedAt?: string
+
+  // Links
+  guestViewUrl?: string
+  paymentUrl?: string
+
+  // Additional fields
+  [key: string]: unknown
+}

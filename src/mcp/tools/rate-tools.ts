@@ -10,6 +10,13 @@ import type { QuoteParams } from '../../api/v2/quotes/types.js'
 import type { DailyRatesParams } from '../../api/v2/rates/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { DateStringSchema } from '../schemas/common.js'
+import {
+  createValidator,
+  DateToolCategory,
+  type DateValidationInfo,
+} from '../utils/date-validator.js'
+import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
 
@@ -47,24 +54,81 @@ Example request:
           endDate: DateStringSchema.describe('End date for rates calendar (YYYY-MM-DD)'),
         },
       },
-      handler: async ({ roomTypeId, houseId, startDate, endDate }) => {
-        // Map MCP parameters to API parameters
-        const params: DailyRatesParams = {
-          propertyId: houseId.toString(),
-          roomTypeId: roomTypeId.toString(),
-          from: startDate,
-          to: endDate,
+      handler: wrapToolHandler(async ({ roomTypeId, houseId, startDate, endDate }) => {
+        // Validate date range for rates
+        const validator = createValidator(DateToolCategory.RATE)
+        const rangeValidation = validator.validateDateRange(startDate, endDate)
+
+        // Check if dates are valid
+        if (!rangeValidation.start.isValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Invalid startDate: ${rangeValidation.start.error}`,
+          )
         }
+        if (!rangeValidation.end.isValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Invalid endDate: ${rangeValidation.end.error}`,
+          )
+        }
+        if (!rangeValidation.rangeValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            rangeValidation.rangeError || 'Invalid date range',
+          )
+        }
+        // Prepare validation info if there's feedback to show
+        let dateValidationInfo: DateValidationInfo | null = null
+        if (rangeValidation.start.feedback || rangeValidation.end.feedback) {
+          dateValidationInfo = {
+            dateValidation: {
+              startDate: {
+                original: rangeValidation.start.originalDate,
+                validated: rangeValidation.start.validatedDate,
+                feedback: rangeValidation.start.feedback,
+                warning: rangeValidation.start.warning,
+              },
+              endDate: {
+                original: rangeValidation.end.originalDate,
+                validated: rangeValidation.end.validatedDate,
+                feedback: rangeValidation.end.feedback,
+                warning: rangeValidation.end.warning,
+              },
+              message:
+                rangeValidation.start.feedback || rangeValidation.end.feedback
+                  ? '⚠️ Date validation feedback available'
+                  : '✅ Dates validated',
+            },
+          }
+        }
+
+        // Map MCP parameters to API parameters with validated dates
+        // Note: Lodgify API expects PascalCase parameter names
+        const params: DailyRatesParams = {
+          RoomTypeId: roomTypeId.toString(),
+          HouseId: houseId.toString(),
+          StartDate: rangeValidation.start.validatedDate,
+          EndDate: rangeValidation.end.validatedDate,
+        }
+
         const result = await getClient().rates.getDailyRates(params)
+
+        // Debug logging
+        debugLogResponse('Daily rates API response', result)
+
+        // Merge validation info with result if present
+        const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: safeJsonStringify(finalResult),
             },
           ],
         }
-      },
+      }, 'lodgify_daily_rates'),
     },
 
     // Rate settings tool
@@ -84,19 +148,23 @@ Example request:
             .describe('Query parameters for rate settings'),
         },
       },
-      handler: async ({ params }) => {
-        // Map houseId to propertyId if provided
-        const rateParams = params?.houseId ? { propertyId: params.houseId.toString() } : {}
+      handler: wrapToolHandler(async ({ params }) => {
+        // Pass params directly to the API (expecting houseId)
+        const rateParams = params?.houseId ? { houseId: params.houseId.toString() } : {}
         const result = await getClient().rates.getRateSettings(rateParams)
+
+        // Debug logging
+        debugLogResponse('Rate settings API response', result)
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: safeJsonStringify(result),
             },
           ],
         }
-      },
+      }, 'lodgify_rate_settings'),
     },
 
     // Get quote tool
@@ -106,7 +174,7 @@ Example request:
       config: {
         title: 'Get Existing Booking Quote',
         description:
-          'Retrieve an existing quote that was created when a booking was made. Quotes are associated with bookings and contain the pricing details that were calculated at booking time.\n\n⚠️ Important: This does NOT calculate new pricing. Use lodgify_daily_rates to view current pricing before creating a booking.\n\nWorkflow: Check prices with lodgify_daily_rates → Create booking → Use this tool to retrieve the quote from that booking.\n\nRequired parameters: "from" and "to" dates in YYYY-MM-DD format, plus guest breakdown.\n\nExample: {"from": "2025-09-01", "to": "2025-09-03", "guest_breakdown[adults]": 2}',
+          'Retrieve an existing quote that was created when a booking was made. Quotes are associated with bookings and contain the pricing details that were calculated at booking time.\n\n⚠️ Important: This does NOT calculate new pricing. Use lodgify_daily_rates to view current pricing before creating a booking.\n\nWorkflow: Check prices with lodgify_daily_rates → Create booking → Use this tool to retrieve the quote from that booking.\n\nRequired parameters: dates (use either "from"/"to" or "arrival"/"departure" in YYYY-MM-DD format), plus room type and guest information.\n\nExample: {"from": "2025-09-01", "to": "2025-09-03", "roomTypes[0].Id": 123, "guest_breakdown[adults]": 2}',
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID with existing booking/quote'),
           params: z
@@ -116,20 +184,98 @@ Example request:
             ),
         },
       },
-      handler: async ({ propertyId, params }) => {
+      handler: wrapToolHandler(async ({ propertyId, params }) => {
         try {
-          // Validate and format parameters before making the API call
-          const validatedParams = validateQuoteParams(params)
+          // First, validate dates using the comprehensive date validation system
+          const validator = createValidator(DateToolCategory.QUOTE)
+          let dateValidationInfo: DateValidationInfo | null = null
+
+          // Extract dates - support both from/to and arrival/departure
+          const fromDate = String(params.from || params.arrival || '')
+          const toDate = String(params.to || params.departure || '')
+
+          // Validate date range
+          const rangeValidation = validator.validateDateRange(fromDate, toDate)
+
+          // Check if dates are valid
+          if (!rangeValidation.start.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid arrival date: ${rangeValidation.start.error || rangeValidation.start.feedback?.message || 'Invalid date format'}`,
+            )
+          }
+          if (!rangeValidation.end.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid departure date: ${rangeValidation.end.error || rangeValidation.end.feedback?.message || 'Invalid date format'}`,
+            )
+          }
+          if (!rangeValidation.rangeValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              rangeValidation.rangeError ||
+                rangeValidation.rangeFeedback?.message ||
+                'Invalid date range',
+            )
+          }
+
+          // Update params with validated dates - use arrival/departure for v2 API
+          const validatedParams = { ...params }
+          // Remove old params if they exist
+          delete validatedParams.from
+          delete validatedParams.to
+          // Set the correct parameter names with validated dates
+          validatedParams.arrival = rangeValidation.start.validatedDate
+          validatedParams.departure = rangeValidation.end.validatedDate
+
+          // Prepare validation info if there's feedback to show
+          if (
+            rangeValidation.start.feedback ||
+            rangeValidation.end.feedback ||
+            rangeValidation.rangeFeedback
+          ) {
+            dateValidationInfo = {
+              dateValidation: {
+                startDate: {
+                  original: rangeValidation.start.originalDate,
+                  validated: rangeValidation.start.validatedDate,
+                  feedback: rangeValidation.start.feedback,
+                  warning: rangeValidation.start.warning,
+                },
+                endDate: {
+                  original: rangeValidation.end.originalDate,
+                  validated: rangeValidation.end.validatedDate,
+                  feedback: rangeValidation.end.feedback,
+                  warning: rangeValidation.end.warning,
+                },
+                rangeFeedback: rangeValidation.rangeFeedback,
+                message:
+                  rangeValidation.start.feedback ||
+                  rangeValidation.end.feedback ||
+                  rangeValidation.rangeFeedback
+                    ? '⚠️ Date validation feedback available'
+                    : '✅ Dates validated',
+              },
+            }
+          }
+
+          // Now validate remaining quote parameters
+          const fullyValidatedParams = validateQuoteParams(validatedParams, true) // Pass true to skip date validation
+
           // Pass validated params as QuoteParams (which supports bracket notation)
-          const result = await getClient().quotes.getQuoteRaw(
-            propertyId,
-            validatedParams as QuoteParams,
-          )
+          const result = await getClient().getQuote(propertyId, fullyValidatedParams as QuoteParams)
+
+          // Debug logging
+          debugLogResponse('Quote API response', result)
+
+          // Merge validation info with result if present
+          const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
+
           return {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(result, null, 2),
+                text: safeJsonStringify(finalResult),
               },
             ],
           }
@@ -168,7 +314,7 @@ Example request:
           // Re-throw for standard error handling
           throw error
         }
-      },
+      }, 'lodgify_get_quote'),
     },
 
     // Update rates V1 tool
@@ -222,17 +368,145 @@ Example request:
             .describe('Array of rate updates to apply'),
         },
       },
-      handler: async (params) => {
+      handler: wrapToolHandler(async (params) => {
         const result = await getClient().updateRatesV1(params as RateUpdateV1Request)
+
+        // Debug logging
+        debugLogResponse('Update rates API response', result)
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: safeJsonStringify(result),
             },
           ],
         }
+      }, 'lodgify_update_rates'),
+    },
+
+    // Create Booking Quote tool
+    {
+      name: 'lodgify_create_booking_quote',
+      category: CATEGORY,
+      config: {
+        title: 'Create Custom Quote for Booking',
+        description: `[${CATEGORY}] Create a custom quote for an existing booking with pricing adjustments, discounts, and custom terms. This allows property managers to provide personalized pricing for specific bookings.
+
+⚠️ **Important**: This is a WRITE operation that modifies booking data. It will be blocked in read-only mode.
+
+**Use Cases**:
+- Apply custom discounts or promotional rates
+- Add special fees or charges
+- Provide modified pricing for extended stays
+- Create seasonal or event-based pricing adjustments
+
+Example request:
+{
+  "bookingId": "BK12345",
+  "payload": {
+    "totalPrice": 1500.00,
+    "currency": "USD",
+    "breakdown": {
+      "accommodation": 1200.00,
+      "taxes": 150.00,
+      "fees": 100.00,
+      "discount": 50.00
+    },
+    "adjustments": [
+      {
+        "type": "discount",
+        "description": "Early booking discount",
+        "amount": 50.00,
+        "isPercentage": false
+      }
+    ],
+    "validUntil": "2024-03-31T23:59:59Z",
+    "notes": "Special rate for returning guest",
+    "sendToGuest": true
+  }
+}
+
+Example response:
+{
+  "id": "Q12345",
+  "bookingId": "BK12345",
+  "status": "created",
+  "totalPrice": 1500.00,
+  "currency": "USD",
+  "createdAt": "2024-03-15T10:00:00Z",
+  "validUntil": "2024-03-31T23:59:59Z",
+  "guestViewUrl": "https://lodgify.com/quote/view/Q12345",
+  "paymentUrl": "https://lodgify.com/quote/pay/Q12345"
+}`,
+        inputSchema: {
+          bookingId: z.string().min(1).describe('Booking ID to create quote for'),
+          payload: z
+            .object({
+              // Pricing
+              totalPrice: z.number().positive().optional().describe('Total quote amount'),
+              subtotal: z.number().positive().optional().describe('Subtotal before taxes/fees'),
+              currency: z.string().length(3).optional().describe('Currency code (e.g., USD, EUR)'),
+
+              // Breakdown
+              breakdown: z
+                .object({
+                  accommodation: z.number().optional().describe('Accommodation cost'),
+                  taxes: z.number().optional().describe('Tax amount'),
+                  fees: z.number().optional().describe('Service fees'),
+                  extras: z.number().optional().describe('Extra services cost'),
+                  discount: z.number().optional().describe('Discount amount'),
+                })
+                .optional()
+                .describe('Price breakdown details'),
+
+              // Adjustments
+              adjustments: z
+                .array(
+                  z.object({
+                    type: z
+                      .enum(['discount', 'fee', 'tax', 'extra'])
+                      .describe('Type of adjustment'),
+                    description: z.string().describe('Description of adjustment'),
+                    amount: z.number().describe('Adjustment amount'),
+                    isPercentage: z.boolean().optional().describe('Is this a percentage?'),
+                  }),
+                )
+                .optional()
+                .describe('Custom pricing adjustments'),
+
+              // Metadata
+              validUntil: z.string().optional().describe('Quote expiration date (ISO 8601)'),
+              notes: z.string().optional().describe('Internal notes about the quote'),
+              customTerms: z.string().optional().describe('Custom terms and conditions'),
+
+              // References
+              policyId: z.string().optional().describe('Cancellation policy ID'),
+              rentalAgreementId: z.string().optional().describe('Rental agreement ID'),
+
+              // Options
+              sendToGuest: z.boolean().optional().describe('Send quote to guest via email'),
+              replaceExisting: z.boolean().optional().describe('Replace existing quote if any'),
+            })
+            .describe('Quote creation payload with pricing and terms'),
+        },
       },
+      handler: wrapToolHandler(async ({ bookingId, payload }) => {
+        // Use the orchestrator's createBookingQuote method which handles read-only mode
+        const result = await getClient().createBookingQuote(bookingId, payload)
+
+        // Debug logging
+        debugLogResponse('Create booking quote response', result)
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: safeJsonStringify(result),
+            },
+          ],
+        }
+      }, 'lodgify_create_booking_quote'),
     },
   ]
 }

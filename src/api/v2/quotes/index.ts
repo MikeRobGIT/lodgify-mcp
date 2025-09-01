@@ -4,4 +4,8 @@
  */
 
 export { QuotesClient } from './client.js'
-export type { QuoteParams, QuoteRequest, QuoteResponse } from './types.js'
+export type {
+  QuoteParams,
+  QuoteRequest,
+  QuoteResponse,
+} from './types.js'

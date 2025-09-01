@@ -1,7 +1,7 @@
 {
   "name": "@mikerob/lodgify-mcp",
-  "version": "0.1.1",
-  "description": "Model Context Protocol server for Lodgify Public API v2 - Expose Lodgify endpoints as MCP tools for AI assistants",
+  "version": "0.1.2",
+  "description": "Model Context Protocol server for Lodgify Public API - Expose Lodgify endpoints as MCP tools for AI assistants",
   "type": "module",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",

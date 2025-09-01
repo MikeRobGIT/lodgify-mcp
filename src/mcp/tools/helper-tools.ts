@@ -181,22 +181,42 @@ export async function findProperties(
 
 /**
  * Validates and formats quote parameters to ensure they meet Lodgify API requirements
+ * @param params The parameters to validate
+ * @param skipDateValidation If true, skips date format validation (use when dates are pre-validated)
  */
-export function validateQuoteParams(params: Record<string, unknown>): Record<string, unknown> {
+export function validateQuoteParams(
+  params: Record<string, unknown>,
+  skipDateValidation = false,
+): Record<string, unknown> {
   const validatedParams: Record<string, unknown> = { ...params }
 
-  // Check for required parameters
-  if (!params.from || !params.to) {
-    throw new Error('Quote requires both "from" and "to" date parameters (YYYY-MM-DD format)')
+  // The v2 API expects 'arrival' and 'departure', but we may receive 'from' and 'to'
+  // Map from/to to arrival/departure if needed
+  if (params.from && !params.arrival) {
+    validatedParams.arrival = params.from
+    delete validatedParams.from
+  }
+  if (params.to && !params.departure) {
+    validatedParams.departure = params.to
+    delete validatedParams.to
   }
 
-  // Validate date format (basic check)
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-  if (!dateRegex.test(String(params.from))) {
-    throw new Error('Invalid "from" date format. Use YYYY-MM-DD format')
+  // Check for required parameters (now checking for arrival/departure)
+  if (!validatedParams.arrival || !validatedParams.departure) {
+    throw new Error(
+      'Quote requires both "arrival" and "departure" date parameters (YYYY-MM-DD format)',
+    )
   }
-  if (!dateRegex.test(String(params.to))) {
-    throw new Error('Invalid "to" date format. Use YYYY-MM-DD format')
+
+  // Validate date format (basic check) - skip if dates are pre-validated
+  if (!skipDateValidation) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    if (!dateRegex.test(String(validatedParams.arrival))) {
+      throw new Error('Invalid "arrival" date format. Use YYYY-MM-DD format')
+    }
+    if (!dateRegex.test(String(validatedParams.departure))) {
+      throw new Error('Invalid "departure" date format. Use YYYY-MM-DD format')
+    }
   }
 
   // Ensure guest_breakdown[adults] is provided
@@ -210,6 +230,23 @@ export function validateQuoteParams(params: Record<string, unknown>): Record<str
     validatedParams['guest_breakdown[children]'] === undefined
   ) {
     validatedParams['guest_breakdown[children]'] = 0 // Default to 0 children
+  }
+
+  // If roomTypes[0].Id is provided, ensure all required room parameters are set
+  if (validatedParams['roomTypes[0].Id']) {
+    // Calculate total people from guest breakdown
+    const adults = Number(validatedParams['guest_breakdown[adults]'] || 2)
+    const children = Number(validatedParams['guest_breakdown[children]'] || 0)
+    const totalPeople = adults + children
+
+    // Set the People parameter for the room type
+    if (!validatedParams['roomTypes[0].People']) {
+      validatedParams['roomTypes[0].People'] = totalPeople > 0 ? totalPeople : 2 // Default to 2 if calculation fails
+    }
+
+    // Also set guest_breakdown under roomTypes[0] as per the API docs
+    validatedParams['roomTypes[0].guest_breakdown.adults'] = adults
+    validatedParams['roomTypes[0].guest_breakdown.children'] = children
   }
 
   // Set default values for optional parameters if not provided

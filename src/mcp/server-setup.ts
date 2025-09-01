@@ -6,6 +6,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import pkg from '../../package.json' with { type: 'json' }
+import { loadEnvironment } from '../env.js'
 import { LodgifyOrchestrator } from '../lodgify-orchestrator.js'
 import { safeLogger } from '../logger.js'
 import { ResourceRegistry } from './resources/registry.js'
@@ -55,12 +56,13 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
 
   const getClient = (): LodgifyOrchestrator => {
     if (!client) {
-      // Lazy initialization with proper config
-      const apiKey = process.env.LODGIFY_API_KEY
-      if (!apiKey) {
-        throw new Error('LODGIFY_API_KEY environment variable is required')
-      }
-      client = new LodgifyOrchestrator({ apiKey })
+      // Lazy initialization with proper environment configuration
+      const config = loadEnvironment()
+      client = new LodgifyOrchestrator({
+        apiKey: config.LODGIFY_API_KEY,
+        readOnly: config.LODGIFY_READ_ONLY,
+        debugHttp: config.DEBUG_HTTP,
+      })
     }
     return client
   }

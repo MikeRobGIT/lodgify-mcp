@@ -3,6 +3,7 @@
  * MCP tools for managing Lodgify bookings and reservations
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
@@ -12,6 +13,13 @@ import {
   StayFilterEnum,
   TrashFilterEnum,
 } from '../schemas/common.js'
+import {
+  createValidator,
+  DateToolCategory,
+  type DateValidationFeedback,
+} from '../utils/date-validator.js'
+import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -163,17 +171,21 @@ Example response:
           id: z.string().min(1).describe('Booking ID to get payment link for'),
         },
       },
-      handler: async ({ id }) => {
-        const result = await getClient().bookings.getBookingPaymentLink(id)
+      handler: wrapToolHandler(async ({ id }) => {
+        const result = await getClient().getBookingPaymentLink(id)
+
+        // Debug logging
+        debugLogResponse('Booking payment link response', result)
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: safeJsonStringify(result),
             },
           ],
         }
-      },
+      }, 'lodgify_get_booking_payment_link'),
     },
 
     // Create Booking Payment Link Tool
@@ -199,17 +211,21 @@ Example response:
             .describe('Payment link configuration - amount, currency, and description'),
         },
       },
-      handler: async ({ id, payload }) => {
-        const result = await getClient().bookings.createBookingPaymentLink(id, payload)
+      handler: wrapToolHandler(async ({ id, payload }) => {
+        const result = await getClient().createBookingPaymentLink(id, payload)
+
+        // Debug logging
+        debugLogResponse('Create payment link response', result)
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: safeJsonStringify(result),
             },
           ],
         }
-      },
+      }, 'lodgify_create_booking_payment_link'),
     },
 
     // Update Key Codes Tool
@@ -229,8 +245,8 @@ Example response:
             .describe('Access key codes and entry information'),
         },
       },
-      handler: async ({ id, payload }) => {
-        const result = await getClient().bookings.updateKeyCodes(id.toString(), payload)
+      handler: wrapToolHandler(async ({ id, payload }) => {
+        const result = await getClient().updateKeyCodes(id.toString(), payload)
         return {
           content: [
             {
@@ -239,7 +255,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_update_key_codes'),
     },
 
     // Checkin Booking Tool
@@ -258,8 +274,8 @@ Example response:
             .describe('Check-in time in ISO 8601 date-time format (required)'),
         },
       },
-      handler: async ({ id, time }) => {
-        const result = await getClient().bookings.checkinBooking(id.toString(), time)
+      handler: wrapToolHandler(async ({ id, time }) => {
+        const result = await getClient().checkinBooking(id.toString(), time)
         return {
           content: [
             {
@@ -268,7 +284,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_checkin_booking'),
     },
 
     // Checkout Booking Tool
@@ -287,8 +303,8 @@ Example response:
             .describe('Check-out time in ISO 8601 date-time format (required)'),
         },
       },
-      handler: async ({ id, time }) => {
-        const result = await getClient().bookings.checkoutBooking(id.toString(), time)
+      handler: wrapToolHandler(async ({ id, time }) => {
+        const result = await getClient().checkoutBooking(id.toString(), time)
         return {
           content: [
             {
@@ -297,7 +313,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_checkout_booking'),
     },
 
     // Get External Bookings Tool
@@ -404,45 +420,89 @@ The transformation handles: guest name splitting, room structuring, status capit
         },
       },
       handler: async (params) => {
-        // Transform flat params to nested API structure
-        const [firstName, ...lastNameParts] = params.guest_name.split(' ')
-        const lastName = lastNameParts.join(' ') || firstName
+        // Validate arrival and departure dates
+        const validator = createValidator(DateToolCategory.BOOKING)
+        const rangeValidation = validator.validateDateRange(params.arrival, params.departure)
 
+        // Check if dates are valid
+        if (!rangeValidation.start.isValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Arrival date validation failed: ${rangeValidation.start.error}`,
+          )
+        }
+        if (!rangeValidation.end.isValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Departure date validation failed: ${rangeValidation.end.error}`,
+          )
+        }
+        if (!rangeValidation.rangeValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            rangeValidation.rangeError || 'Invalid date range: departure must be after arrival',
+          )
+        }
+
+        // Prepare validation feedback if present
+        const feedbackMessages: { message: string; feedback: DateValidationFeedback }[] = []
+        if (rangeValidation.start.feedback) {
+          feedbackMessages.push({
+            message: `Arrival date: ${rangeValidation.start.feedback.message}`,
+            feedback: rangeValidation.start.feedback,
+          })
+        }
+        if (rangeValidation.end.feedback) {
+          feedbackMessages.push({
+            message: `Departure date: ${rangeValidation.end.feedback.message}`,
+            feedback: rangeValidation.end.feedback,
+          })
+        }
+
+        // Pass flat structure - the V1 client will transform it to nested API structure
         const apiRequest = {
           property_id: params.property_id,
-          arrival: params.arrival,
-          departure: params.departure,
-          guest: {
-            guest_name: {
-              first_name: firstName,
-              last_name: lastName,
-            },
-            ...(params.guest_email && { email: params.guest_email }),
-            ...(params.guest_phone && { phone: params.guest_phone }),
-          },
-          rooms: [
-            {
-              room_type_id: params.room_type_id,
-              guest_breakdown: {
-                adults: params.adults,
-                children: params.children,
-                ...(params.infants !== undefined && { infants: params.infants }),
-              },
-            },
-          ],
-          ...(params.status && {
-            status: params.status.charAt(0).toUpperCase() + params.status.slice(1),
-          }),
-          ...(params.source && { source_text: params.source }),
+          room_type_id: params.room_type_id,
+          arrival: rangeValidation.start.validatedDate,
+          departure: rangeValidation.end.validatedDate,
+          guest_name: params.guest_name,
+          ...(params.guest_email && { guest_email: params.guest_email }),
+          ...(params.guest_phone && { guest_phone: params.guest_phone }),
+          adults: params.adults,
+          children: params.children,
+          ...(params.infants !== undefined && { infants: params.infants }),
+          ...(params.status && { status: params.status }),
+          ...(params.source && { source: params.source }),
           ...(params.notes && { notes: params.notes }),
         }
 
-        const result = await getClient().bookingsV1.createBookingV1(apiRequest)
+        const result = await getClient().createBookingV1(apiRequest)
+
+        // Add validation feedback to result if present
+        const finalResult =
+          feedbackMessages.length > 0
+            ? {
+                ...result,
+                dateValidation: {
+                  feedback: feedbackMessages.map((fm) => fm.feedback),
+                  messages: feedbackMessages.map((fm) => fm.message),
+                  originalDates: {
+                    arrival: params.arrival,
+                    departure: params.departure,
+                  },
+                  validatedDates: {
+                    arrival: rangeValidation.start.validatedDate,
+                    departure: rangeValidation.end.validatedDate,
+                  },
+                },
+              }
+            : result
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(finalResult, null, 2),
             },
           ],
         }
@@ -491,83 +551,34 @@ This gets automatically transformed to the nested API structure with guest objec
       },
       handler: async (params) => {
         const { id, ...updates } = params
-        // Using specific type structure for the API request
-        const apiRequest: {
-          guest?: {
-            guest_name?: {
-              first_name: string
-              last_name: string
-            }
-            email?: string
-            phone?: string
+        // Validate/sanitize dates if both are present on update (keep single-date updates as-is)
+        const sanitizedUpdates = { ...updates }
+        if (updates.arrival !== undefined && updates.departure !== undefined) {
+          const validator = createValidator(DateToolCategory.BOOKING)
+          const rv = validator.validateDateRange(updates.arrival, updates.departure)
+          if (!rv.start.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Arrival date validation failed: ${rv.start.error}`,
+            )
           }
-          property_id?: number
-          arrival?: string
-          departure?: string
-          rooms?: Array<{
-            room_type_id?: number
-            guest_breakdown?: {
-              adults?: number
-              children?: number
-              infants?: number
-            }
-          }>
-          status?: 'booked' | 'tentative' | 'declined' | 'confirmed'
-          source_text?: string
-          notes?: string
-        } = {}
-
-        // Transform flat params to nested API structure
-        if (updates.guest_name) {
-          const [firstName, ...lastNameParts] = updates.guest_name.split(' ')
-          const lastName = lastNameParts.join(' ') || firstName
-          apiRequest.guest = {
-            guest_name: {
-              first_name: firstName,
-              last_name: lastName,
-            },
+          if (!rv.end.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Departure date validation failed: ${rv.end.error}`,
+            )
           }
+          if (!rv.rangeValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              rv.rangeError || 'Invalid date range: departure must be after arrival',
+            )
+          }
+          sanitizedUpdates.arrival = rv.start.validatedDate
+          sanitizedUpdates.departure = rv.end.validatedDate
         }
-
-        if (updates.guest_email) {
-          apiRequest.guest = apiRequest.guest || {}
-          apiRequest.guest.email = updates.guest_email
-        }
-
-        if (updates.guest_phone) {
-          apiRequest.guest = apiRequest.guest || {}
-          apiRequest.guest.phone = updates.guest_phone
-        }
-
-        if (updates.property_id) apiRequest.property_id = updates.property_id
-        if (updates.arrival) apiRequest.arrival = updates.arrival
-        if (updates.departure) apiRequest.departure = updates.departure
-
-        if (
-          updates.room_type_id ||
-          updates.adults !== undefined ||
-          updates.children !== undefined
-        ) {
-          apiRequest.rooms = [
-            {
-              ...(updates.room_type_id && { room_type_id: updates.room_type_id }),
-              guest_breakdown: {
-                ...(updates.adults !== undefined && { adults: updates.adults }),
-                ...(updates.children !== undefined && { children: updates.children }),
-                ...(updates.infants !== undefined && { infants: updates.infants }),
-              },
-            },
-          ]
-        }
-
-        if (updates.status) {
-          apiRequest.status = updates.status.charAt(0).toUpperCase() + updates.status.slice(1)
-        }
-
-        if (updates.source) apiRequest.source_text = updates.source
-        if (updates.notes) apiRequest.notes = updates.notes
-
-        const result = await getClient().bookingsV1.updateBookingV1(id.toString(), apiRequest)
+        // Pass flat structure - the V1 client will transform it to nested API structure
+        const result = await getClient().updateBookingV1(id, sanitizedUpdates)
         return {
           content: [
             {
@@ -595,8 +606,8 @@ Example request:
           id: z.number().int().describe('Booking ID to delete permanently'),
         },
       },
-      handler: async ({ id }) => {
-        const result = await getClient().bookingsV1.deleteBookingV1(id.toString())
+      handler: wrapToolHandler(async ({ id }) => {
+        const result = await getClient().deleteBookingV1(id)
         return {
           content: [
             {
@@ -605,7 +616,7 @@ Example request:
             },
           ],
         }
-      },
+      }, 'lodgify_delete_booking'),
     },
   ]
 }

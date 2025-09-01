@@ -18,16 +18,16 @@ export interface RateUpdateRequest {
 
 // Daily rates query parameters
 export interface DailyRatesParams {
-  propertyId?: string
-  roomTypeId?: string
-  from?: string
-  to?: string
+  RoomTypeId: string
+  HouseId: string
+  StartDate: string
+  EndDate: string
   currency?: string
 }
 
 // Rate settings query parameters
 export interface RateSettingsParams {
-  propertyId?: string
+  houseId?: string
   currency?: string
 }
 

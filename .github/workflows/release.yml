@@ -8,40 +8,60 @@ on:
 permissions:
   contents: write
   packages: write
-  id-token: write  # Required for provenance
+  id-token: write # Required for provenance
 
 jobs:
   release:
     name: Release to npm
     runs-on: ubuntu-latest
-    
+    # Only run if this is a version tag
+    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history to check branch
       
+      - name: Verify tag is on main branch
+        run: |
+          echo "Checking if tag is on main branch..."
+          # Get the commit SHA for this tag
+          TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref_name }})
+          echo "Tag commit: $TAG_COMMIT"
+          
+          # Check if this commit exists on main branch
+          if git branch -r --contains $TAG_COMMIT | grep -q "origin/main"; then
+            echo "✅ Tag ${{ github.ref_name }} is on main branch"
+          else
+            echo "❌ Tag ${{ github.ref_name }} is not on main branch"
+            echo "Release workflow only runs for tags on main branch"
+            exit 1
+          fi
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      
+
       - name: Setup Node.js (for npm publish)
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
-      
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      
+
       - name: Run tests
         run: bun test
         env:
           LODGIFY_API_KEY: test-api-key
           TEST_MODE: mock
-      
+
       - name: Build
         run: bun run build
-      
+
       - name: Verify build output
         run: |
           echo "Checking required files..."
@@ -50,7 +70,7 @@ jobs:
           [ -f "bin/lodgify-mcp.js" ] || (echo "❌ bin/lodgify-mcp.js not found" && exit 1)
           [ -x "bin/lodgify-mcp.js" ] || (echo "❌ bin/lodgify-mcp.js not executable" && exit 1)
           echo "✅ All required files present and executable"
-      
+
       - name: Test bin wrapper
         run: |
           echo "Testing bin wrapper with initialization..."
@@ -58,7 +78,7 @@ jobs:
           echo "✅ Bin wrapper test passed"
         env:
           LODGIFY_API_KEY: test-api-key
-      
+
       - name: Verify package
         run: |
           echo "Running npm pack dry-run..."
@@ -70,21 +90,21 @@ jobs:
           echo "Package size:"
           npm pack --dry-run 2>&1 | grep "package size" || true
           npm pack --dry-run 2>&1 | grep "unpacked size" || true
-      
+
       - name: Run security audit
         run: |
           echo "Running security audit..."
           bun audit || true
           npm audit --audit-level=high || true
         continue-on-error: true
-      
+
       - name: Extract version
         id: version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Publishing version: $VERSION"
-      
+
       - name: Verify version match
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
@@ -96,36 +116,36 @@ jobs:
             exit 1
           fi
           echo "✅ Version match confirmed: $PACKAGE_VERSION"
-      
+
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           body: |
             ## Lodgify MCP Server ${{ github.ref_name }}
-            
+
             ### Installation
-            
+
             #### Via NPX (recommended)
             ```bash
             npx -y @mikerob/lodgify-mcp@${{ steps.version.outputs.VERSION }}
             ```
-            
+
             #### Via NPM
             ```bash
             npm install -g @mikerob/lodgify-mcp@${{ steps.version.outputs.VERSION }}
             ```
-            
+
             #### Via Bun
             ```bash
             bunx @mikerob/lodgify-mcp@${{ steps.version.outputs.VERSION }}
             ```
-            
+
             ### MCP Configuration
             ```json
             {
@@ -140,15 +160,15 @@ jobs:
               }
             }
             ```
-            
+
             ### What's Changed
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md) for details.
-            
+
             ### Full Changelog
             https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Post-release verification
         run: |
           echo "Waiting for npm registry to update..."

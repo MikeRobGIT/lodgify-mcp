@@ -15,6 +15,41 @@ The Lodgify MCP Server exposes 20+ tools organized into logical categories. Each
 - [Webhooks & Notifications](#webhooks--notifications) - Event subscriptions and messaging
 - [Resources](#resources) - Health checks and system monitoring
 
+## Messaging & Communication
+
+### `lodgify_list_threads`
+
+List conversation threads with optional filters.
+
+Parameters:
+- `params.includeMessages` (boolean, optional)
+- `params.includeParticipants` (boolean, optional)
+- `params.messageLimit` (number, optional)
+- `params.since` (string, optional, ISO date-time)
+
+### `lodgify_send_message`
+
+Send a message to a thread (WRITE; blocked in read-only mode).
+
+Parameters:
+- `threadGuid` (string, required)
+- `message.content` (string, required)
+- `message.attachments[]` (array, optional: fileName, fileUrl, fileType)
+
+### `lodgify_mark_thread_read`
+
+Mark a thread as read (WRITE; blocked in read-only mode).
+
+Parameters:
+- `threadGuid` (string, required)
+
+### `lodgify_archive_thread`
+
+Archive a thread (WRITE; blocked in read-only mode).
+
+Parameters:
+- `threadGuid` (string, required)
+
 ## Property Management
 
 ### `lodgify_list_properties`
@@ -604,6 +639,131 @@ Monitor server health and API connectivity.
 5. "Set up a webhook for new bookings"
 ```
 
+## Date Validation Feedback
+
+The MCP server includes intelligent date validation that provides structured feedback for date-related issues instead of silent corrections. This helps LLMs and users understand and resolve date problems.
+
+### Feedback Object Structure
+
+When date validation issues are detected, tools return a `dateValidation` field in their response containing feedback objects:
+
+```json
+{
+  "dateValidation": {
+    "feedback": {
+      "message": "The date '2024-09-15' appears to be from a previous year (2024). Current year is 2025.",
+      "severity": "warning",
+      "currentDate": "2025-08-31T15:30:00Z", 
+      "originalInput": "2024-09-15",
+      "detectedIssue": "llm_cutoff_suspected",
+      "suggestions": [
+        "If you meant this year, use: 2025-09-15",
+        "If you meant the historical date 2024-09-15, please confirm",
+        "Current date: 2025-08-31"
+      ],
+      "confirmationRequired": true,
+      "feedbackStyle": "detailed"
+    }
+  }
+}
+```
+
+### Feedback Fields
+
+- **`message`** (string): Human-readable description of the validation issue
+- **`severity`** (enum): Issue severity level – `"error"`, `"warning"`, or `"info"`
+  - `error`: request is not processed; no side effects; caller must correct and retry
+  - `warning`: request is processed; feedback included for correction/awareness
+  - `info`: request is processed; informational context only
+- **`currentDate`** (string): Current system date (ISO 8601 UTC) for context
+- **`originalInput`** (string): Exact date string provided by user for traceability
+- **`detectedIssue`** (enum): Machine-readable issue code:
+  - `"llm_cutoff_suspected"` – Date appears to be from LLM training cutoff period
+  - `"date_in_past"` – Date is in the past when future expected
+  - `"date_in_future"` – Date is in the future when past expected
+  - `"too_far_past"` – Date exceeds maximum past days allowed
+  - `"too_far_future"` – Date exceeds maximum future days allowed
+  - `"invalid_format"` – Date format is invalid
+  - `"invalid_range"` – End date is before start date
+- **`suggestions`** (array): Actionable steps to resolve the issue
+- **`confirmationRequired`** (boolean): Whether explicit user confirmation is needed
+- **`feedbackStyle`** (enum): Feedback verbosity – `"concise"`, `"detailed"`, or `"prompt"`
+
+### Common Validation Scenarios
+
+#### LLM Cutoff Detection
+```json
+{
+  "dateValidation": {
+    "feedback": {
+      "message": "The date '2024-02-15' appears to be from a previous year (2024). Current year is 2025.",
+      "severity": "warning", 
+      "detectedIssue": "llm_cutoff_suspected",
+      "suggestions": [
+        "If you meant this year, use: 2025-02-15",
+        "Current date: 2025-08-31"
+      ]
+    }
+  }
+}
+```
+
+#### Past Date Warning
+```json
+{
+  "dateValidation": {
+    "feedback": {
+      "message": "The date '2025-08-01' is 30 days in the past. availability operations typically require future dates.",
+      "severity": "warning",
+      "detectedIssue": "date_in_past", 
+      "suggestions": [
+        "Did you mean a future date?",
+        "Today's date: 2025-08-31"
+      ]
+    }
+  }
+}
+```
+
+#### Invalid Date Range
+
+
+### Tool-Specific Validation
+
+Different tools apply different validation rules based on their business context:
+
+- **Availability Tools** (`lodgify_check_next_availability`, `lodgify_get_availability_calendar`):
+  - Warn about past dates (suggest using current date)
+  - Allow future dates up to 2 years
+  - Detect LLM cutoff issues
+
+- **Booking Tools** (`lodgify_create_booking`):
+  - Require future dates for new bookings
+  - Validate date ranges (check-out after check-in)
+  - Provide detailed suggestions for corrections
+
+- **Rate Tools** (`lodgify_daily_rates`):  
+  - Allow both past and future dates (historical rate queries are valid)
+  - Validate date ranges
+  - Provide context about rate availability periods
+
+### Using Feedback in LLM Interactions
+
+When you receive date validation feedback:
+
+1. **Read the message** - Understand what the issue is
+2. **Check severity** - Determine if it's an error that blocks processing or a warning
+3. **Review suggestions** - Use the actionable steps to correct the date
+4. **Resubmit** - Make a new request with the corrected date
+
+Example interaction:
+```
+LLM: "Check availability for Ocean View Villa from 2024-12-20"
+Response: { dateValidation: { feedback: { message: "Date appears to be from 2024...", suggestions: ["Use: 2025-12-20"] } } }
+LLM: "Check availability for Ocean View Villa from 2025-12-20"  
+Response: { availability data... }
+```
+
 ## Error Handling
 
 All tools include comprehensive error handling with structured responses:
@@ -675,3 +835,21 @@ The server automatically handles:
 - **Troubleshooting Guide**: Common issues and solutions
 - **GitHub Issues**: Report bugs and request features
 - **Lodgify API Documentation**: Official API reference
+### `lodgify_get_property_availability`
+
+Get availability for a specific property over a period.
+
+Parameters:
+- `propertyId` (string, required)
+- `params.from` (string, optional)
+- `params.to` (string, optional)
+
+### `lodgify_get_room_availability`
+
+Get availability for a specific room type within a property over a period.
+
+Parameters:
+- `propertyId` (string, required)
+- `roomTypeId` (string, required)
+- `params.from` (string, optional)
+- `params.to` (string, optional)

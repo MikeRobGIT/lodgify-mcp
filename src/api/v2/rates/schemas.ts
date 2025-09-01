@@ -21,53 +21,109 @@ export const DailyRateEntrySchema = z.object({
 
 /**
  * Daily rates calendar response schema
+ * The API returns an array of rate entries directly, not wrapped in an object
  */
-export const DailyRatesResponseSchema = z.object({
-  property_id: z.number().int().positive(),
-  room_type_id: z.number().int().positive().optional(),
-  currency: z.string().length(3, 'Currency must be 3 characters'),
-  rates: z.array(DailyRateEntrySchema),
-  total_entries: z.number().int().min(0).optional(),
-  date_range: z
+export const DailyRatesResponseSchema = z.union([
+  // Handle array response (actual API format)
+  z.array(
+    z
+      .object({
+        date: z.string().optional(),
+        Date: z.string().optional(), // API might use PascalCase
+        rate: z.number().optional(),
+        Rate: z.number().optional(), // API might use PascalCase
+        price: z.number().optional(),
+        Price: z.number().optional(), // API might use PascalCase
+        currency: z.string().optional(),
+        Currency: z.string().optional(), // API might use PascalCase
+        MinStay: z.number().optional(),
+        minStay: z.number().optional(),
+        min_stay: z.number().optional(),
+        available: z.boolean().optional(),
+        Available: z.boolean().optional(),
+      })
+      .passthrough(), // Allow additional fields
+  ),
+  // Fallback to handle object formats
+  z
     .object({
-      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      property_id: z.number().int().positive(),
+      room_type_id: z.number().int().positive().optional(),
+      currency: z.string().length(3, 'Currency must be 3 characters'),
+      rates: z.array(DailyRateEntrySchema),
+      total_entries: z.number().int().min(0).optional(),
+      date_range: z
+        .object({
+          from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        })
+        .optional(),
     })
-    .optional(),
-})
+    .passthrough(),
+])
 
 /**
  * Rate settings response schema
+ * Made flexible to handle various response formats from the API
  */
-export const RateSettingsResponseSchema = z.object({
-  property_id: z.number().int().positive(),
-  currency: z.string().length(3, 'Currency must be 3 characters'),
-  default_rate: z.number().min(0).optional(),
-  minimum_stay: z.number().int().min(1).optional(),
-  maximum_stay: z.number().int().min(1).optional(),
-  check_in_days: z.array(z.number().int().min(0).max(6)).optional(), // 0-6 for Sunday-Saturday
-  check_out_days: z.array(z.number().int().min(0).max(6)).optional(),
-  rate_type: z.enum(['per_night', 'per_week', 'per_month']).optional(),
-  pricing_model: z.enum(['base_rate', 'dynamic', 'seasonal']).optional(),
-  tax_settings: z
-    .object({
-      tax_rate: z.number().min(0).max(1), // Percentage as decimal (e.g., 0.1 for 10%)
-      tax_inclusive: z.boolean(),
-      tax_name: z.string().optional(),
-    })
-    .optional(),
-  seasonal_rates: z
-    .array(
-      z.object({
-        name: z.string(),
-        start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        rate_multiplier: z.number().min(0),
-      }),
-    )
-    .optional(),
-  last_updated: z.string().datetime().optional(),
-})
+export const RateSettingsResponseSchema = z
+  .object({
+    property_id: z.number().int().positive().optional(),
+    propertyId: z.number().int().positive().optional(),
+    houseId: z.number().int().positive().optional(),
+    currency: z.string().optional(),
+    default_rate: z.number().min(0).optional(),
+    defaultRate: z.number().min(0).optional(),
+    minimum_stay: z.number().int().min(1).optional(),
+    minimumStay: z.number().int().min(1).optional(),
+    maximum_stay: z.number().int().min(1).optional(),
+    maximumStay: z.number().int().min(1).optional(),
+    check_in_days: z.array(z.number().int().min(0).max(6)).optional(),
+    checkInDays: z.array(z.number().int().min(0).max(6)).optional(),
+    check_out_days: z.array(z.number().int().min(0).max(6)).optional(),
+    checkOutDays: z.array(z.number().int().min(0).max(6)).optional(),
+    rate_type: z.enum(['per_night', 'per_week', 'per_month']).optional(),
+    rateType: z.enum(['per_night', 'per_week', 'per_month']).optional(),
+    pricing_model: z.enum(['base_rate', 'dynamic', 'seasonal']).optional(),
+    pricingModel: z.enum(['base_rate', 'dynamic', 'seasonal']).optional(),
+    tax_settings: z
+      .object({
+        tax_rate: z.number().min(0).max(1).optional(),
+        tax_inclusive: z.boolean().optional(),
+        tax_name: z.string().optional(),
+      })
+      .optional(),
+    taxSettings: z
+      .object({
+        taxRate: z.number().min(0).max(1).optional(),
+        taxInclusive: z.boolean().optional(),
+        taxName: z.string().optional(),
+      })
+      .optional(),
+    seasonal_rates: z
+      .array(
+        z.object({
+          name: z.string().optional(),
+          start_date: z.string().optional(),
+          end_date: z.string().optional(),
+          rate_multiplier: z.number().min(0).optional(),
+        }),
+      )
+      .optional(),
+    seasonalRates: z
+      .array(
+        z.object({
+          name: z.string().optional(),
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+          rateMultiplier: z.number().min(0).optional(),
+        }),
+      )
+      .optional(),
+    last_updated: z.string().optional(),
+    lastUpdated: z.string().optional(),
+  })
+  .passthrough() // Allow additional fields
 
 /**
  * Create/Update rate response schema

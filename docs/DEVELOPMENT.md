@@ -98,6 +98,8 @@ bun test --inspect-brk
 - Query parameter flattening
 - Error formatting and sanitization
 - Rate limiting behavior
+- Date validation feedback system
+- Feedback object generation and formatting
 
 ### Integration Tests
 - Mock or live test each tool with sample inputs
@@ -125,7 +127,7 @@ src/
 │   ├── resources/               # Resource implementations
 │   ├── errors/                  # Error handling
 │   ├── schemas/                 # Zod validation schemas
-│   └── utils/                   # TypeScript types and interfaces
+│   └── utils/                   # Utilities (date validation, types)
 ├── core/                        # Core functionality
 │   ├── http/                    # HTTP client with retry logic
 │   ├── errors/                  # Error types
@@ -143,7 +145,8 @@ src/
 2. **Tool Categories**: Tools organized by domain (property, booking, availability, etc.)
 3. **Error Handling**: Centralized error processing with automatic sanitization
 4. **Type Safety**: Full TypeScript with Zod validation schemas
-5. **Module Size**: Each module under 250 lines for maintainability
+5. **Date Validation**: Feedback-based validation system with LLM self-correction support
+6. **Module Size**: Each module under 250 lines for maintainability
 
 ## Code Quality Standards
 
@@ -172,11 +175,15 @@ Create in appropriate category file (`src/mcp/tools/[category]-tools.ts`):
 
 ```typescript
 import { z } from 'zod'
+import { DateStringSchema } from '../schemas/common.js'
+import { createValidator, ToolCategory } from '../utils/date-validator.js'
 import type { ToolRegistration } from '../types'
 
 // Define Zod schema for input validation
 const MyToolSchema = z.object({
   id: z.string().describe('Property ID'),
+  startDate: DateStringSchema.describe('Start date (YYYY-MM-DD)'),
+  endDate: DateStringSchema.describe('End date (YYYY-MM-DD)'),
   // ... other parameters
 })
 
@@ -189,9 +196,46 @@ export const myTool: ToolRegistration = {
     inputSchema: MyToolSchema
   },
   handler: async (args) => {
+    // Validate dates if tool uses date parameters
+    const validator = createValidator(ToolCategory.AVAILABILITY)
+    const rangeValidation = validator.validateDateRange(args.startDate, args.endDate)
+    
+    // Check for validation errors
+    if (!rangeValidation.start.isValid || !rangeValidation.end.isValid) {
+      throw new Error(`Date validation failed: ${rangeValidation.start.error || rangeValidation.end.error}`)
+    }
+    
+    // Include feedback info if available
+    let dateValidationInfo = null
+    if (rangeValidation.start.feedback || rangeValidation.end.feedback) {
+      dateValidationInfo = {
+        dateValidation: {
+          startDate: {
+            original: rangeValidation.start.originalDate,
+            validated: rangeValidation.start.validatedDate,
+            feedback: rangeValidation.start.feedback
+          },
+          endDate: {
+            original: rangeValidation.end.originalDate,
+            validated: rangeValidation.end.validatedDate,
+            feedback: rangeValidation.end.feedback
+          },
+          message: '⚠️ Date validation feedback available'
+        }
+      }
+    }
+    
     const client = getClient()
-    // Implementation
-    return await client.myMethod(args)
+    // Destructure out any passed dates so they can’t sneak through
+    const { startDate: _sd, endDate: _ed, ...rest } = args
+    const result = await client.myMethod({
+      ...rest,
+      startDate: rangeValidation.start.validatedDate,
+      endDate: rangeValidation.end.validatedDate,
+    })
+
+    // Include feedback in response (namespaced)
+    return dateValidationInfo ? { ...result, ...dateValidationInfo } : result
   }
 }
 ```
@@ -237,6 +281,14 @@ describe('myTool', () => {
 
   it('should handle errors gracefully', () => {
     // Test error scenarios
+  })
+
+  it('should provide date validation feedback', () => {
+    // Test date validation with feedback
+  })
+
+  it('should handle LLM cutoff detection', () => {
+    // Test 2024 date detection and feedback
   })
 })
 ```

@@ -31,6 +31,8 @@ src/mcp/
 ├── schemas/
 │   └── common.ts              # Common Zod validation schemas
 └── utils/
+    ├── date-validator.ts      # LLM cutoff-aware, feedback-based date validation (no silent auto-correct)
+
     └── types.ts               # TypeScript interfaces and types
 ```
 
@@ -52,6 +54,7 @@ Each module has one clear purpose:
 - Centralized error sanitization prevents credential leaks
 - Consistent error handling across all tools
 - Read-only mode support
+- Feedback-based date validation prevents auto-correction vulnerabilities
 
 ### 4. Maintainability
 - Each module is under 250 lines
@@ -87,7 +90,8 @@ Each module has one clear purpose:
 ### Common Components (`mcp/schemas/`, `mcp/utils/`)
 - **schemas/common.ts**: Reusable Zod schemas (dates, enums, etc.)
 - **utils/types.ts**: TypeScript interfaces for the entire MCP system
-- **Purpose**: Shared definitions and validation
+- **utils/date-validator.ts**: Feedback-based date validation with LLM cutoff detection
+- **Purpose**: Shared definitions, validation, and intelligent date handling
 
 ## Migration Path
 
@@ -124,7 +128,8 @@ The modular refactoring has been successfully completed with:
 3. ✅ Centralized error handling with sanitization
 4. ✅ Tool deprecation system for API evolution
 5. ✅ Complete TypeScript type safety with Zod validation
-6. ✅ All documentation updated to reflect new architecture
+6. ✅ Intelligent date validation with feedback-based LLM self-correction
+7. ✅ All documentation updated to reflect new architecture
 
 ## Backward Compatibility
 
