@@ -115,6 +115,22 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@mikerobgit'
+
+      - name: Publish to GitHub Packages
+        run: |
+          echo "Publishing to GitHub Packages..."
+          # The package.json already has the correct scoped name @mikerob/lodgify-mcp
+          # GitHub Packages requires the scope to match the owner (case-insensitive)
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Create git tag (if missing)
         run: |
           VERSION=${{ steps.version.outputs.version }}
@@ -131,8 +147,11 @@ jobs:
       - name: Notify success
         if: success()
         run: |
-          echo "✅ Successfully published @mikerob/lodgify-mcp@${{ steps.version.outputs.version }} to npm!"
-          echo "View at: https://www.npmjs.com/package/@mikerob/lodgify-mcp/v/${{ steps.version.outputs.version }}"
+          echo "✅ Successfully published @mikerob/lodgify-mcp@${{ steps.version.outputs.version }}!"
+          echo ""
+          echo "📦 Published to:"
+          echo "   • npm: https://www.npmjs.com/package/@mikerob/lodgify-mcp/v/${{ steps.version.outputs.version }}"
+          echo "   • GitHub Packages: https://github.com/${{ github.repository }}/packages"
           echo ""
           echo "💡 Note: This workflow serves as a safety net."
           echo "   For primary releases, use git tags to trigger the release.yml workflow."

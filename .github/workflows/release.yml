@@ -122,6 +122,22 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@mikerobgit'
+
+      - name: Publish to GitHub Packages
+        run: |
+          echo "Publishing to GitHub Packages..."
+          # The package.json already has the correct scoped name @mikerob/lodgify-mcp
+          # GitHub Packages requires the scope to match the owner (case-insensitive)
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -171,7 +187,12 @@ jobs:
 
       - name: Post-release verification
         run: |
-          echo "Waiting for npm registry to update..."
+          echo "Waiting for registries to update..."
           sleep 10
+          
           echo "Verifying package is available on npm..."
           npm view @mikerob/lodgify-mcp@${{ steps.version.outputs.VERSION }} version || (echo "⚠️ Package not yet visible on npm, may take a few minutes" && exit 0)
+          
+          echo ""
+          echo "Verifying package is available on GitHub Packages..."
+          npm view @mikerob/lodgify-mcp@${{ steps.version.outputs.VERSION }} version --registry=https://npm.pkg.github.com || (echo "⚠️ Package not yet visible on GitHub Packages, may take a few minutes" && exit 0)
