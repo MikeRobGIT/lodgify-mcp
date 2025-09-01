@@ -1,12 +1,18 @@
 #!/bin/sh
-. "$(dirname -- "$0")/_/husky.sh"
+set -eu
 
-echo "🔍 Running pre-commit checks..."
+# Check if Bun is installed
+if ! command -v bun >/dev/null 2>&1; then
+  echo "❌ Bun is not installed or not on PATH. Install Bun and retry."
+  exit 1
+fi
+
+echo "🔍 Running checks..."
 
 # Run linting and formatting
-bun run pre-commit || {
-  echo "❌ Pre-commit checks failed. Please fix the issues and try again."
+bun run check || {
+  echo "❌ checks failed. Please fix the issues and try again."
   exit 1
 }
 
-echo "✅ Pre-commit checks passed!"
+echo "✅ checks passed!"

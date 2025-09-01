@@ -1,0 +1,325 @@
+# Architecture Patterns & Design Principles
+
+## Modular Architecture Overview
+
+The Lodgify MCP server follows a modular registry pattern with clear separation of concerns:
+
+### Core Architecture Components
+
+1. **Entry Point**: [src/server.ts](mdc:src/server.ts)
+   - Minimal MCP server entry point
+   - Delegates to modular components
+   - Handles server initialization
+
+2. **MCP Modules**: [src/mcp/](mdc:src/mcp/)
+   - **Registry Pattern**: Central registries for tools and resources
+   - **Tool Categories**: Organized by domain (property, booking, availability, rate, webhook, messaging)
+   - **Error Handling**: Centralized error processing with sanitization
+   - **Dependency Injection**: Closure-based `getClient()` pattern
+
+3. **Orchestrator**: [src/lodgify-orchestrator.ts](mdc:src/lodgify-orchestrator.ts)
+   - Unified API for all Lodgify endpoints (v1 and v2)
+   - Centralized authentication and configuration
+   - Read-only mode support
+   - Health monitoring
+
+4. **Core Modules**: [src/core/](mdc:src/core/)
+   - **HTTP Client**: [src/core/http/](mdc:src/core/http/) with retry and rate limiting
+   - **Error Handling**: [src/core/errors/](mdc:src/core/errors/) with structured error types
+   - **Rate Limiter**: [src/core/rate-limiter/](mdc:src/core/rate-limiter/) with sliding window
+   - **Retry Logic**: [src/core/retry/](mdc:src/core/retry/) with exponential backoff
+
+5. **API Modules**: [src/api/](mdc:src/api/)
+   - Modular API client implementations
+   - TypeScript interfaces for all endpoints
+   - Specialized clients for different domains
+
+## Design Patterns
+
+### 1. Registry Pattern
+```typescript
+// Central registry for tools
+export class ToolRegistry {
+  private tools = new Map<string, ToolDefinition>();
+  
+  register(tool: ToolDefinition) {
+    this.tools.set(tool.name, tool);
+  }
+  
+  getAll() {
+    return Array.from(this.tools.values());
+  }
+}
+```
+
+### 2. Dependency Injection (Closure-based)
+```typescript
+// Closure-based DI pattern
+let client: LodgifyOrchestrator | null = null;
+
+export const getClient = () => {
+  if (!client) {
+    client = new LodgifyOrchestrator({
+      apiKey: process.env.LODGIFY_API_KEY!,
+      readOnly: process.env.LODGIFY_READ_ONLY === '1'
+    });
+  }
+  return client;
+};
+```
+
+### 3. Error Handling Chain
+```typescript
+// Centralized error processing
+export const processError = (error: unknown) => {
+  // 1. Sanitize sensitive data
+  const sanitizedError = sanitizeError(error);
+  
+  // 2. Map to MCP error codes
+  const mcpError = mapToMcpError(sanitizedError);
+  
+  // 3. Log with appropriate level
+  logger.error('Tool execution failed', { error: sanitizedError });
+  
+  return mcpError;
+};
+```
+
+### 4. Tool Implementation Pattern
+```typescript
+// Standard tool implementation
+export const myTool = {
+  name: 'lodgify_my_tool',
+  description: 'Clear description',
+  inputSchema: z.object({
+    // Zod validation schema
+  }),
+  handler: async (params) => {
+    const client = getClient();
+    return await client.someMethod(params);
+  }
+};
+```
+
+## Module Organization Principles
+
+### 1. Single Responsibility
+Each module has one clear purpose:
+- **Tool Modules**: Handle specific API operations
+- **Error Modules**: Process and sanitize errors
+- **Schema Modules**: Define validation schemas
+- **Utility Modules**: Provide shared functionality
+
+### 2. Module Size Limits
+- **Maximum 250 lines**: Ensures maintainability
+- **Focused functionality**: One primary responsibility
+- **Clear interfaces**: Well-defined public APIs
+
+### 3. Category Organization
+Tools organized by domain:
+```
+src/mcp/tools/
+├── property-tools.ts      # Property management
+├── booking-tools.ts       # Booking operations
+├── availability-tools.ts  # Availability checking
+├── rate-tools.ts         # Rate management
+├── webhook-tools.ts      # Webhook operations
+├── messaging-tools.ts    # Messaging features
+└── helper-tools.ts       # Utility functions
+```
+
+## Error Handling Architecture
+
+### Error Flow
+1. **Tool Handler**: Throws error with context
+2. **Error Handler**: [src/mcp/errors/](mdc:src/mcp/errors/) processes error
+3. **Sanitization**: Removes sensitive data
+4. **MCP Response**: Returns structured error
+
+### Error Types
+```typescript
+// Typed error hierarchy
+export class LodgifyError extends Error {
+  constructor(message: string, public code: string) {
+    super(message);
+  }
+}
+
+export class ValidationError extends LodgifyError {
+  constructor(message: string) {
+    super(message, 'VALIDATION_ERROR');
+  }
+}
+
+export class ApiError extends LodgifyError {
+  constructor(message: string, public statusCode: number) {
+    super(message, 'API_ERROR');
+  }
+}
+```
+
+## Configuration Management
+
+### Environment-based Configuration
+```typescript
+// Centralized configuration
+export const config = {
+  apiKey: process.env.LODGIFY_API_KEY!,
+  logLevel: process.env.LOG_LEVEL || 'info',
+  debugHttp: process.env.DEBUG_HTTP === '1',
+  readOnly: process.env.LODGIFY_READ_ONLY === '1'
+};
+```
+
+### Validation with Zod
+```typescript
+// Configuration validation
+const configSchema = z.object({
+  apiKey: z.string().min(1),
+  logLevel: z.enum(['error', 'warn', 'info', 'debug']),
+  debugHttp: z.boolean(),
+  readOnly: z.boolean()
+});
+```
+
+## Performance Patterns
+
+### 1. Lazy Loading
+```typescript
+// Load modules only when needed
+let toolsModule: typeof import('./tools') | null = null;
+
+export const getTools = async () => {
+  if (!toolsModule) {
+    toolsModule = await import('./tools');
+  }
+  return toolsModule;
+};
+```
+
+### 2. Caching Strategy
+```typescript
+// Simple in-memory cache
+const cache = new Map<string, { data: any; expires: number }>();
+
+export const getCached = (key: string, ttl: number = 300000) => {
+  const cached = cache.get(key);
+  if (cached && cached.expires > Date.now()) {
+    return cached.data;
+  }
+  return null;
+};
+```
+
+### 3. Rate Limiting
+```typescript
+// Sliding window rate limiter
+export class RateLimiter {
+  private requests: number[] = [];
+  
+  canMakeRequest(): boolean {
+    const now = Date.now();
+    this.requests = this.requests.filter(time => now - time < 60000);
+    return this.requests.length < 60; // 60 requests per minute
+  }
+}
+```
+
+## Security Patterns
+
+### 1. Input Validation
+```typescript
+// Always validate inputs with Zod
+const inputSchema = z.object({
+  propertyId: z.string().min(1),
+  apiKey: z.string().min(1)
+});
+
+export const validateInput = (input: unknown) => {
+  return inputSchema.parse(input);
+};
+```
+
+### 2. Error Sanitization
+```typescript
+// Remove sensitive data from errors
+export const sanitizeError = (error: unknown) => {
+  const errorString = String(error);
+  return errorString.replace(/api[_-]?key[=:]\s*[^\s&]+/gi, 'API_KEY=***');
+};
+```
+
+### 3. Read-Only Mode
+```typescript
+// Enforce read-only mode
+export const checkReadOnly = (method: string) => {
+  if (config.readOnly && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    throw new ReadOnlyModeError(`Write operation ${method} blocked in read-only mode`);
+  }
+};
+```
+
+## Testing Architecture
+
+### 1. Test Organization
+Tests mirror source structure:
+```
+tests/
+├── mcp/
+│   ├── tools/
+│   ├── resources/
+│   └── errors/
+├── core/
+│   ├── http/
+│   ├── errors/
+│   └── rate-limiter/
+└── integration/
+```
+
+### 2. Mocking Strategy
+```typescript
+// Centralized mocking
+export const createMockClient = (overrides = {}) => ({
+  listProperties: vi.fn(),
+  getProperty: vi.fn(),
+  ...overrides
+});
+```
+
+### 3. Test Utilities
+```typescript
+// Shared test helpers
+export const createTestEnvironment = () => {
+  process.env.LODGIFY_API_KEY = 'test-key';
+  process.env.LOG_LEVEL = 'error';
+  
+  return {
+    cleanup: () => {
+      delete process.env.LODGIFY_API_KEY;
+      delete process.env.LOG_LEVEL;
+    }
+  };
+};
+```
+
+## Documentation Architecture
+
+### 1. Code Documentation
+- **JSDoc**: For public APIs and complex functions
+- **Inline Comments**: For complex logic
+- **Type Definitions**: Self-documenting TypeScript types
+
+### 2. Architecture Documentation
+- **README**: User-facing documentation
+- **Tool Catalog**: Complete API reference
+- **Architecture Docs**: System design and patterns
+- **Examples**: Working code examples
+
+### 3. Changelog Management
+- **Conventional Commits**: Standardized commit messages
+- **Keep a Changelog**: Structured changelog format
+- **Version Management**: Semantic versioning
+description:
+globs:
+alwaysApply: true
+---

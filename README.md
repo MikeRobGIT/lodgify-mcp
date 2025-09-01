@@ -1,66 +1,24 @@
 # Lodgify MCP Server
 
-A Model Context Protocol (MCP) server that exposes Lodgify Public API v2 endpoints as tools for AI assistants like Claude. Built using the high-level McpServer SDK with enhanced metadata, capabilities declaration, and robust error handling.
+[![npm version](https://badge.fury.io/js/%40mikerob%2Flodgify-mcp.svg)](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/MikeRobGIT/lodgify-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeRobGIT/lodgify-mcp/actions)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io)
 
-## Configuration
+A Model Context Protocol (MCP) server that connects AI assistants like Claude to the Lodgify property management API. Get instant access to your properties, bookings, availability, and rates through natural language.
 
-### MCP Client Configuration
+## Quick Start
 
-Configure your MCP client (like Claude Desktop) to connect to the Lodgify MCP Server. Choose one of the following methods:
+### Installation with Bunx (Recommended)
 
-#### Method 1: Docker (Recommended)
-
-Use the pre-built Docker image from GitHub Container Registry:
-
-```json
-{
-  "mcpServers": {
-    "lodgify": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "-e", "LODGIFY_API_KEY=your_api_key_here",
-        "-e", "LOG_LEVEL=info",
-        "ghcr.io/mikerobgit/lodgify-mcp:latest"
-      ]
-    }
-  }
-}
-```
-
-#### Method 2: Local Docker Build
-
-If you've built the image locally:
+The fastest way to get started - no local installation required:
 
 ```json
 {
   "mcpServers": {
     "lodgify": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "--env-file", "/absolute/path/to/.env",
-        "lodgify-mcp:latest"
-      ]
-    }
-  }
-}
-```
-
-#### Method 3: Direct Bun
-
-If you're using Bun runtime:
-
-```json
-{
-  "mcpServers": {
-    "lodgify": {
-      "command": "bun",
-      "args": ["run", "/absolute/path/to/lodgify-mcp/dist/server.js"],
+      "command": "bunx",
+      "args": ["-y", "@mikerob/lodgify-mcp"],
       "env": {
         "LODGIFY_API_KEY": "your_lodgify_api_key_here"
       }
@@ -69,16 +27,14 @@ If you're using Bun runtime:
 }
 ```
 
-#### Method 4: Direct Node.js
-
-If you've installed and built the server locally:
+### Alternative with NPX
 
 ```json
 {
   "mcpServers": {
     "lodgify": {
-      "command": "node",
-      "args": ["/absolute/path/to/lodgify-mcp/dist/server.js"],
+      "command": "npx",
+      "args": ["-y", "@mikerob/lodgify-mcp"],
       "env": {
         "LODGIFY_API_KEY": "your_lodgify_api_key_here"
       }
@@ -87,225 +43,138 @@ If you've installed and built the server locally:
 }
 ```
 
-**Note**: Replace `/absolute/path/to/lodgify-mcp/` with the actual absolute path to your installation directory.
+### Environment Configuration
 
-### Environment Variables
-
-Create a `.env` file with the following variables:
+Required environment variable:
 
 ```env
-# Required
 LODGIFY_API_KEY="your_lodgify_api_key_here"
+```
 
-# Optional
+Optional settings:
+
+```env
+LODGIFY_READ_ONLY="1"   # Prevent write operations (recommended for testing)
 LOG_LEVEL="info"        # Options: error | warn | info | debug
 DEBUG_HTTP="0"          # Set to "1" for verbose HTTP debugging
 ```
 
-## Installation
+### API Key Rotation
 
-### Using Docker (Recommended)
+To rotate your LODGIFY_API_KEY safely:
 
-The easiest way to run the Lodgify MCP Server is using Docker:
+1. Create a new API key in your Lodgify account settings
+2. Deploy the new key as `LODGIFY_API_KEY` (keep the old key valid temporarily)
+3. Verify server health and tool calls are working correctly
+4. Revoke the old key in Lodgify
 
-```bash
-# Quick start with Docker
-docker run -p 3000:3000 \
-  -e LODGIFY_API_KEY="your_api_key_here" \
-  ghcr.io/mikerobgit/lodgify-mcp:latest
-```
+**Tip**: For zero-downtime rotation, use a two-step rollout (staging → production) and monitor error rates during the transition.
 
-### Using Docker Compose
+## What You Can Do
 
-For development and production deployments:
+Ask Claude natural language questions about your Lodgify properties:
 
-```bash
-# Clone the repository
-git clone https://github.com/mikerobgit/lodgify-mcp
-cd lodgify-mcp
+### 🏨 Property Management
+- "Show me all my properties"
+- "Get details about Ocean View Villa"
+- "What room types are available in my beach house?"
 
-# Setup environment
-cp .env.example .env
-# Edit .env and add your LODGIFY_API_KEY
+### 📅 Availability & Bookings
+- "When is the Beach House next available?"
+- "Show me all bookings for November"
+- "Is property 123 available December 20-27?"
+- "Get details for booking BK-2024-001"
 
-# Development mode (with hot reload)
-docker-compose --profile dev up
+### 💰 Rates & Pricing
+- "What are the daily rates for Ocean View Villa in December?"
+- "Get a quote for 4 adults from Dec 20-27"
+- "Show me current rate settings for property 123"
 
-# Production mode
-docker-compose --profile production up -d
+### 🔧 Management Tasks
+- "Create a payment link for the Smith booking"
+- "Update key codes for reservation BK001"
+- "Show me a calendar view of availability for next month"
 
-# View logs
-docker-compose logs -f lodgify-mcp
-```
+## Features
 
-### Using Bun
+- **🚀 Zero Installation**: Run directly with `bunx` - no local setup required
+- **🔧 20+ API Tools**: Complete property management, bookings, and availability
+- **🛡️ Read-Only Mode**: Safe testing with write operation protection
+- **📝 Type-Safe**: Full TypeScript with input validation
+- **🔄 Smart Retries**: Automatic rate limit handling with exponential backoff
+- **📊 Comprehensive**: Properties, bookings, availability, rates, quotes, and more
+- **📅 Intelligent Date Validation**: Feedback-based system that helps LLMs self-correct date issues
 
-```bash
-bun install
-cp .env.example .env
-# Edit .env and add your LODGIFY_API_KEY
-bun run build
-bun start
-```
+## Intelligent Date Validation
 
-## Development
+The MCP server includes sophisticated date validation with feedback-based correction to handle LLM date cutoff issues:
 
-### Docker Development
+### How It Works
 
-#### Building the Image
+- **Issue Detection**: Identifies when LLMs provide outdated dates (e.g., 2024 when current year is 2025)
+- **Structured Feedback**: Provides detailed validation feedback instead of silent corrections
+- **Context-Aware Guidance**: Different validation rules based on tool context:
+  - **Availability searches**: Warns about past dates, suggests current date
+  - **Booking creation**: Validates future dates with detailed suggestions
+  - **Rate queries**: Allows past/future dates with appropriate context
+- **Self-Correction Support**: Returns actionable suggestions for LLMs to fix issues
 
-```bash
-# Build for local development
-docker build -t lodgify-mcp:latest .
+### Example Scenarios
 
-# Build with specific port
-docker build --build-arg PORT=8080 -t lodgify-mcp:latest .
+1. **LLM provides outdated year**:
+   - Input: `"2024-09-15"` (when current year is 2025)
+   - Feedback: `{ "message": "The date '2024-09-15' appears to be from a previous year (2024). Current year is 2025.", "suggestions": ["If you meant this year, use: 2025-09-15", "Current date: 2025-08-31"], "severity": "warning" }`
 
-# Multi-platform build (for M1 Macs and Linux)
-docker buildx build --platform linux/amd64,linux/arm64 -t lodgify-mcp:latest .
-```
+2. **Past date for availability search**:
+   - Input: Check availability from `"2025-08-01"` (if today is 2025-08-31)
+   - Feedback: `{ "message": "The date '2025-08-01' is 30 days in the past. Availability operations typically require future dates.", "suggestions": ["Did you mean a future date?", "Today's date: 2025-08-31"], "severity": "warning" }`
 
-#### Running Containers
+3. **Invalid date range**:
+   - Input: Check-in `"2025-09-20"`, Check-out `"2025-09-15"`
+   - Error: `{ "message": "Invalid date range: end date '2025-09-15' is before start date '2025-09-20'.", "suggestions": ["Ensure the end date is after the start date", "Check if the dates were entered in the correct order"], "severity": "error" }`
 
-```bash
-# Run with environment file
-docker run -p 3000:3000 --env-file .env lodgify-mcp:latest
+### Validation Modes
 
-# Run with individual environment variables
-docker run -p 3000:3000 \
-  -e LODGIFY_API_KEY="your_api_key" \
-  -e LOG_LEVEL=debug \
-  -e DEBUG_HTTP=1 \
-  lodgify-mcp:latest
+Date validation uses different approaches per tool type:
+- **HARD**: Rejects invalid dates with clear error feedback
+- **SOFT**: Warns about issues but allows processing with feedback messages
+- **Context-Aware**: Adapts validation rules based on business logic and tool requirements
 
-# Run in detached mode with auto-restart
-docker run -d \
-  --name lodgify-mcp \
-  --restart unless-stopped \
-  -p 3000:3000 \
-  --env-file .env \
-  lodgify-mcp:latest
+### Feedback Structure
 
-# Check container health
-docker inspect --format='{{.State.Health.Status}}' lodgify-mcp
-
-# View container logs
-docker logs -f lodgify-mcp
-```
-
-#### Docker Compose Commands
-
-```bash
-# Start development environment
-docker-compose --profile dev up
-
-# Start production environment
-docker-compose --profile production up -d
-
-# Rebuild and start
-docker-compose --profile dev up --build
-
-# Stop all services
-docker-compose down
-
-# Remove volumes and networks
-docker-compose down -v
-
-# View service logs
-docker-compose logs -f lodgify-mcp-dev
-
-# Execute commands in running container
-docker-compose exec lodgify-mcp-dev sh
-
-# Check service health
-docker-compose ps
-```
-
-#### Debugging Docker Issues
-
-```bash
-# Check environment variables
-docker run --rm lodgify-mcp:latest env
-
-# Run with shell for debugging
-docker run -it --entrypoint sh lodgify-mcp:latest
-
-# Validate environment before starting
-docker run --rm --env-file .env lodgify-mcp:latest /app/scripts/env-check.sh
-
-# Check container resource usage
-docker stats lodgify-mcp
-
-# Inspect image layers
-docker history lodgify-mcp:latest
-```
-
-### Running Tests
-
-Tests are written using Bun's built-in test runner.
-
-```bash
-# Run all tests
-bun test
-
-# Run with coverage
-bun test --coverage
-
-# Watch mode
-bun test --watch
-
-# Run specific test file
-bun test lodgify.test.ts
-
-# Run tests matching a pattern
-bun test --test-name-pattern "429 retry"
-```
-
-### Linting and Formatting
-
-```bash
-# Check code style
-npm run lint
-
-# Format code
-npm run format
-
-# Type checking
-npm run typecheck
-```
-
-### Building
-
-```bash
-# Compile TypeScript
-npm run build
-
-# Development mode (with hot reload)
-npm run dev
-```
+All validation feedback includes:
+- **Message**: Human-readable description of the issue
+- **Severity**: `error`, `warning`, or `info`
+- **Suggestions**: Actionable steps to resolve the issue
+- **Current Date**: System date for context
+- **Original Input**: Exact input provided for traceability
 
 ## Documentation
 
-📚 **[Tool Catalog →](docs/TOOL_CATALOG.md)** - Complete API reference with parameters and examples
+📚 **[Complete API Reference →](docs/API_REFERENCE.md)** - All tools with parameters and examples
 
-📖 **[Error Handling →](docs/ERROR_HANDLING.md)** - JSON-RPC error codes, validation, and debugging
+📖 **[Installation Guide →](docs/INSTALLATION.md)** - Docker, source, and global installation options
 
-🔒 **[Security Best Practices →](docs/SECURITY.md)** - API key management, deployment security, and compliance
+🔧 **[Development Setup →](docs/DEVELOPMENT.md)** - Contributing, testing, and architecture
 
-🔧 **[Troubleshooting Guide →](docs/TROUBLESHOOTING.md)** - Common issues, logging, and debugging tips
+🔒 **[Security Guide →](docs/SECURITY.md)** - API key management and best practices
 
-## Contributing
+🐛 **[Troubleshooting →](docs/TROUBLESHOOTING.md)** - Common issues and debugging
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+📋 **[Tool Catalog →](docs/TOOL_CATALOG.md)** - Complete tool reference
 
-## License
-
-MIT License - see LICENSE file for details
+🏗️ **[Architecture →](docs/MODULAR_ARCHITECTURE.md)** - System design and patterns
 
 ## Support
 
-For issues and questions:
+- **GitHub Issues**: [Report bugs or request features](https://github.com/mikerobgit/lodgify-mcp/issues)
+- **Lodgify API Docs**: [https://docs.lodgify.com](https://docs.lodgify.com)
+- **MCP Protocol**: [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
 
-- GitHub Issues: [Report bugs or request features](https://github.com/mikerobgit/lodgify-mcp/issues)
-- Lodgify API Documentation: [https://docs.lodgify.com](https://docs.lodgify.com)
-- MCP Documentation: [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+---
+
+Built with ❤️ for the [Model Context Protocol](https://modelcontextprotocol.io) community

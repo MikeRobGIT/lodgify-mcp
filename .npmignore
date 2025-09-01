@@ -1,14 +1,14 @@
-# Source files
+# Source files (use dist instead)
 src/
 tests/
 examples/
 
 # Development files
 .env
-.env.local
-.env.test
+.env.*
 *.log
 *.tmp
+logs/
 
 # IDE and editor files
 .vscode/
@@ -20,29 +20,49 @@ examples/
 coverage/
 .nyc_output/
 
-# Config files (keep only necessary ones)
-vitest.config.ts
+# Config files (not needed for runtime)
 biome.json
 tsconfig.json
+.gitignore
+.npmignore
 
 # Git and CI
 .git/
 .github/
-.gitignore
+.husky/
 
-# Documentation source files
+# Documentation source files (README is included)
 docs/
+PRD.md
+CLAUDE.md
 
-# Temporary files
-tmp/
-temp/
+# Docker and MCPO files
+Dockerfile*
+docker-compose*.yml
+docker-entrypoint*.sh
+mcpo.*.json
+scripts/
 
-# Task Master files
+# Task Master and development tools
 .taskmaster/
 .claude/
+.windsurf/
+.cursor/
+.mcp.json
+mcp_options.json
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Keep only dist, README, LICENSE, CHANGELOG, and package.json
+# Temporary files
+tmp/
+temp/
+
+# Lock files (package-lock.json is kept for npm)
+bun.lock
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+
+# Keep only: dist/, README.md, LICENSE, CHANGELOG.md, package.json

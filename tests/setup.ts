@@ -1,3 +1,4 @@
+import type { Mock } from 'bun:test'
 import { afterEach, mock } from 'bun:test'
 import { config } from 'dotenv'
 
@@ -8,22 +9,37 @@ config({ path: '.env.test' })
 process.env.LOG_LEVEL = process.env.LOG_LEVEL || 'error'
 process.env.DEBUG_HTTP = '0'
 
+// Define mock console type
+interface MockConsole extends Console {
+  error: Mock<(...args: unknown[]) => void> & { mockClear(): void }
+  warn: Mock<(...args: unknown[]) => void> & { mockClear(): void }
+  log: Mock<(...args: unknown[]) => void> & { mockClear(): void }
+  info: Mock<(...args: unknown[]) => void> & { mockClear(): void }
+  debug: Mock<(...args: unknown[]) => void> & { mockClear(): void }
+}
+
 // Mock console methods to reduce test noise
+const mockError = mock(() => {}) as MockConsole['error']
+const mockWarn = mock(() => {}) as MockConsole['warn']
+const mockLog = mock(() => {}) as MockConsole['log']
+const mockInfo = mock(() => {}) as MockConsole['info']
+const mockDebug = mock(() => {}) as MockConsole['debug']
+
 global.console = {
   ...console,
-  error: mock(() => {}),
-  warn: mock(() => {}),
-  log: mock(() => {}),
-  info: mock(() => {}),
-  debug: mock(() => {}),
-}
+  error: mockError,
+  warn: mockWarn,
+  log: mockLog,
+  info: mockInfo,
+  debug: mockDebug,
+} as MockConsole
 
 // Reset mocks after each test
 afterEach(() => {
   // Clear all mock calls
-  ;(global.console.error as any).mockClear()
-  ;(global.console.warn as any).mockClear()
-  ;(global.console.log as any).mockClear()
-  ;(global.console.info as any).mockClear()
-  ;(global.console.debug as any).mockClear()
+  mockError.mockClear()
+  mockWarn.mockClear()
+  mockLog.mockClear()
+  mockInfo.mockClear()
+  mockDebug.mockClear()
 })

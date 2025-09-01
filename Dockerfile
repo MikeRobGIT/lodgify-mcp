@@ -13,6 +13,7 @@ RUN bun install --frozen-lockfile
 
 # Copy source code and other necessary files
 COPY src ./src
+COPY bin ./bin
 COPY tsconfig.json ./
 
 # Build the application

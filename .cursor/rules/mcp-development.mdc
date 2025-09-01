@@ -1,0 +1,158 @@
+# MCP Development Guidelines
+
+## MCP Architecture Overview
+The MCP server uses a modular registry pattern with the following structure:
+
+### Core MCP Components
+- **Server Setup**: [src/mcp/server-setup.ts](mdc:src/mcp/server-setup.ts) - Server initialization
+- **Tool Registry**: [src/mcp/tools/registry.ts](mdc:src/mcp/tools/registry.ts) - Central tool management
+- **Resource Registry**: [src/mcp/resources/](mdc:src/mcp/resources/) - System resources
+- **Error Handler**: [src/mcp/errors/](mdc:src/mcp/errors/) - Centralized error processing
+- **Schemas**: [src/mcp/schemas/](mdc:src/mcp/schemas/) - Shared validation schemas
+
+## Tool Implementation Pattern
+
+### 1. Tool Categories
+Tools are organized by category in [src/mcp/tools/](mdc:src/mcp/tools/):
+- **Property Tools**: [property-tools.ts](mdc:src/mcp/tools/property-tools.ts) - Property management
+- **Booking Tools**: [booking-tools.ts](mdc:src/mcp/tools/booking-tools.ts) - Booking operations
+- **Availability Tools**: [availability-tools.ts](mdc:src/mcp/tools/availability-tools.ts) - Availability checking
+- **Rate Tools**: [rate-tools.ts](mdc:src/mcp/tools/rate-tools.ts) - Rate management
+- **Webhook Tools**: [webhook-tools.ts](mdc:src/mcp/tools/webhook-tools.ts) - Webhook operations
+- **Messaging Tools**: [messaging-tools.ts](mdc:src/mcp/tools/messaging-tools.ts) - Messaging features
+- **Helper Tools**: [helper-tools.ts](mdc:src/mcp/tools/helper-tools.ts) - Utility functions
+
+### 2. Tool Registration Pattern
+```typescript
+import { z } from 'zod';
+import { getClient } from '../utils/client';
+
+// 1. Define input schema with Zod
+const toolInputSchema = z.object({
+  propertyId: z.string().min(1, 'Property ID is required'),
+  // Add other parameters as needed
+});
+
+// 2. Create tool registration object
+export const myTool = {
+  name: 'lodgify_my_tool',
+  description: 'Clear description of what this tool does',
+  inputSchema: toolInputSchema,
+  handler: async (params) => {
+    try {
+      const client = getClient();
+      // Implementation using the client
+      const result = await client.someMethod(params);
+      return result;
+    } catch (error) {
+      // Errors are automatically handled by the error handler
+      throw error;
+    }
+  }
+};
+```
+
+### 3. Tool Registration Process
+1. **Create Tool**: Add to appropriate category file in [src/mcp/tools/](mdc:src/mcp/tools/)
+2. **Register Tool**: Add to [register-all.ts](mdc:src/mcp/tools/register-all.ts)
+3. **Add Client Method**: Implement in [src/lodgify-orchestrator.ts](mdc:src/lodgify-orchestrator.ts)
+4. **Add Tests**: Create tests in [tests/](mdc:tests/) mirroring the structure
+
+## Error Handling
+
+### Error Processing Flow
+1. **Tool Handler**: Throws error with context
+2. **Error Handler**: [src/mcp/errors/](mdc:src/mcp/errors/) processes and sanitizes
+3. **MCP Response**: Returns structured error to client
+
+### Error Types
+- **Validation Errors**: Invalid input parameters
+- **API Errors**: Lodgify API errors (4xx, 5xx)
+- **Network Errors**: Connection issues
+- **Rate Limit Errors**: 429 responses with retry logic
+
+## Resource Implementation
+
+### Health Check Resource
+```typescript
+// Example from resources/health.ts
+export const healthResource = {
+  uri: 'lodgify://health',
+  name: 'Health Check',
+  description: 'Check the health status of the Lodgify MCP server',
+  mimeType: 'application/json',
+  handler: async () => {
+    // Return health status
+  }
+};
+```
+
+## Dependency Injection Pattern
+
+### Client Access Pattern
+```typescript
+// Use closure-based getClient() pattern
+import { getClient } from '../utils/client';
+
+export const myTool = {
+  // ... tool definition
+  handler: async (params) => {
+    const client = getClient(); // Gets the configured client
+    return await client.someMethod(params);
+  }
+};
+```
+
+## Testing MCP Tools
+
+### Test Structure
+```typescript
+// tests/mcp/tools/my-tool.test.ts
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { myTool } from '../../../src/mcp/tools/my-tool';
+
+describe('myTool', () => {
+  it('should handle valid input', async () => {
+    const result = await myTool.handler({
+      propertyId: 'test-id'
+    });
+    expect(result).toBeDefined();
+  });
+
+  it('should validate input schema', async () => {
+    await expect(myTool.handler({}))
+      .rejects.toThrow('Property ID is required');
+  });
+});
+```
+
+## Tool Documentation
+
+### Required Documentation
+- **Tool Name**: Clear, descriptive name
+- **Description**: What the tool does and when to use it
+- **Parameters**: All input parameters with types and constraints
+- **Examples**: Usage examples for common scenarios
+- **Error Cases**: What errors might occur and why
+
+### Documentation Location
+- **Tool Catalog**: [docs/TOOL_CATALOG.md](mdc:docs/TOOL_CATALOG.md)
+- **README**: [README.md](mdc:README.md) with examples
+- **Examples**: [examples/](mdc:examples/) directory
+
+## Performance Considerations
+
+### Tool Optimization
+- **Lazy Loading**: Only load what's needed
+- **Caching**: Cache frequently accessed data
+- **Batch Operations**: Combine multiple API calls when possible
+- **Rate Limiting**: Respect Lodgify API rate limits
+
+### Memory Management
+- **Module Size**: Keep tools under 250 lines
+- **Resource Cleanup**: Properly clean up resources
+- **Error Boundaries**: Prevent memory leaks from errors
+description:
+globs:
+alwaysApply: true
+---

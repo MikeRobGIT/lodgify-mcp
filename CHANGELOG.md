@@ -5,63 +5,132 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2025-08-14
+## [0.1.3] - 2025-09-01
 
-### Added
-- Initial release of Lodgify MCP Server
-- Support for 15 Lodgify Public API v2 endpoints as MCP tools:
-  - Property Management: list, get, list rooms, list deleted
-  - Booking Management: list, get, payment links, key codes
-  - Availability: property and room availability checks
-  - Rates: daily rates and rate settings
-  - Quotes: complex quote generation with bracket notation support
-  - Messaging: thread retrieval
-- Automatic retry logic with exponential backoff for 429 rate limiting
-- Support for complex query parameters using bracket notation
-- Type-safe validation using Zod schemas
-- Comprehensive error handling with structured error responses
-- Health check resource at `lodgify://health`
-- Configurable logging with multiple log levels
-- Full TypeScript support with strict mode
-- Comprehensive test suite using Vitest
-- Example scripts demonstrating key workflows
-- Support for both Node.js 18+ and Bun 1.0+
+### Changed
 
-### Features
-- **Rate Limiting**: Automatic retry with exponential backoff (max 5 attempts)
-- **Query Parameters**: Full support for Lodgify's bracket notation in parameters
-- **Error Handling**: Structured error responses with status codes and details
-- **Logging**: Configurable log levels (error, warn, info, debug)
-- **Environment**: Support for `.env` configuration
-- **Testing**: Unit tests, integration tests, and smoke tests
-- **Documentation**: Comprehensive README with tool catalog and examples
+- Updated bump-version command documentation for improved workflow
 
 ### Technical Details
-- Built with TypeScript and ES modules
-- Uses @modelcontextprotocol/sdk for MCP implementation
-- Zod for runtime type validation
-- Biome for linting and formatting
-- Vitest for testing framework
-- Supports stdio transport for MCP communication
 
-### Known Limitations
-- Maximum retry delay capped at 30 seconds
-- Requires API key with appropriate permissions
-- Some endpoints may require specific Lodgify account features
+- Minor version bump for maintenance and documentation updates
+
+## [0.1.2] - 2025-08-31
+
+### Added
+
+- Intelligent date validation feedback system with contextual error messages
+- Enhanced environment configuration for read-only mode
+- Improved logging for read-only mode operations
+
+### Changed
+
+- Enhanced README.md for improved clarity and usability
+- Updated Docker publish workflow to trigger on version tags
+- Improved documentation and refactored server setup
+
+### Fixed
+
+- Cleaned up formatting in date validation utility
+
+### Technical Details
+
+- Removed .taskmaster from git tracking and added to .gitignore
+- Updated bump-version command documentation for better workflow
+
+## [0.1.1] - 2025-08-31
+
+### Added
+
+- Complete modular architecture refactoring of server.ts
+- Registry pattern for centralized tool and resource management
+- 15+ focused modules, each under 250 lines for maintainability
+- Closure-based dependency injection via `getClient()` pattern
+- Tool deprecation system for graceful API evolution
+- Comprehensive documentation updates reflecting new architecture
+- New `docs/MODULAR_ARCHITECTURE.md` with detailed architecture documentation
+
+### Changed
+
+- Refactored monolithic 2600+ line server.ts into modular components
+- Organized tools by category (property, booking, availability, rate, webhook, messaging)
+- Centralized error handling with automatic sanitization
+- Improved type safety with proper TypeScript types throughout
+- Updated CLAUDE.md and AGENTS.md with new module structure
+- Enhanced README.md with architecture section
+
+### Technical Details
+
+- Zero breaking changes - all public APIs remain unchanged
+- 228 tests passing with complete backward compatibility
+- All TypeScript and lint warnings resolved
+- Documentation fully updated to reflect modular architecture
+
+## [0.1.0] - 2025-08-31
+
+### Added
+
+- Comprehensive read-only mode enforcement to prevent unauthorized write operations
+- Environment variable normalization for boolean values (DEBUG_HTTP, LODGIFY_READ_ONLY)
+- Enhanced logging for environment variable flow in server initialization
+- Improved NPM beta workflow with better error handling and authentication verification
+- NPM publish dry-run validation before actual publish
+- First-time package publishing support in GitHub workflows
+
+### Changed
+
+- Updated package name to @mikerob/lodgify-mcp (scoped package)
+- Enhanced GitHub workflows to handle scoped package publishing
+- Improved error capture in workflows using tee and PIPESTATUS
+- Adjusted default rate limits from 100 to 60 requests per window
+
+### Fixed
+
+- NPM scripts interference with version command (removed custom version/postversion scripts)
+- GitHub workflow authentication issues with NPM_TOKEN
+- Package name preservation during npm version operations
+- Rate limit adjustments for better API abuse prevention
 
 ### Security
-- API keys stored in environment variables
-- No sensitive data logging
-- Supports secure secret management for production
 
-## [Unreleased]
+- Read-only mode implementation blocking all write requests when enabled
+- Enhanced environment variable handling for safer configuration
 
-### Planned Features
-- Support for additional Lodgify API endpoints
-- Webhook support for real-time updates
-- Batch operations for improved performance
-- Caching layer for frequently accessed data
-- Advanced filtering and search capabilities
+## [0.0.1] - 2025-08-30
+
+### Added
+
+- Initial release of @mikerob/lodgify-mcp
+- Model Context Protocol (MCP) server for Lodgify Public API v2
+- Support for 30+ Lodgify API endpoints as MCP tools
+- Comprehensive property management, booking, and availability features
+- Read-only mode for operational safety
+- Automatic retry logic with exponential backoff for rate limiting
+- TypeScript implementation with full type safety
+- Comprehensive test suite with 241 tests
+- Support for both Bun and Node.js runtimes
+
+### Features
+
+- **Property Management**: List, get, and manage properties and rooms
+- **Booking Management**: Create, update, and manage bookings with payment links
+- **Availability Checking**: Real-time availability queries with calendar views
+- **Rate Management**: Daily rates and rate settings management
+- **Webhook Support**: Subscribe and manage webhooks for real-time updates
+- **Quote Generation**: Complex quote generation with flexible parameters
+- **Health Monitoring**: Built-in health check resource
+- **Error Handling**: Structured error responses with detailed context
+- **Logging**: Configurable file-based logging system
+- **Security**: Read-only mode enforcement, API key protection
+
+### Technical Details
+
+- Built with @modelcontextprotocol/sdk for MCP implementation
+- Uses Zod for runtime type validation
+- Biome for code formatting and linting
+- Vitest for testing framework
+- Supports stdio transport for MCP communication
+- Full TypeScript with strict mode enabled
 
 ---
 

@@ -1,19 +1,21 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { LodgifyClient } from '../src/lodgify.js'
-import { createMockFetch, createMockResponse, fixtures } from './utils.js'
+import type { Booking } from '../src/api/v2/bookings/types.js'
+import type { Property } from '../src/api/v2/properties/types.js'
+import { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
+import { createMockResponse, fixtures } from './utils.js'
 
 /**
  * Smoke Tests - Sequential execution of all tools
  * Can be run with real API by setting TEST_MODE=live and TEST_API_KEY
  */
 describe('End-to-End Smoke Tests', () => {
-  let client: LodgifyClient
+  let client: LodgifyOrchestrator
   const testMode = process.env.TEST_MODE || 'mock'
   const testApiKey = process.env.TEST_API_KEY || 'test-api-key'
 
   beforeAll(() => {
     console.log(`Running smoke tests in ${testMode} mode`)
-    client = new LodgifyClient(testApiKey)
+    client = new LodgifyOrchestrator({ apiKey: testApiKey })
 
     if (testMode === 'mock') {
       // Set up mock responses for all endpoints
@@ -24,13 +26,18 @@ describe('End-to-End Smoke Tests', () => {
         createMockResponse(200, [{ id: 'room-1', name: 'Master Suite' }]),
         createMockResponse(200, []),
 
-        // Availability
-        createMockResponse(200, fixtures.availability),
-        createMockResponse(200, fixtures.availability),
-
         // Rates
-        createMockResponse(200, { rates: [{ date: '2025-11-20', rate: 200 }] }),
-        createMockResponse(200, { settings: { minStay: 2, maxStay: 30 } }),
+        createMockResponse(200, {
+          property_id: 123,
+          currency: 'USD',
+          rates: [{ date: '2025-11-20', rate: 200 }],
+        }),
+        createMockResponse(200, {
+          property_id: 123,
+          currency: 'USD',
+          minimum_stay: 2,
+          maximum_stay: 30,
+        }),
 
         // Quote
         createMockResponse(200, fixtures.quote),
@@ -40,25 +47,21 @@ describe('End-to-End Smoke Tests', () => {
         createMockResponse(200, fixtures.booking),
         createMockResponse(200, { url: 'https://pay.lodgify.com/xyz' }),
 
-        // New booking management endpoints
-        createMockResponse(201, { id: 'book-new', status: 'created' }),
-        createMockResponse(200, { id: 'book-123', status: 'updated' }),
-        createMockResponse(200, { id: 'book-123', status: 'deleted' }),
-
-        // Property availability update
-        createMockResponse(200, { success: true, message: 'Availability updated' }),
-
-        // Webhooks
-        createMockResponse(201, { id: 'webhook-123', status: 'subscribed' }),
-        createMockResponse(200, { webhooks: [{ id: 'webhook-123', event: 'booking.created' }] }),
-        createMockResponse(200, { id: 'webhook-123', status: 'deleted' }),
-
-        // Rates
-        createMockResponse(201, { id: 'rate-new', status: 'created' }),
-        createMockResponse(200, { id: 'rate-789', status: 'updated' }),
-
         // Health check
         createMockResponse(200, { ok: true }),
+
+        // v1 Webhook endpoints
+        createMockResponse(200, {
+          data: [{ id: 'webhook_123', event: 'booking_new_status_booked' }],
+        }),
+        createMockResponse(200, { id: 'webhook_456', event: 'booking_new_status_booked' }),
+
+        // v1 Booking CRUD
+        createMockResponse(201, { id: 'booking_789', status: 'booked' }),
+        createMockResponse(200, { id: 'booking_789', status: 'updated' }),
+
+        // v1 Rate management
+        createMockResponse(200, { success: true }),
       ]
 
       let callIndex = 0
@@ -83,11 +86,11 @@ describe('End-to-End Smoke Tests', () => {
     let bookingId: string
 
     test('1. Should list properties', async () => {
-      const result = await client.listProperties({ page: 1, limit: 10 })
+      const result = await client.properties.listProperties({ limit: 10, offset: 0 })
       expect(result).toBeDefined()
 
-      if (Array.isArray(result) && result.length > 0) {
-        propertyId = (result[0] as any).id || 'prop-123'
+      if (result?.data && Array.isArray(result.data) && result.data.length > 0) {
+        propertyId = String((result.data[0] as Property).id) || 'prop-123'
       } else {
         propertyId = 'prop-123' // fallback for testing
       }
@@ -101,7 +104,7 @@ describe('End-to-End Smoke Tests', () => {
         return
       }
 
-      const result = await client.getProperty(propertyId)
+      const result = await client.properties.getProperty(propertyId)
       expect(result).toBeDefined()
       expect(result).toHaveProperty('id')
 
@@ -114,60 +117,17 @@ describe('End-to-End Smoke Tests', () => {
         return
       }
 
-      const result = await client.listPropertyRooms(propertyId)
+      const result = await client.properties.listPropertyRooms(propertyId)
       expect(result).toBeDefined()
 
       console.log(`✓ Listed rooms for property ${propertyId}`)
     }, 30000)
 
     test('4. Should check deleted properties', async () => {
-      const result = await client.listDeletedProperties()
+      const result = await client.properties.listDeletedProperties()
       expect(result).toBeDefined()
 
       console.log('✓ Checked deleted properties')
-    }, 30000)
-
-    test('5. Should check property availability', async () => {
-      if (!propertyId) {
-        console.log('⚠ Skipping: No property ID available')
-        return
-      }
-
-      const params = {
-        from: '2025-11-20',
-        to: '2025-11-25',
-      }
-
-      const result = await client.getAvailabilityProperty(propertyId, params)
-      expect(result).toBeDefined()
-
-      console.log(`✓ Checked availability for property ${propertyId}`)
-    }, 30000)
-
-    test('6. Should check room availability', async () => {
-      if (!propertyId) {
-        console.log('⚠ Skipping: No property ID available')
-        return
-      }
-
-      // Use a dummy room ID for testing
-      const roomTypeId = 'room-1'
-      const params = {
-        from: '2025-11-20',
-        to: '2025-11-25',
-      }
-
-      try {
-        const result = await client.getAvailabilityRoom(propertyId, roomTypeId, params)
-        expect(result).toBeDefined()
-        console.log(`✓ Checked room availability for ${propertyId}/${roomTypeId}`)
-      } catch (error: any) {
-        if (error.status === 404) {
-          console.log(`⚠ Room type ${roomTypeId} not found, skipping`)
-        } else {
-          throw error
-        }
-      }
     }, 30000)
 
     test('7. Should get daily rates', async () => {
@@ -182,7 +142,7 @@ describe('End-to-End Smoke Tests', () => {
         to: '2025-11-25',
       }
 
-      const result = await client.getDailyRates(params)
+      const result = await client.rates.getDailyRates(params)
       expect(result).toBeDefined()
 
       console.log(`✓ Retrieved daily rates for property ${propertyId}`)
@@ -198,7 +158,7 @@ describe('End-to-End Smoke Tests', () => {
         propertyId,
       }
 
-      const result = await client.getRateSettings(params)
+      const result = await client.rates.getRateSettings(params)
       expect(result).toBeDefined()
 
       console.log(`✓ Retrieved rate settings for property ${propertyId}`)
@@ -218,11 +178,11 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.getQuote(propertyId, params)
+        const result = await client.quotes.getQuoteRaw(propertyId, params)
         expect(result).toBeDefined()
         console.log(`✓ Retrieved quote for property ${propertyId}`)
-      } catch (error: any) {
-        if (error.status === 400) {
+      } catch (error) {
+        if ((error as { status?: number }).status === 400) {
           console.log('⚠ Quote parameters invalid, skipping')
         } else {
           throw error
@@ -236,11 +196,11 @@ describe('End-to-End Smoke Tests', () => {
         to: '2025-11-30',
       }
 
-      const result = await client.listBookings(params)
+      const result = await client.bookings.listBookings(params)
       expect(result).toBeDefined()
 
-      if (Array.isArray(result) && result.length > 0) {
-        bookingId = (result[0] as any).id || 'book-456'
+      if (result?.data && Array.isArray(result.data) && result.data.length > 0) {
+        bookingId = String((result.data[0] as Booking).id) || 'book-456'
       } else {
         bookingId = 'book-456' // fallback for testing
       }
@@ -255,11 +215,11 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.getBooking(bookingId)
+        const result = await client.bookings.getBooking(bookingId)
         expect(result).toBeDefined()
         console.log(`✓ Retrieved booking details for ${bookingId}`)
-      } catch (error: any) {
-        if (error.status === 404) {
+      } catch (error) {
+        if ((error as { status?: number }).status === 404) {
           console.log(`⚠ Booking ${bookingId} not found, skipping`)
         } else {
           throw error
@@ -274,11 +234,12 @@ describe('End-to-End Smoke Tests', () => {
       }
 
       try {
-        const result = await client.getBookingPaymentLink(bookingId)
+        const result = await client.bookings.getBookingPaymentLink(bookingId)
         expect(result).toBeDefined()
         console.log(`✓ Retrieved payment link for booking ${bookingId}`)
-      } catch (error: any) {
-        if (error.status === 404 || error.status === 400) {
+      } catch (error) {
+        const errorStatus = (error as { status?: number }).status
+        if (errorStatus === 404 || errorStatus === 400) {
           console.log(`⚠ Payment link not available for booking ${bookingId}, skipping`)
         } else {
           throw error
@@ -286,159 +247,92 @@ describe('End-to-End Smoke Tests', () => {
       }
     }, 30000)
 
-    // New endpoint tests
-    test('13. Should create a new booking', async () => {
-      const payload = {
-        propertyId: propertyId || 'prop-123',
-        from: '2025-12-01',
-        to: '2025-12-07',
-        guestBreakdown: { adults: 2 },
-        roomTypes: [{ id: 'room-456' }],
-      }
-
+    test('13. Should list webhooks (v1)', async () => {
       try {
-        const result = await client.createBooking(payload)
+        const result = await client.webhooks.listWebhooks()
         expect(result).toBeDefined()
-        console.log('✓ Created new booking')
-      } catch (error: any) {
-        if (testMode === 'mock') {
-          console.log('✓ Created new booking')
-          expect(true).toBe(true)
-        } else {
-          console.log('⚠ Create booking failed (may require specific permissions)')
-        }
+        console.log('✓ Listed webhooks')
+      } catch (_error) {
+        console.log('⚠ Webhooks not available, skipping')
       }
     }, 30000)
 
-    test('14. Should update a booking', async () => {
+    test('14. Should subscribe to webhook (v1)', async () => {
+      try {
+        const result = await client.webhooks.subscribeWebhook({
+          event: 'booking_new_status_booked',
+          targetUrl: 'https://example.com/webhook',
+        })
+        expect(result).toBeDefined()
+        console.log('✓ Subscribed to webhook')
+      } catch (_error) {
+        console.log('⚠ Webhook subscription failed, skipping')
+      }
+    }, 30000)
+
+    test('15. Should create booking (v1)', async () => {
+      if (!propertyId) {
+        console.log('⚠ Skipping: No property ID available')
+        return
+      }
+
+      try {
+        const result = await client.bookings.createBookingV1({
+          property_id: parseInt(propertyId, 10),
+          arrival: '2024-06-15',
+          departure: '2024-06-20',
+          guest_name: 'John Smith',
+          adults: 2,
+          status: 'booked',
+        })
+        expect(result).toBeDefined()
+        console.log('✓ Created booking via v1 API')
+      } catch (_error) {
+        console.log('⚠ Booking creation failed, skipping')
+      }
+    }, 30000)
+
+    test('16. Should update booking (v1)', async () => {
       if (!bookingId) {
         console.log('⚠ Skipping: No booking ID available')
         return
       }
 
-      const payload = { status: 'confirmed', guestBreakdown: { adults: 3 } }
-
       try {
-        const result = await client.updateBooking(bookingId, payload)
+        const result = await client.bookings.updateBookingV1(bookingId, {
+          adults: 3,
+          status: 'tentative',
+        })
         expect(result).toBeDefined()
-        console.log(`✓ Updated booking ${bookingId}`)
-      } catch (error: any) {
-        if (testMode === 'mock') {
-          console.log(`✓ Updated booking ${bookingId}`)
-          expect(true).toBe(true)
-        } else {
-          console.log(`⚠ Update booking failed for ${bookingId} (may require specific permissions)`)
-        }
+        console.log(`✓ Updated booking ${bookingId} via v1 API`)
+      } catch (_error) {
+        console.log('⚠ Booking update failed, skipping')
       }
     }, 30000)
 
-    test('15. Should update property availability', async () => {
+    test('17. Should update rates (v1)', async () => {
       if (!propertyId) {
         console.log('⚠ Skipping: No property ID available')
         return
       }
 
-      const payload = {
-        from: '2025-12-20',
-        to: '2025-12-31',
-        available: false,
-        minStay: 3,
-      }
-
       try {
-        const result = await client.updatePropertyAvailability(propertyId, payload)
-        expect(result).toBeDefined()
-        console.log(`✓ Updated availability for property ${propertyId}`)
-      } catch (error: any) {
-        if (testMode === 'mock') {
-          console.log(`✓ Updated availability for property ${propertyId}`)
-          expect(true).toBe(true)
-        } else {
-          console.log(
-            `⚠ Update availability failed for ${propertyId} (may require specific permissions)`,
-          )
-        }
-      }
-    }, 30000)
-
-    test('16. Should subscribe to a webhook', async () => {
-      const payload = {
-        event: 'booking.created',
-        targetUrl: 'https://your-app.com/webhooks/lodgify',
-      }
-
-      try {
-        const result = await client.subscribeWebhook(payload)
-        expect(result).toBeDefined()
-        console.log('✓ Subscribed to webhook')
-      } catch (error: any) {
-        if (testMode === 'mock') {
-          console.log('✓ Subscribed to webhook')
-          expect(true).toBe(true)
-        } else {
-          console.log('⚠ Webhook subscription failed (may require specific permissions)')
-        }
-      }
-    }, 30000)
-
-    test('17. Should list webhooks', async () => {
-      try {
-        const result = await client.listWebhooks({ page: 1 })
-        expect(result).toBeDefined()
-        console.log('✓ Listed webhooks')
-      } catch (error: any) {
-        if (testMode === 'mock') {
-          console.log('✓ Listed webhooks')
-          expect(true).toBe(true)
-        } else {
-          console.log('⚠ List webhooks failed (may require specific permissions)')
-        }
-      }
-    }, 30000)
-
-    test('18. Should create a rate', async () => {
-      if (!propertyId) {
-        console.log('⚠ Skipping: No property ID available')
-        return
-      }
-
-      const payload = {
-        propertyId,
-        roomTypeId: 'room-456',
-        from: '2025-12-01',
-        to: '2025-12-31',
-        rate: 150.0,
-        currency: 'USD',
-      }
-
-      try {
-        const result = await client.createRate(payload)
-        expect(result).toBeDefined()
-        console.log('✓ Created new rate')
-      } catch (error: any) {
-        if (testMode === 'mock') {
-          console.log('✓ Created new rate')
-          expect(true).toBe(true)
-        } else {
-          console.log('⚠ Create rate failed (may require specific permissions)')
-        }
-      }
-    }, 30000)
-
-    test('19. Should update a rate', async () => {
-      const payload = { rate: 175.0, currency: 'EUR' }
-
-      try {
-        const result = await client.updateRate('rate-789', payload)
-        expect(result).toBeDefined()
-        console.log('✓ Updated rate rate-789')
-      } catch (error: any) {
-        if (testMode === 'mock') {
-          console.log('✓ Updated rate rate-789')
-          expect(true).toBe(true)
-        } else {
-          console.log('⚠ Update rate failed (may require specific permissions)')
-        }
+        await client.rates.updateRatesV1({
+          property_id: parseInt(propertyId, 10),
+          rates: [
+            {
+              room_type_id: 456,
+              date_from: '2024-06-01',
+              date_to: '2024-08-31',
+              price: 150.0,
+              min_stay: 3,
+              currency: 'USD',
+            },
+          ],
+        })
+        console.log(`✓ Updated rates for property ${propertyId} via v1 API`)
+      } catch (_error) {
+        console.log('⚠ Rate update failed, skipping')
       }
     }, 30000)
   })

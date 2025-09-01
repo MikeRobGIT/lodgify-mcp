@@ -1,0 +1,62 @@
+# Lodgify MCP Server - Project Overview
+
+## Project Purpose
+This is a Model Context Protocol (MCP) server that exposes Lodgify Public API v2 endpoints as tools for AI assistants like Claude. It enables programmatic interaction with Lodgify's property management system through a modular, type-safe architecture.
+
+## Core Architecture
+
+### Technology Stack
+- **Runtime**: Bun ≥ 1.0 (or Node.js ≥ 18)
+- **Language**: TypeScript with strict mode
+- **Protocol**: MCP over stdio
+- **SDK**: @modelcontextprotocol/sdk
+- **Validation**: Zod schemas
+- **HTTP Client**: Native fetch with custom retry logic
+- **Logging**: Pino with structured logging
+- **Code Quality**: Biome for linting/formatting
+
+### Key Components
+
+1. **Entry Point**: [src/server.ts](mdc:src/server.ts) - Minimal MCP server entry point
+2. **MCP Modules**: [src/mcp/](mdc:src/mcp/) - Registry-based modular architecture
+   - **Tools**: [src/mcp/tools/](mdc:src/mcp/tools/) - Organized by category (property, booking, availability, rate, webhook, messaging)
+   - **Resources**: [src/mcp/resources/](mdc:src/mcp/resources/) - Health checks and system monitoring
+   - **Error Handling**: [src/mcp/errors/](mdc:src/mcp/errors/) - Centralized error processing
+   - **Schemas**: [src/mcp/schemas/](mdc:src/mcp/schemas/) - Shared Zod validation schemas
+3. **Orchestrator**: [src/lodgify-orchestrator.ts](mdc:src/lodgify-orchestrator.ts) - Unified API for all Lodgify endpoints
+4. **Core Modules**: [src/core/](mdc:src/core/) - HTTP client, errors, rate limiting, retry logic
+5. **API Modules**: [src/api/](mdc:src/api/) - Modular API client implementations (v1/v2)
+
+## Development Commands
+- `bun dev` - Run TypeScript directly with hot reload
+- `bun run build` - Compile TypeScript to [dist/](mdc:dist/)
+- `bun test` - Run unit tests
+- `bun run check` - Lint, format, typecheck, build, and test
+- `bun run lint` - Run Biome linting
+- `bun run format` - Format code with Biome
+
+## Environment Configuration
+Required in `.env`:
+- `LODGIFY_API_KEY` - Your Lodgify API key (required)
+- `LOG_LEVEL` - Logging level (error|warn|info|debug, default: info)
+- `DEBUG_HTTP` - Set to "1" for verbose HTTP debugging (optional)
+- `LODGIFY_READ_ONLY` - Set to "1" to disable all write operations (optional)
+
+## Key Design Patterns
+- **Registry Pattern**: Central registries manage all tools and resources
+- **Closure-based DI**: Use `getClient()` pattern for dependency injection
+- **Module Size**: Each module must be <250 lines for maintainability
+- **Error Handling**: All errors go through centralized handler with sanitization
+- **Type Safety**: Strong TypeScript types with Zod validation schemas
+
+## File Organization
+- **Source**: [src/](mdc:src/) - All TypeScript source code
+- **Tests**: [tests/](mdc:tests/) - Bun tests mirroring src structure
+- **Build Output**: [dist/](mdc:dist/) - Compiled JavaScript
+- **Documentation**: [docs/](mdc:docs/) - Project documentation
+- **Examples**: [examples/](mdc:examples/) - Usage examples
+- **Scripts**: [scripts/](mdc:scripts/) - Build and utility scripts
+description:
+globs:
+alwaysApply: true
+---

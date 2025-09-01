@@ -5,6 +5,7 @@
  */
 
 const http = require('http')
+const pkg = require('../package.json')
 
 const PORT = process.env.PORT || 3000
 
@@ -14,7 +15,7 @@ const server = http.createServer((req, res) => {
     const health = {
       status: 'healthy',
       service: 'lodgify-mcp',
-      version: '0.1.0',
+      version: pkg.version,
       timestamp: new Date().toISOString(),
       mode: 'health-check'
     }

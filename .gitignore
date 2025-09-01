@@ -47,3 +47,7 @@ temp/
 .cursor/mcp.json
 .mcp.json
 mcp_options.json
+.gemini/settings.json
+
+# Task Master files
+.taskmaster/

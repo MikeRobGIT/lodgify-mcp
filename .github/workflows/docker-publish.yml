@@ -24,54 +24,54 @@ jobs:
       contents: read
       packages: write
       security-events: write
-    
+
     strategy:
       matrix:
         include:
-          - image_type: "mcp"
-            dockerfile: "Dockerfile"
-            image_suffix: ""
-            test_port: "3000"
-            test_endpoint: "/health"
-            test_command: "health-check"
-          - image_type: "mcpo" 
-            dockerfile: "Dockerfile.mcpo"
-            image_suffix: "-mcpo"
-            test_port: "8000"
-            test_endpoint: "/health"
-            test_command: "mcpo"
-    
+          - image_type: 'mcp'
+            dockerfile: 'Dockerfile'
+            image_suffix: ''
+            test_port: '3000'
+            test_endpoint: '/health'
+            test_command: 'health-check'
+          - image_type: 'mcpo'
+            dockerfile: 'Dockerfile.mcpo'
+            image_suffix: '-mcpo'
+            test_port: '8000'
+            test_endpoint: '/health'
+            test_command: 'mcpo'
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/amd64,linux/arm64
-      
+
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.image_suffix }}
           tags: |
-            type=ref,event=branch,suffix=${{ matrix.image_suffix }}
-            type=ref,event=pr,suffix=${{ matrix.image_suffix }}
-            type=semver,pattern={{version}},suffix=${{ matrix.image_suffix }}
-            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.image_suffix }}
-            type=semver,pattern={{major}},suffix=${{ matrix.image_suffix }}
-            type=sha,prefix={{branch}}-,suffix=${{ matrix.image_suffix }}
-            type=raw,value=latest${{ matrix.image_suffix }},enable={{is_default_branch}}
-      
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Build Docker image for testing
         uses: docker/build-push-action@v5
         with:
@@ -83,7 +83,7 @@ jobs:
           cache-from: type=gha,key=${{ matrix.image_type }}
           cache-to: type=gha,key=${{ matrix.image_type }},mode=max
           platforms: linux/amd64
-      
+
       - name: Run container tests
         run: |
           # Set environment variables based on image type
@@ -92,7 +92,7 @@ jobs:
           else
             export EXTRA_ENV=""
           fi
-          
+
           # Start container in test mode
           docker run -d \
             --name test-container-${{ matrix.image_type }} \
@@ -101,7 +101,7 @@ jobs:
             -p ${{ matrix.test_port }}:${{ matrix.test_port }} \
             ${{ env.IMAGE_NAME }}:test-${{ matrix.image_type }} \
             ${{ matrix.test_command }}
-          
+
           # Wait for container to be healthy
           echo "Waiting for ${{ matrix.image_type }} server to start on port ${{ matrix.test_port }}..."
           for i in {1..45}; do
@@ -112,15 +112,15 @@ jobs:
             echo "Waiting... ($i/45)"
             sleep 3
           done
-          
+
           # Check container logs
           echo "Container logs for ${{ matrix.image_type }}:"
           docker logs test-container-${{ matrix.image_type }}
-          
+
           # Verify the health endpoint is working
           echo "Testing ${{ matrix.image_type }} health endpoint:"
           docker exec test-container-${{ matrix.image_type }} curl -f http://localhost:${{ matrix.test_port }}${{ matrix.test_endpoint }} || exit 1
-          
+
           # Additional MCPO-specific tests
           if [ "${{ matrix.image_type }}" = "mcpo" ]; then
             echo "Testing MCPO OpenAPI endpoint:"
@@ -129,11 +129,11 @@ jobs:
             echo "Testing MCPO OpenAPI spec:"
             docker exec test-container-${{ matrix.image_type }} curl -f http://localhost:8000/openapi.json 2>/dev/null || echo "OpenAPI spec test skipped (may require proper auth)"
           fi
-          
+
           # Clean up
           docker stop test-container-${{ matrix.image_type }}
           docker rm test-container-${{ matrix.image_type }}
-      
+
       - name: Run Trivy vulnerability scanner
         if: success()
         continue-on-error: true
@@ -144,16 +144,16 @@ jobs:
           output: 'trivy-results-${{ matrix.image_type }}.sarif'
           severity: 'CRITICAL,HIGH'
           timeout: 15m
-      
+
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always() && hashFiles('trivy-results-${{ matrix.image_type }}.sarif') != ''
         with:
           sarif_file: 'trivy-results-${{ matrix.image_type }}.sarif'
           category: 'trivy-${{ matrix.image_type }}'
-      
+
       - name: Build and push multi-platform Docker image
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -168,31 +168,31 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
             VERSION=${{ steps.meta.outputs.version }}
-      
+
       - name: Normalize image name for SBOM
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         id: normalize
         run: |
           # Convert repository name to lowercase for registry compatibility
           NORMALIZED_IMAGE=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.image_suffix }}:latest${{ matrix.image_suffix }}" | tr '[:upper:]' '[:lower:]')
           echo "image=$NORMALIZED_IMAGE" >> $GITHUB_OUTPUT
-      
+
       - name: Generate SBOM
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
           image: ${{ steps.normalize.outputs.image }}
           format: spdx-json
           output-file: sbom-${{ matrix.image_type }}.spdx.json
-      
+
       - name: Upload SBOM
-        if: github.event_name != 'pull_request' && hashFiles('sbom-${{ matrix.image_type }}.spdx.json') != ''
+        if: startsWith(github.ref, 'refs/tags/v') && hashFiles('sbom.spdx.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ matrix.image_type }}
           path: sbom-${{ matrix.image_type }}.spdx.json
-      
+
       - name: Create release summary
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
