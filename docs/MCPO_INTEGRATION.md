@@ -106,9 +106,25 @@ NODE_ENV=production
 
 ### Configuration Files
 
-The project includes three MCPO configuration files:
+The project includes multiple MCPO configuration files for different transports:
 
-#### 1. Production Configuration (`mcpo.config.json`)
+#### 1. Streamable HTTP Transport Configuration (`mcpo.config.json`) - RECOMMENDED
+```json
+{
+  "mcpServers": {
+    "lodgify-mcp": {
+      "type": "streamable-http",
+      "url": "http://localhost:8001/sse",
+      "env": {
+        "LODGIFY_API_KEY": "${LODGIFY_API_KEY}",
+        "LOG_LEVEL": "${LOG_LEVEL:-info}"
+      }
+    }
+  }
+}
+```
+
+#### 2. stdio Transport Configuration (Legacy)
 ```json
 {
   "mcpServers": {
@@ -157,6 +173,70 @@ The project includes three MCPO configuration files:
     }
   }
 }
+```
+
+## Streamable HTTP Transport Setup (Recommended)
+
+The streamable-http transport is the recommended way to connect MCPO to the Lodgify MCP server. This implementation provides a hybrid approach that supports both SSE for traditional MCP clients and direct POST for MCPO compatibility.
+
+### Starting the SSE Server
+
+#### Option 1: Direct Command
+```bash
+# Start SSE server (runs on port 8001)
+bun run dev:sse
+# or for production
+bun run start:sse
+```
+
+#### Option 2: Docker
+```bash
+# With Docker Compose (includes SSE port mapping)
+docker-compose --profile dev up lodgify-mcp-dev
+```
+
+### Configuring MCPO for Streamable HTTP
+
+The `mcpo.docker.json` configuration uses streamable-http transport:
+
+```json
+{
+  "mcpServers": {
+    "lodgify-mcp": {
+      "type": "streamable-http",
+      "url": "http://localhost:8001/sse",
+      "env": {
+        "LODGIFY_API_KEY": "${LODGIFY_API_KEY}",
+        "LOG_LEVEL": "${LOG_LEVEL:-info}"
+      }
+    }
+  }
+}
+```
+
+### Starting MCPO with Streamable HTTP
+
+```bash
+# Start MCPO with streamable-http configuration
+mcpo --port 8000 --config mcpo.docker.json
+
+# Access the server-specific API documentation
+# Note: Tools are exposed under the server namespace
+curl http://localhost:8000/lodgify-mcp/openapi.json
+```
+
+### Verifying SSE Connection
+
+```bash
+# Check SSE server health
+curl http://localhost:8001/health
+
+# Expected response:
+# {
+#   "status": "ok",
+#   "transport": "sse",
+#   "activeSessions": 0
+# }
 ```
 
 ## Usage
@@ -353,7 +433,32 @@ curl -X POST "http://localhost:8000/lodgify/list_properties" \
 
 ### Common Issues
 
-#### 1. MCPO Not Starting
+#### 1. Streamable HTTP Transport Issues (RESOLVED)
+
+**Symptoms**: "null is not an object (evaluating 'propDef._def')" error
+
+**Cause**: MCPO's streamable-http client requires specific handshake
+
+**Solution Implemented**:
+The SSE server (`src/sse-server-simple.ts`) now supports hybrid mode:
+- Handles POST requests without session ID for MCPO initialization
+- Creates sessions dynamically for MCPO connections
+- Supports both SSE streaming and direct JSON-RPC responses
+
+**Verification**:
+```bash
+# Start SSE server
+bun run src/sse-server-simple.ts
+
+# Start MCPO with streamable-http config
+mcpo --config mcpo.docker.json --port 8002
+
+# Verify tools are exposed (under server namespace)
+curl http://localhost:8002/lodgify-mcp/openapi.json | jq '.paths | keys | length'
+# Should show 35+ endpoints
+```
+
+#### 2. MCPO Not Starting
 
 **Symptoms**: `mcpo: command not found`
 

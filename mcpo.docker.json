@@ -1,12 +1,11 @@
 {
   "mcpServers": {
     "lodgify-mcp": {
-      "command": "docker",
-      "args": ["exec", "-i", "lodgify-mcp-server", "node", "dist/server.js"],
+      "type": "streamable-http",
+      "url": "http://localhost:8001/sse",
       "env": {
         "LODGIFY_API_KEY": "${LODGIFY_API_KEY}",
-        "LOG_LEVEL": "${LOG_LEVEL:-info}",
-        "NODE_ENV": "${NODE_ENV:-production}"
+        "LOG_LEVEL": "${LOG_LEVEL:-info}"
       }
     }
   }

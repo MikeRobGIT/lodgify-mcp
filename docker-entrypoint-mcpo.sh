@@ -102,7 +102,14 @@ if [ "$1" = "mcpo" ] || [ "$1" = "mcpo-start" ]; then
     if command -v sed > /dev/null 2>&1; then
         # Create a temporary config with environment variables substituted
         TEMP_CONFIG="/tmp/mcpo.config.json"
-        sed "s/your_lodgify_api_key_here/$LODGIFY_API_KEY/g" "$MCPO_CONFIG" > "$TEMP_CONFIG"
+        # Use envsubst if available, otherwise use sed with escaped values
+        if command -v envsubst > /dev/null 2>&1; then
+            envsubst < "$MCPO_CONFIG" > "$TEMP_CONFIG"
+        else
+            # Escape special characters in the API key for sed
+            ESCAPED_KEY=$(printf '%s\n' "$LODGIFY_API_KEY" | sed 's/[[\.*^$()+?{|]/\\&/g')
+            sed "s/\${LODGIFY_API_KEY}/$ESCAPED_KEY/g; s/\${LOG_LEVEL:-info}/$LOG_LEVEL/g" "$MCPO_CONFIG" > "$TEMP_CONFIG"
+        fi
         MCPO_CONFIG="$TEMP_CONFIG"
         log "Updated configuration with environment variables"
     fi

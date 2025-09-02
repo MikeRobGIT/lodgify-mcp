@@ -18,7 +18,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - MCPO_PORT=${MCPO_PORT:-8000}
       - MCPO_API_KEY=${MCPO_API_KEY:-mcpo-secret-key}
-      - MCPO_CONFIG=/app/mcpo.config.json
+      - MCPO_CONFIG=/app/mcpo.docker.json
+      - LODGIFY_API_KEY=${LODGIFY_API_KEY}
     
     # Port mapping - 8000 for REST API
     ports:
@@ -162,4 +163,4 @@ networks:
     name: lodgify-mcpo-network
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.30.0.0/16
