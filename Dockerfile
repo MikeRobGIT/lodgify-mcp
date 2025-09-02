@@ -40,6 +40,7 @@ WORKDIR /app
 # Copy only production dependencies and built files from builder
 COPY --from=builder --chown=mcpuser:mcpuser /app/node_modules ./node_modules
 COPY --from=builder --chown=mcpuser:mcpuser /app/dist ./dist
+COPY --from=builder --chown=mcpuser:mcpuser /app/src ./src
 COPY --chown=mcpuser:mcpuser package.json ./
 
 # Copy scripts

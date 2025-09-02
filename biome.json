@@ -47,6 +47,15 @@
   "files": {
     "ignoreUnknown": false,
     "includes": ["src/**/*", "tests/**/*", "*.ts", "*.js", "*.json"],
-    "experimentalScannerIgnores": ["node_modules", "dist", ".env", "*.log", "coverage", ".git"]
+    "experimentalScannerIgnores": [
+      "node_modules",
+      "dist",
+      ".env",
+      "*.log",
+      "coverage",
+      ".git",
+      "src/sse-server-simple.ts",
+      "src/sse-server.ts"
+    ]
   }
 }

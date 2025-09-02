@@ -2,7 +2,7 @@
   "mcpServers": {
     "lodgify-mcp": {
       "type": "streamable-http",
-      "url": "http://localhost:8001/sse",
+      "url": "http://sse-server:8001/sse",
       "env": {
         "LODGIFY_API_KEY": "${LODGIFY_API_KEY}",
         "LOG_LEVEL": "${LOG_LEVEL:-info}"

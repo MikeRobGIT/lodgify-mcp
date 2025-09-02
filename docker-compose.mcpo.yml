@@ -1,6 +1,45 @@
 version: '3.8'
 
 services:
+  # SSE Server for MCPO
+  sse-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lodgify-sse-server
+    
+    env_file:
+      - .env
+    
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SSE_PORT=8001
+      - LODGIFY_API_KEY=${LODGIFY_API_KEY}
+    
+    # Port mapping for SSE
+    ports:
+      - "8001:8001"
+    
+    # Command to run SSE server
+    command: ["bun", "run", "src/sse-server-simple.ts"]
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    
+    networks:
+      - mcpo-network
+    
+    profiles:
+      - mcpo
+      - production
+
   # MCPO Proxy Service - Exposes MCP server as REST API
   mcpo-proxy:
     build:
