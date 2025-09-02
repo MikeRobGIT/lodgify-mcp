@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2025-09-02
+
+### Changed
+
+- Simplified CI/CD pipeline by removing redundant npm-publish workflow
+- Now using only tag-based release workflow for more intentional releases
+
+### Technical Details
+
+- Removed npm-publish.yml workflow to prevent duplicate publishing attempts
+- Enforces git tag-based releases as the single source of truth
+
 ## [0.1.4] - 2025-09-02
 
 ### Fixed
