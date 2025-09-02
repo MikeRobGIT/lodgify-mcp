@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2025-09-02
+
+### Fixed
+
+- Resolved GitHub Packages publishing failure due to scope mismatch
+- Package now publishes to GitHub Packages as @MikeRobGIT/lodgify-mcp
+
+### Technical Details
+
+- Workflow temporarily renames package scope for GitHub Packages compatibility
+- Maintains @mikerob scope for npm registry
+- Added GitHub Packages installation instructions to release notes
+
 ## [0.1.6] - 2025-09-02
 
 ### Fixed
