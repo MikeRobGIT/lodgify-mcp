@@ -3,16 +3,16 @@
 **Product**: Lodgify MCP Server
 **Working Directory**: `lodgify-mcp`
 **Owner**: Mike (SE)
-**Version**: v0.1 (Initial)
-**Last Updated**: 2025-08-13
+**Version**: v0.2 (Refactor & Expanded Toolset)
+**Last Updated**: 2025-09-02
 
 ---
 
 ## 1) Summary
 
-Build a Model Context Protocol (MCP) server that exposes key Lodgify Public API v2 endpoints as MCP tools. This enables AI assistants and MCP‑aware IDEs to discover inventory, manage bookings, generate quotes, and retrieve availability/rates programmatically with standardized tool interfaces.
+Build a Model Context Protocol (MCP) server that exposes Lodgify Public API v2 (and selected v1) endpoints as MCP tools. This enables AI assistants and MCP‑aware IDEs to discover inventory, manage bookings, generate quotes, retrieve availability/rates, and receive messaging/webhook functionality via standardized tool interfaces.
 
-**One‑liner**: “Operate Lodgify (v2) via MCP tools.”
+**One‑liner**: “Operate Lodgify (v1+v2) via modular MCP tools.”
 
 ---
 
@@ -25,9 +25,10 @@ Build a Model Context Protocol (MCP) server that exposes key Lodgify Public API 
 * Offer strong error handling (429 backoff, structured errors), minimal configuration, and clean JSON outputs.
 * Ship clear examples and a test harness so Task Master AI can generate sub‑tasks and validations.
 
-### Non‑Goals (v0.1)
+### Non‑Goals (for now)
 
-* Implement Lodgify v1 endpoints (e.g., webhooks) — consider for a later release.
+* Persistent DB/cache layer (beyond in‑memory rate/backoff state).
+* GUI; consumers are MCP clients or programmatic runners.
 * Build a persistent DB/cache layer (beyond in‑memory rate/backoff state).
 * Provide a GUI. (Consumers are MCP clients or programmatic runners.)
 
@@ -35,7 +36,7 @@ Build a Model Context Protocol (MCP) server that exposes key Lodgify Public API 
 
 ## 3) Users & Use Cases
 
-**Primary user**: Developers/agents integrating Lodgify data/actions into workflows (scheduling, quoting, ops dashboards).
+**Primary user**: Developers/agents integrating Lodgify data/actions into workflows (scheduling, quoting, ops dashboards, messaging triage).
 
 **Representative use cases**
 
@@ -48,45 +49,64 @@ Build a Model Context Protocol (MCP) server that exposes key Lodgify Public API 
 ## 4) Assumptions & Constraints
 
 * Access to a valid **Lodgify API key** with the necessary scopes.
-* We will always call `https://api.lodgify.com` (no override).
+* Default base URL is `https://api.lodgify.com`. The orchestrator supports an override (for testing), but no env var is exposed by default.
 * Execution environment: Node.js ≥ 18, network egress to Lodgify.
 * Rate limiting exists; we must gracefully handle HTTP 429 with `Retry-After`.
 
 ---
 
-## 5) Scope (v0.1)
+## 5) Scope (current)
 
 ### Endpoints wrapped as MCP tools
 
-* **Properties**
+Current tool categories (representative list; see docs/API_REFERENCE.md for full details):
 
-  * `lodgify.list_properties` → GET `/v2/properties`
-  * `lodgify.get_property` → GET `/v2/properties/{id}`
-  * `lodgify.list_property_rooms` → GET `/v2/properties/{id}/rooms`
-  * `lodgify.list_deleted_properties` → GET `/v2/deletedProperties`
-* **Rates**
+* **Property Management**
+  * `lodgify_list_properties` → GET `/v2/properties`
+  * `lodgify_get_property` → GET `/v2/properties/{id}`
+  * `lodgify_list_property_rooms` → GET `/v2/properties/{propertyId}/rooms`
+  * `lodgify_find_properties` → helper search across properties(+bookings)
+  * `lodgify_list_deleted_properties` → GET `/v2/deletedProperties`
 
-  * `lodgify.daily_rates` → GET `/v2/rates/calendar`
-  * `lodgify.rate_settings` → GET `/v2/rates/settings`
-* **Reservations / Bookings**
+* **Booking & Reservation Management**
+  * `lodgify_list_bookings` → GET `/v2/reservations/bookings`
+  * `lodgify_get_booking` → GET `/v2/reservations/bookings/{id}`
+  * `lodgify_get_booking_payment_link` → GET `{id}/quote/paymentLink`
+  * `lodgify_create_booking_payment_link` → POST `{id}/quote/paymentLink` (WRITE; read‑only enforced)
+  * `lodgify_update_key_codes` → PUT `{id}/keyCodes` (WRITE; read‑only enforced)
+  * `lodgify_checkin_booking` → PUT `{id}/checkin` (WRITE; read‑only enforced)
+  * `lodgify_checkout_booking` → PUT `{id}/checkout` (WRITE; read‑only enforced)
+  * `lodgify_get_external_bookings` → GET `{id}/externalBookings`
+  * v1 CRUD: `lodgify_create_booking`, `lodgify_update_booking`, `lodgify_delete_booking` (WRITE; read‑only enforced)
 
-  * `lodgify.list_bookings` → GET `/v2/reservations/bookings`
-  * `lodgify.get_booking` → GET `/v2/reservations/bookings/{id}`
-  * `lodgify.get_booking_payment_link` → GET `/v2/reservations/bookings/{id}/quote/paymentLink`
-  * `lodgify.create_booking_payment_link` → POST `/v2/reservations/bookings/{id}/quote/paymentLink`
-  * `lodgify.update_key_codes` → PUT `/v2/reservations/bookings/{id}/keyCodes`
-* **Availability**
+* **Availability & Calendar**
+  * `lodgify_availability_all` → GET `/v2/availability`
+  * `lodgify_get_property_availability` → GET `/v2/availability/{propertyId}`
+  * `lodgify_get_room_availability` → GET `/v2/availability/{propertyId}/{roomTypeId}`
+  * Helpers: `lodgify_check_next_availability`, `lodgify_check_date_range_availability`, `lodgify_get_availability_calendar`
 
-  * `lodgify.availability_room` → GET `/v2/availability/{propertyId}/{roomTypeId}`
-  * `lodgify.availability_property` → GET `/v2/availability/{propertyId}`
-* **Quotes & Messaging**
+* **Rates & Pricing**
+  * `lodgify_daily_rates` → GET `/v2/rates/calendar`
+  * `lodgify_rate_settings` → GET `/v2/rates/settings`
+  * `lodgify_get_quote` → GET `/v2/quote/{propertyId}` (bracket‑notation params)
+  * v1 bulk: `lodgify_update_rates` (WRITE; read‑only enforced)
+  * Booking quote: `lodgify_create_booking_quote` (WRITE; read‑only enforced)
 
-  * `lodgify.get_quote` → GET `/v2/quote/{propertyId}` (supports bracket‑notation query arrays)
-  * `lodgify.get_thread` → GET `/v2/messaging/{threadGuid}`
+* **Messaging & Communication**
+  * `lodgify_get_thread` → GET `/v2/messaging/{threadGuid}`
+  * `lodgify_list_threads` → GET `/v2/messaging`
+  * `lodgify_send_message` → POST `/v2/messaging/{threadGuid}/messages` (WRITE; read‑only enforced)
+  * `lodgify_mark_thread_read` → PUT `/v2/messaging/{threadGuid}/read` (WRITE; read‑only enforced)
+  * `lodgify_archive_thread` → PUT `/v2/messaging/{threadGuid}/archive` (WRITE; read‑only enforced)
+
+* **Webhooks & Notifications (v1)**
+  * `lodgify_list_webhooks` → GET `/webhooks/v1/list`
+  * `lodgify_subscribe_webhook` → POST `/webhooks/v1/subscribe` (WRITE; read‑only enforced)
+  * `lodgify_unsubscribe_webhook` → DELETE `/webhooks/v1/unsubscribe` (WRITE; read‑only enforced)
 
 **Resources**
 
-* `lodgify-health` read‑only resource (`lodgify://health`) for connectivity meta.
+* `lodgify://health` resource for connectivity/health.
 
 ---
 
@@ -103,7 +123,10 @@ Build a Model Context Protocol (MCP) server that exposes key Lodgify Public API 
 
 * **Transport**: MCP over stdio.
 * **Server**: TypeScript + `@modelcontextprotocol/sdk`.
-* **HTTP Client**: Thin wrapper around `fetch` with query flattener (bracket‑notation), JSON handling, and 429 retry.
+* **HTTP Core**: Robust client with query flattener (bracket‑notation), JSON handling, and 429 retry with exponential backoff.
+* **Orchestrator**: `src/lodgify-orchestrator.ts` unifies v1+v2 modules and enforces read‑only on writes.
+* **Date Validation**: Feedback‑based validation for availability/rates/booking tools to help agents self‑correct dates.
+* **Error Handling**: Centralized handler with sanitization, Lodgify error mapping, and safe logging.
 * **Config**: `.env` with `LODGIFY_API_KEY` and optional `LOG_LEVEL`.
 * **Logging**: Console (JSON lines), levels: error | warn | info | debug. (Env: `LOG_LEVEL`.)
 
@@ -113,13 +136,25 @@ Build a Model Context Protocol (MCP) server that exposes key Lodgify Public API 
 
 ```
 lodgify-mcp/
-├─ package.json
-├─ tsconfig.json
-├─ .env.example
-├─ README.md
-└─ src/
-   ├─ server.ts          # MCP server & tool registrations
-   └─ lodgify.ts         # HTTP client and endpoint wrappers
+├─ src/
+│  ├─ server.ts                # Minimal entrypoint (delegates to server-setup)
+│  ├─ lodgify-orchestrator.ts  # Unified v1+v2 orchestrator
+│  ├─ api/
+│  │  ├─ v1/{bookings,rates,webhooks}
+│  │  └─ v2/{properties,bookings,availability,rates,quotes,messaging}
+│  ├─ core/{http,retry,errors}
+│  ├─ mcp/
+│  │  ├─ server-setup.ts
+│  │  ├─ tools/{property,booking,availability,rate,webhook,messaging}-tools.ts
+│  │  ├─ resources/{resources,health-check}.ts
+│  │  ├─ errors/handler.ts
+│  │  ├─ schemas/*
+│  │  └─ utils/*
+│  ├─ env.ts                   # Zod-validated env + read-only
+│  └─ logger.ts                # Pino logger + debug hooks
+├─ tests/                      # Bun tests (unit/integration)
+├─ dist/                       # Build output
+└─ docs/                       # API reference & guides
 ```
 
 ---
@@ -133,19 +168,19 @@ lodgify-mcp/
 
 ### FR‑2: Tool Contracts (Inputs/Outputs)
 
-Each tool exposes **input schema** and returns serialized JSON from Lodgify (pass‑through), wrapped in MCP `{ content: [{ type: "json", json }] }`.
+Each tool exposes a **Zod input schema** and returns Lodgify JSON as a stringified payload via MCP `{ content: [{ type: "text", text }] }` (sanitized where appropriate).
 
 **Examples (abridged)**
 
-* `lodgify.list_properties`
+* `lodgify_list_properties`
 
   * **Input**: `{ params?: Record<string, any> }`
   * **Output**: Lodgify list payload (array/paged) → pass‑through JSON.
-* `lodgify.get_quote`
+* `lodgify_get_quote`
 
   * **Input**: `{ propertyId: string, params: Record<string, any> }` where params may include `roomTypes[0].Id`, `guest_breakdown`, `addOns[0].Id`, `from`, `to`, etc.
   * **Output**: Quote calculation JSON.
-* `lodgify.update_key_codes`
+* `lodgify_update_key_codes`
 
   * **Input**: `{ id: string, payload: object }` (payload shape per Lodgify docs).
   * **Output**: Updated booking object or status JSON.
@@ -164,14 +199,14 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
 
 ### FR‑5: Health Resource
 
-* `lodgify://health` returns `{ ok: true, baseUrl: "https://api.lodgify.com" }`.
+* `lodgify://health` returns connection metadata (status, timestamp, version, API connectivity).
 
 ---
 
 ## 10) Non‑Functional Requirements
 
 * **Performance**: Add minimal overhead; per‑call latency dominated by Lodgify.
-* **Security**: Do not log raw API keys or PII. Mask obvious sensitive fields in errors/logs.
+* **Security**: Do not log raw API keys or PII. Mask obvious sensitive fields in errors/logs. Read‑only mode blocks all writes.
 * **Reliability**: Handle network errors with retry (except non‑retryable statuses 4xx other than 429).
 * **Maintainability**: Clear separation of MCP server and HTTP client. Typed interfaces and zod validation.
 
@@ -181,25 +216,46 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
 
 ```jsonc
 [
-  { "name": "lodgify.list_properties", "desc": "GET /v2/properties", "input": {"params?": "object"} },
-  { "name": "lodgify.get_property", "desc": "GET /v2/properties/{id}", "input": {"id": "string"} },
-  { "name": "lodgify.list_property_rooms", "desc": "GET /v2/properties/{id}/rooms", "input": {"propertyId": "string"} },
-  { "name": "lodgify.list_deleted_properties", "desc": "GET /v2/deletedProperties", "input": {"params?": "object"} },
+  { "name": "lodgify_list_properties", "desc": "GET /v2/properties" },
+  { "name": "lodgify_get_property", "desc": "GET /v2/properties/{id}" },
+  { "name": "lodgify_list_property_rooms", "desc": "GET /v2/properties/{id}/rooms" },
+  { "name": "lodgify_find_properties", "desc": "Helper: discover properties" },
+  { "name": "lodgify_list_deleted_properties", "desc": "GET /v2/deletedProperties" },
 
-  { "name": "lodgify.daily_rates", "desc": "GET /v2/rates/calendar", "input": {"params": "object"} },
-  { "name": "lodgify.rate_settings", "desc": "GET /v2/rates/settings", "input": {"params": "object"} },
+  { "name": "lodgify_list_bookings", "desc": "GET /v2/reservations/bookings" },
+  { "name": "lodgify_get_booking", "desc": "GET /v2/reservations/bookings/{id}" },
+  { "name": "lodgify_get_booking_payment_link", "desc": "GET /v2/reservations/bookings/{id}/quote/paymentLink" },
+  { "name": "lodgify_create_booking_payment_link", "desc": "POST /v2/reservations/bookings/{id}/quote/paymentLink" },
+  { "name": "lodgify_update_key_codes", "desc": "PUT /v2/reservations/bookings/{id}/keyCodes" },
+  { "name": "lodgify_checkin_booking", "desc": "PUT /v2/reservations/bookings/{id}/checkin" },
+  { "name": "lodgify_checkout_booking", "desc": "PUT /v2/reservations/bookings/{id}/checkout" },
+  { "name": "lodgify_get_external_bookings", "desc": "GET /v2/reservations/bookings/{id}/externalBookings" },
+  { "name": "lodgify_create_booking", "desc": "POST /v1/reservation/booking" },
+  { "name": "lodgify_update_booking", "desc": "PUT /v1/reservation/booking/{id}" },
+  { "name": "lodgify_delete_booking", "desc": "DELETE /v1/reservation/booking/{id}" },
 
-  { "name": "lodgify.list_bookings", "desc": "GET /v2/reservations/bookings", "input": {"params?": "object"} },
-  { "name": "lodgify.get_booking", "desc": "GET /v2/reservations/bookings/{id}", "input": {"id": "string"} },
-  { "name": "lodgify.get_booking_payment_link", "desc": "GET /v2/reservations/bookings/{id}/quote/paymentLink", "input": {"id": "string"} },
-  { "name": "lodgify.create_booking_payment_link", "desc": "POST /v2/reservations/bookings/{id}/quote/paymentLink", "input": {"id": "string", "payload": "object"} },
-  { "name": "lodgify.update_key_codes", "desc": "PUT /v2/reservations/bookings/{id}/keyCodes", "input": {"id": "string", "payload": "object"} },
+  { "name": "lodgify_availability_all", "desc": "GET /v2/availability" },
+  { "name": "lodgify_get_property_availability", "desc": "GET /v2/availability/{propertyId}" },
+  { "name": "lodgify_get_room_availability", "desc": "GET /v2/availability/{propertyId}/{roomTypeId}" },
+  { "name": "lodgify_check_next_availability", "desc": "Helper: next available date range" },
+  { "name": "lodgify_check_date_range_availability", "desc": "Helper: range conflict check" },
+  { "name": "lodgify_get_availability_calendar", "desc": "Helper: calendar view" },
 
-  { "name": "lodgify.availability_room", "desc": "GET /v2/availability/{propertyId}/{roomTypeId}", "input": {"propertyId": "string", "roomTypeId": "string", "params?": "object"} },
-  { "name": "lodgify.availability_property", "desc": "GET /v2/availability/{propertyId}", "input": {"propertyId": "string", "params?": "object"} },
+  { "name": "lodgify_daily_rates", "desc": "GET /v2/rates/calendar" },
+  { "name": "lodgify_rate_settings", "desc": "GET /v2/rates/settings" },
+  { "name": "lodgify_get_quote", "desc": "GET /v2/quote/{propertyId}" },
+  { "name": "lodgify_update_rates", "desc": "POST /v1/rates/savewithoutavailability" },
+  { "name": "lodgify_create_booking_quote", "desc": "POST /v2/reservations/bookings/{id}/quote" },
 
-  { "name": "lodgify.get_quote", "desc": "GET /v2/quote/{propertyId}", "input": {"propertyId": "string", "params": "object"} },
-  { "name": "lodgify.get_thread", "desc": "GET /v2/messaging/{threadGuid}", "input": {"threadGuid": "string"} }
+  { "name": "lodgify_get_thread", "desc": "GET /v2/messaging/{threadGuid}" },
+  { "name": "lodgify_list_threads", "desc": "GET /v2/messaging" },
+  { "name": "lodgify_send_message", "desc": "POST /v2/messaging/{threadGuid}/messages" },
+  { "name": "lodgify_mark_thread_read", "desc": "PUT /v2/messaging/{threadGuid}/read" },
+  { "name": "lodgify_archive_thread", "desc": "PUT /v2/messaging/{threadGuid}/archive" },
+
+  { "name": "lodgify_list_webhooks", "desc": "GET /webhooks/v1/list" },
+  { "name": "lodgify_subscribe_webhook", "desc": "POST /webhooks/v1/subscribe" },
+  { "name": "lodgify_unsubscribe_webhook", "desc": "DELETE /webhooks/v1/unsubscribe" }
 ]
 ```
 
@@ -212,6 +268,8 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
   ```bash
   LODGIFY_API_KEY=your_api_key_here
   LOG_LEVEL=info
+  DEBUG_HTTP=0
+  LODGIFY_READ_ONLY=1
   ```
 * No base URL env var; always `https://api.lodgify.com`.
 
@@ -249,7 +307,7 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
 
 ## 16) Testing & QA
 
-* **Unit**: `lodgify.ts` request layer (429 backoff, query flattening, error shape).
+* **Unit**: HTTP/core layers (429 backoff, query flattening, error shape), orchestrator read‑only, module clients.
 * **Integration (live or mocked)**: Hit each tool with a sample input and assert basic invariants (status OK, required fields).
 * **Contract tests**: Golden files for tool outputs (sanitized) to catch regressions.
 * **Smoke script**: Node script that sequentially calls all tools using a test key.
@@ -259,8 +317,8 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
 ## 17) Release Plan
 
 * v0.1: Core tools + docs + tests.
-* v0.2: Add more v2 coverage (e.g., additional booking operations) and typed response narrowing.
-* v0.3: Optional webhook relay (if we decide to support v1 webhooks).
+* v0.2: Refactor to orchestrator + registries; add v1 CRUD, webhooks, messaging tools, availability helpers.
+* v0.3+: Optional enhancements (webhook relay, cache, additional v2 writes).
 
 **Compatibility**: Semantic versioning; breaking tool signature changes → major.
 
@@ -296,7 +354,7 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
 
 ## 21) Acceptance Criteria (high‑level)
 
-* Given a valid API key, when the server launches, **then** the `lodgify-health` resource returns `{ ok: true }`.
+* Given a valid API key, when the server launches, **then** the `lodgify://health` resource returns a healthy status and API connectivity.
 * Given the tools above, when invoked with valid inputs, **then** they complete with 2xx and return Lodgify JSON.
 * Given a 429 response, **then** the client retries with backoff and respects `Retry-After` if present.
 * Given malformed input, **then** zod returns descriptive validation errors.
@@ -338,10 +396,10 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
 
 ```
 # List properties
-{"tool": "lodgify.list_properties", "arguments": {"params": {"perPage": 50}}}
+{"tool": "lodgify_list_properties", "arguments": {"page": 1, "size": 50}}
 
 # Get quote (illustrative; params depend on account setup)
-{"tool": "lodgify.get_quote", "arguments": {
+{"tool": "lodgify_get_quote", "arguments": {
   "propertyId": "12345",
   "params": {
     "from": "2025-11-20",
@@ -353,7 +411,7 @@ Each tool exposes **input schema** and returns serialized JSON from Lodgify (pas
 }}
 
 # Create booking payment link
-{"tool": "lodgify.create_booking_payment_link", "arguments": {
+{"tool": "lodgify_create_booking_payment_link", "arguments": {
   "id": "abc-123",
   "payload": {"amount": 50000, "currency": "USD"}
 }}

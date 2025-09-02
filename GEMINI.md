@@ -1,6 +1,6 @@
-# AGENTS.md
+# GEMINI.md
 
-This file provides guidance to AI coding agents (e.g., Claude, Gemini, and other code assistants) when working with code in this repository.
+This file provides guidance to Gemini Code Assist when working with code in this repository.
 
 ## Project Overview
 
@@ -192,9 +192,9 @@ When testing the MCP server during development:
 2) Restart locally via:
    - `bun dev` (hot re-run) or
    - `bun run build && bun start` (from `dist/`).
-3) If using an MCP client (e.g., your AI agent or VS Code), restart the MCP session after code changes. Hot-reload is not supported.
+3) If using an MCP client (e.g., Gemini or VS Code), restart the MCP session after code changes. Hot-reload is not supported.
 4) For CLI testing, re-run `bin/lodgify-mcp.js` after each change.
 
 ## Task Master AI Instructions
 
-Import Task Master's development workflow commands and guidelines, treat as if import is in the main AGENTS.md file.
+Import Task Master's development workflow commands and guidelines, treat as if import is in the main GEMINI.md file.
