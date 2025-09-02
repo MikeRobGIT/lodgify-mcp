@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2025-01-02
+
+### Fixed
+
+- **Critical**: Resolved production MCP server startup issues that prevented the server from running via npx/bunx
+- Fixed dotenv library output interfering with MCP's JSON communication protocol
+- Fixed ES module import handling in bin script for better error recovery
+
+### Technical Details
+
+- Suppressed dotenv console output by temporarily overriding console.log during config() call
+- Enhanced bin/lodgify-mcp.js with proper ES module dynamic import and error handling
+- Prevents "[dotenv@17.x.x] injecting env..." messages from breaking MCP JSON protocol
+
 ## [0.1.7] - 2025-09-02
 
 ### Fixed
