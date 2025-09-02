@@ -48,8 +48,8 @@ async function main() {
   }
 }
 
-// Export for testing
-export { setupServer }
+// Export for testing and bin script
+export { setupServer, main }
 
 // Run if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2025-09-02
+
+### Fixed
+
+- Fixed "main is not a function" error in production MCP server by exporting main function from server.ts
+- Resolved npx/bunx execution issues for global installations
+
+### Changed
+
+- Enhanced response schemas with consistent object structure formatting
+- Updated custom quote tool description to clarify limitations
+- Improved documentation and configuration files
+
+### Technical Details
+
+- Added main function export to support bin script execution
+- Streamlined Lodgify MCP entry point
+- Updated GitHub Actions workflows for improved CI/CD
+
 ## [0.1.3] - 2025-09-01
 
 ### Changed
