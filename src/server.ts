@@ -10,8 +10,12 @@ import { config } from 'dotenv'
 import { safeLogger } from './logger.js'
 import { setupServer, startServer } from './mcp/server-setup.js'
 
-// Load environment variables
+// Load environment variables (suppress console output for MCP compatibility)
+// Temporarily override console.log to prevent dotenv from outputting to stdout
+const originalConsoleLog = console.log
+console.log = () => {} // Suppress output
 config()
+console.log = originalConsoleLog // Restore console.log
 
 /**
  * Main entry point for the refactored Lodgify MCP server
