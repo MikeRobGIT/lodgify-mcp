@@ -127,14 +127,16 @@ jobs:
         with:
           node-version: 20
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@mikerobgit'
 
       - name: Publish to GitHub Packages
         run: |
           echo "Publishing to GitHub Packages..."
-          # The package.json already has the correct scoped name @mikerob/lodgify-mcp
-          # GitHub Packages requires the scope to match the owner (case-insensitive)
-          npm publish --access public
+          # Configure npm to use GitHub Packages for the @mikerob scope
+          echo "@mikerob:registry=https://npm.pkg.github.com" > ~/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
+          
+          # Publish the package
+          npm publish --access public --registry https://npm.pkg.github.com
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
