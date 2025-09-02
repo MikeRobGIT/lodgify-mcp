@@ -51,3 +51,7 @@ mcp_options.json
 
 # Task Master files
 .taskmaster/
+
+# Task files
+tasks.json
+tasks/ 
