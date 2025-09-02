@@ -2,13 +2,7 @@
   "mcpServers": {
     "lodgify-mcp": {
       "command": "docker",
-      "args": [
-        "exec",
-        "-i",
-        "lodgify-mcp-server",
-        "node",
-        "dist/server.js"
-      ],
+      "args": ["exec", "-i", "lodgify-mcp-server", "node", "dist/server.js"],
       "env": {
         "LODGIFY_API_KEY": "${LODGIFY_API_KEY}",
         "LOG_LEVEL": "${LOG_LEVEL:-info}",
