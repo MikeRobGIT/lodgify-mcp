@@ -457,13 +457,13 @@ Use different versions for different projects:
 
 ```bash
 # Install specific version
-npm install @mikerob/lodgify-mcp@1.2.3
+npm install @mikerob/lodgify-mcp@0.1.9
 
 # Use specific version with npx
-npx @mikerob/lodgify-mcp@1.2.3
+npx @mikerob/lodgify-mcp@0.1.9
 
 # Use specific version with bunx  
-bunx @mikerob/lodgify-mcp@1.2.3
+bunx @mikerob/lodgify-mcp@0.1.9
 ```
 
 ## Performance Considerations

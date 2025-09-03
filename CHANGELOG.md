@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2025-09-03
+
+### Changed
+
+- **Breaking**: Removed obsolete `bin/` directory and consolidated server executable to `dist/server.js`
+- Updated CLI testing commands from `bin/lodgify-mcp.js` to `node dist/server.js` across all documentation
+- Streamlined package.json bin configuration to use `dist/server.js` directly
+
+### Technical Details
+
+- Removed 19-line redundant `bin/lodgify-mcp.js` wrapper script
+- Updated CI/CD workflows to remove bin directory references
+- Modified server entry point to always run main function when executed as bin script
+- Enhanced server startup consistency for bunx, npx, and direct execution
+- Cleaned up Docker and workflow configurations to align with new structure
+
 ## [0.1.8] - 2025-01-02
 
 ### Fixed
