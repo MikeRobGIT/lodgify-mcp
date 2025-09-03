@@ -84,3 +84,22 @@ Bump the package version and prepare for release. Usage: `/bump-version [patch|m
   - Documentation updates → "Changed" or separate "Documentation" section
   - Test additions → "Technical Details"
   - Security-related changes → "Security"
+
+## Release Checklist
+
+After running this command successfully:
+
+1. ✅ **Local Changes Complete**:
+   - package.json version updated
+   - CHANGELOG.md updated with new version entry
+   - Changes committed with message "chore: bump version to X.X.X"
+   - Git tag vX.X.X created
+
+2. ✅ **Remote Repository Updated**:
+   - Commits pushed to GitHub
+   - Tags pushed to GitHub
+
+3. ✅ **Automated Release Process**:
+   - GitHub Actions workflow triggered by new tag
+   - NPM package built and published to `@mikerob/lodgify-mcp`
+   - Release created on GitHub with changelog
