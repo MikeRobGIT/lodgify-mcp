@@ -5,7 +5,6 @@ WORKDIR /app
 COPY package.json bun.lockb* ./
 RUN bun install --frozen-lockfile
 COPY src ./src
-COPY bin ./bin
 COPY tsconfig.json ./
 RUN bun run build
 
@@ -18,7 +17,6 @@ WORKDIR /app
 
 # Copy built files and dependencies
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/bin ./bin
 COPY --from=builder /app/node_modules ./node_modules
 COPY package.json ./
 

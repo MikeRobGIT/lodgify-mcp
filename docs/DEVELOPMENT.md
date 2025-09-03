@@ -303,7 +303,7 @@ describe('myTool', () => {
    LOG_LEVEL=debug DEBUG_HTTP=1 bun dev
    ```
 3. For MCP client testing, restart the client after code changes
-4. Use CLI testing: `bin/lodgify-mcp.js` for quick validation
+4. Use CLI testing: `node dist/server.js` for quick validation
 
 ### Common Debug Scenarios
 

@@ -67,15 +67,13 @@ jobs:
           echo "Checking required files..."
           [ -f "dist/server.js" ] || (echo "❌ dist/server.js not found" && exit 1)
           [ -f "dist/lodgify-orchestrator.js" ] || (echo "❌ dist/lodgify-orchestrator.js not found" && exit 1)
-          [ -f "bin/lodgify-mcp.js" ] || (echo "❌ bin/lodgify-mcp.js not found" && exit 1)
-          [ -x "bin/lodgify-mcp.js" ] || (echo "❌ bin/lodgify-mcp.js not executable" && exit 1)
-          echo "✅ All required files present and executable"
+          echo "✅ All required files present"
 
-      - name: Test bin wrapper
+      - name: Test server initialization
         run: |
-          echo "Testing bin wrapper with initialization..."
-          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"1.0.0","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | timeout 2 node bin/lodgify-mcp.js || true
-          echo "✅ Bin wrapper test passed"
+          echo "Testing server with initialization..."
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"1.0.0","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | timeout 2 node dist/server.js || true
+          echo "✅ Server test passed"
         env:
           LODGIFY_API_KEY: test-api-key
 
