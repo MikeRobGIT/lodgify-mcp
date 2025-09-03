@@ -1,8 +1,14 @@
 # Bump Version Command
 
-Bump the package version and update the changelog. Usage: `/bump-version [patch|minor|major]`
+Bump the package version and prepare for release. Usage: `/bump-version [patch|minor|major]`
 
-**IMPORTANT**: This command prepares the version bump and creates git commits/tags. The actual npm package publishing is handled automatically by CI/CD when tags are pushed. Never run `npm publish` or `bun publish` manually.
+## Release Process Overview
+
+1. **This command handles**: Version bump, changelog update, git commit, and tag creation
+2. **CI/CD handles**: NPM package publishing when tags are pushed to GitHub
+3. **You should NEVER**: Run `npm publish` or `bun publish` manually
+
+**IMPORTANT**: The actual npm package publishing to `@mikerob/lodgify-mcp` is handled automatically by GitHub Actions CI/CD when version tags (e.g., v0.1.11) are pushed.
 
 ## Steps
 
