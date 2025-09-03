@@ -55,10 +55,9 @@ async function main() {
 // Export for testing and bin script
 export { setupServer, main }
 
-// Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    safeLogger.error('Fatal error:', error)
-    process.exit(1)
-  })
-}
+// Always run when used as bin script
+// This ensures the server starts when executed via bunx, npx, or directly
+main().catch((error) => {
+  safeLogger.error('Fatal error:', error)
+  process.exit(1)
+})
