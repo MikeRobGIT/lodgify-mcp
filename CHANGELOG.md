@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2025-09-03
+
+### Changed
+
+- **Enhanced Error Handling**: All 35 MCP tool handlers now use comprehensive error wrapping for consistent error reporting
+- Improved error serialization to prevent "[object Object]" from appearing in error responses
+- Better handling of LodgifyError objects with detailed error messages including status codes and API details
+- Enhanced debugging information when DEBUG_HTTP environment variable is enabled
+
+### Technical Details
+
+- Applied `wrapToolHandler` utility consistently across all tool modules (property, availability, booking, rate, webhook, messaging)
+- Added proper HTTP status code mapping to MCP error codes for better error categorization
+- Improved error context preservation with tool names and additional error metadata
+- Removed obsolete test files (test-booking.js, test-refactored.js) that were no longer in use
+
 ## [0.1.9] - 2025-09-03
 
 ### Changed
