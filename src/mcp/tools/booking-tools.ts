@@ -109,7 +109,10 @@ Example response:
             .describe('Include details about transactions and schedule'),
           includeExternal: z.boolean().default(false).describe('Include external bookings'),
           includeQuoteDetails: z.boolean().default(false).describe('Include quote details'),
-          trash: z.enum(['False', 'True', 'All']).optional().describe('Query bookings that are in trash'),
+          trash: z
+            .enum(['False', 'True', 'All'])
+            .optional()
+            .describe('Query bookings that are in trash'),
         },
       },
       handler: wrapToolHandler(async (params) => {
