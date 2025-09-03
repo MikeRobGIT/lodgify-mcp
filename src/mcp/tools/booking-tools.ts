@@ -105,7 +105,7 @@ Example response:
           trash: TrashFilterEnum.optional().describe('Query bookings that are in trash'),
         },
       },
-      handler: async (params) => {
+      handler: wrapToolHandler(async (params) => {
         // Map MCP parameters to API parameters
         const mappedParams: BookingSearchParams = {}
         if (params.size !== undefined) mappedParams.limit = params.size
@@ -131,7 +131,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_list_bookings'),
     },
 
     // Get Booking Details Tool
@@ -146,7 +146,7 @@ Example response:
           id: z.string().min(1).describe('Unique booking/reservation ID to retrieve'),
         },
       },
-      handler: async ({ id }) => {
+      handler: wrapToolHandler(async ({ id }) => {
         const result = await getClient().bookings.getBooking(id)
         return {
           content: [
@@ -156,7 +156,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_get_booking'),
     },
 
     // Get Booking Payment Link Tool
@@ -328,7 +328,7 @@ Example response:
           id: z.string().min(1).describe('Property ID to get external bookings for'),
         },
       },
-      handler: async ({ id }) => {
+      handler: wrapToolHandler(async ({ id }) => {
         const result = await getClient().bookings.getExternalBookings(id)
         return {
           content: [
@@ -338,7 +338,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_get_external_bookings'),
     },
 
     // Create Booking Tool (V1)
@@ -419,7 +419,7 @@ The transformation handles: guest name splitting, room structuring, status capit
           notes: z.string().optional().describe('Internal notes or special requests'),
         },
       },
-      handler: async (params) => {
+      handler: wrapToolHandler(async (params) => {
         // Validate arrival and departure dates
         const validator = createValidator(DateToolCategory.BOOKING)
         const rangeValidation = validator.validateDateRange(params.arrival, params.departure)
@@ -506,7 +506,7 @@ The transformation handles: guest name splitting, room structuring, status capit
             },
           ],
         }
-      },
+      }, 'lodgify_create_booking'),
     },
 
     // Update Booking Tool (V1)
@@ -549,7 +549,7 @@ This gets automatically transformed to the nested API structure with guest objec
           notes: z.string().optional().describe('Updated notes'),
         },
       },
-      handler: async (params) => {
+      handler: wrapToolHandler(async (params) => {
         const { id, ...updates } = params
         // Validate/sanitize dates if both are present on update (keep single-date updates as-is)
         const sanitizedUpdates = { ...updates }
@@ -587,7 +587,7 @@ This gets automatically transformed to the nested API structure with guest objec
             },
           ],
         }
-      },
+      }, 'lodgify_update_booking'),
     },
 
     // Delete Booking Tool (V1)
