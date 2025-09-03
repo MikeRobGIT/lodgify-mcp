@@ -8,7 +8,6 @@ on:
       - 'beta/*'
     paths:
       - 'src/**'
-      - 'bin/**'
       - 'package.json'
       - 'tsconfig.json'
   workflow_dispatch:
@@ -82,8 +81,6 @@ jobs:
         run: |
           echo "Verifying build artifacts..."
           [ -f "dist/server.js" ] || exit 1
-          [ -f "bin/lodgify-mcp.js" ] || exit 1
-          [ -x "bin/lodgify-mcp.js" ] || exit 1
           echo "✅ Build verification passed"
       
       - name: Determine pre-release tag

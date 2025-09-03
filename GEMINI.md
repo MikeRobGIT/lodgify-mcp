@@ -193,7 +193,7 @@ When testing the MCP server during development:
    - `bun dev` (hot re-run) or
    - `bun run build && bun start` (from `dist/`).
 3) If using an MCP client (e.g., Gemini or VS Code), restart the MCP session after code changes. Hot-reload is not supported.
-4) For CLI testing, re-run `bin/lodgify-mcp.js` after each change.
+4) For CLI testing, re-run `node dist/server.js` after each change.
 
 ## Task Master AI Instructions
 

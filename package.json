@@ -1,15 +1,14 @@
 {
   "name": "@mikerob/lodgify-mcp",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Model Context Protocol server for Lodgify Public API - Expose Lodgify endpoints as MCP tools for AI assistants",
   "type": "module",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
   "bin": {
-    "lodgify-mcp": "bin/lodgify-mcp.js"
+    "lodgify-mcp": "dist/server.js"
   },
   "files": [
-    "bin/",
     "dist/",
     "README.md",
     "LICENSE",
@@ -17,7 +16,7 @@
   ],
   "scripts": {
     "dev": "bun src/server.ts",
-    "build": "tsc --strict true && chmod +x dist/server.js && chmod +x bin/lodgify-mcp.js",
+    "build": "tsc --strict true && chmod +x dist/server.js",
     "start": "node dist/server.js",
     "check": "bun run lint --fix && bun run typecheck && bun run format && bun run build && bun run test",
     "test": "bun test",
