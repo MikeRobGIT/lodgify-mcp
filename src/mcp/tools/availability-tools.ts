@@ -7,7 +7,8 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { AvailabilityQueryParams } from '../../api/v2/availability/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
-import { DateStringSchema } from '../schemas/common.js'
+// Note: Schemas are inlined directly to avoid $ref issues with MCPO
+// Previously imported DateStringSchema from '../schemas/common.js'
 import {
   createValidator,
   DateToolCategory,
@@ -196,9 +197,11 @@ Example response:
 }`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID'),
-          fromDate: DateStringSchema.optional().describe(
-            'Start date to check from (YYYY-MM-DD). Defaults to today if not provided.',
-          ),
+          fromDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .optional()
+            .describe('Start date to check from (YYYY-MM-DD). Defaults to today if not provided.'),
           daysToCheck: z
             .number()
             .min(1)
@@ -274,8 +277,14 @@ Example request:
 }`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID to check availability for'),
-          checkInDate: DateStringSchema.describe('Desired check-in date (YYYY-MM-DD)'),
-          checkOutDate: DateStringSchema.describe('Desired check-out date (YYYY-MM-DD)'),
+          checkInDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .describe('Desired check-in date (YYYY-MM-DD)'),
+          checkOutDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .describe('Desired check-out date (YYYY-MM-DD)'),
         },
       },
       handler: wrapToolHandler(async ({ propertyId, checkInDate, checkOutDate }) => {
@@ -360,9 +369,11 @@ Example request:
 }`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID to get calendar for'),
-          fromDate: DateStringSchema.optional().describe(
-            'Calendar start date (YYYY-MM-DD). Defaults to today',
-          ),
+          fromDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .optional()
+            .describe('Calendar start date (YYYY-MM-DD). Defaults to today'),
           daysToShow: z
             .number()
             .min(1)
