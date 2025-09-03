@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 // Types from messaging API (imported for reference but not used in declarations)
+import { wrapToolHandler } from '../utils/error-wrapper.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Messaging & Communication'
@@ -30,7 +31,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             .describe('Unique thread identifier (GUID) for the conversation'),
         },
       },
-      handler: async ({ threadGuid }) => {
+      handler: wrapToolHandler(async ({ threadGuid }) => {
         const result = await getClient().messaging.getThread(threadGuid)
         return {
           content: [
@@ -40,7 +41,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             },
           ],
         }
-      },
+      }, 'lodgify_get_thread'),
     },
 
     // List threads tool
@@ -62,7 +63,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             .optional(),
         },
       },
-      handler: async ({ params }) => {
+      handler: wrapToolHandler(async ({ params }) => {
         const result = await getClient().listThreads(params)
         return {
           content: [
@@ -72,7 +73,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             },
           ],
         }
-      },
+      }, 'lodgify_list_threads'),
     },
 
     // Send message tool (WRITE)
@@ -101,7 +102,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             .describe('Message payload'),
         },
       },
-      handler: async ({ threadGuid, message }) => {
+      handler: wrapToolHandler(async ({ threadGuid, message }) => {
         const result = await getClient().sendMessage(threadGuid, message)
         return {
           content: [
@@ -111,7 +112,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             },
           ],
         }
-      },
+      }, 'lodgify_send_message'),
     },
 
     // Mark thread as read (WRITE)
@@ -126,7 +127,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
           threadGuid: z.string().min(1).describe('Thread GUID'),
         },
       },
-      handler: async ({ threadGuid }) => {
+      handler: wrapToolHandler(async ({ threadGuid }) => {
         const result = await getClient().markThreadAsRead(threadGuid)
         return {
           content: [
@@ -136,7 +137,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             },
           ],
         }
-      },
+      }, 'lodgify_mark_thread_read'),
     },
 
     // Archive thread (WRITE)
@@ -151,7 +152,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
           threadGuid: z.string().min(1).describe('Thread GUID'),
         },
       },
-      handler: async ({ threadGuid }) => {
+      handler: wrapToolHandler(async ({ threadGuid }) => {
         const result = await getClient().archiveThread(threadGuid)
         return {
           content: [
@@ -161,7 +162,7 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
             },
           ],
         }
-      },
+      }, 'lodgify_archive_thread'),
     },
   ]
 }

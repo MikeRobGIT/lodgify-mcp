@@ -7,6 +7,7 @@ import { z } from 'zod'
 import type { WebhookSubscribeRequest } from '../../api/v1/webhooks/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { WebhookEventEnum } from '../schemas/common.js'
+import { wrapToolHandler } from '../utils/error-wrapper.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Webhooks & Notifications'
@@ -40,7 +41,7 @@ Example response:
 }`,
         inputSchema: {},
       },
-      handler: async () => {
+      handler: wrapToolHandler(async () => {
         const result = await getClient().webhooks.listWebhooks()
         return {
           content: [
@@ -50,7 +51,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_list_webhooks'),
     },
 
     // Subscribe webhook tool
@@ -86,7 +87,7 @@ Example request:
             .describe('HTTPS URL endpoint to receive webhook notifications'),
         },
       },
-      handler: async ({ event, target_url }) => {
+      handler: wrapToolHandler(async ({ event, target_url }) => {
         const subscribeData: WebhookSubscribeRequest = {
           event,
           target_url,
@@ -100,7 +101,7 @@ Example request:
             },
           ],
         }
-      },
+      }, 'lodgify_subscribe_webhook'),
     },
 
     // Unsubscribe webhook tool
@@ -119,7 +120,7 @@ Example request:
           id: z.string().min(1).describe('Webhook subscription ID to remove'),
         },
       },
-      handler: async ({ id }) => {
+      handler: wrapToolHandler(async ({ id }) => {
         await getClient().unsubscribeWebhook({ id })
         return {
           content: [
@@ -129,7 +130,7 @@ Example request:
             },
           ],
         }
-      },
+      }, 'lodgify_unsubscribe_webhook'),
     },
   ]
 }

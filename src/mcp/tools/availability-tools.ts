@@ -14,6 +14,7 @@ import {
   type DateValidationInfo,
   DateValidator,
 } from '../utils/date-validator.js'
+import { wrapToolHandler } from '../utils/error-wrapper.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -47,7 +48,7 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
             .describe('Optional query parameters for filtering availabilities'),
         },
       },
-      handler: async ({ params }) => {
+      handler: wrapToolHandler(async ({ params }) => {
         const queryParams: AvailabilityQueryParams = {
           from: params?.start,
           to: params?.end,
@@ -61,7 +62,7 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
             },
           ],
         }
-      },
+      }, 'lodgify_availability_all'),
     },
 
     // Get Property Availability Tool
@@ -82,7 +83,7 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
             .optional(),
         },
       },
-      handler: async ({ propertyId, params }) => {
+      handler: wrapToolHandler(async ({ propertyId, params }) => {
         const queryParams: AvailabilityQueryParams = {
           from: params?.from,
           to: params?.to,
@@ -99,7 +100,7 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
             },
           ],
         }
-      },
+      }, 'lodgify_get_property_availability'),
     },
 
     // Get Room Availability Tool
@@ -120,7 +121,7 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
             .optional(),
         },
       },
-      handler: async ({ propertyId, roomTypeId, params }) => {
+      handler: wrapToolHandler(async ({ propertyId, roomTypeId, params }) => {
         const queryParams: AvailabilityQueryParams = {
           from: params?.from,
           to: params?.to,
@@ -138,7 +139,7 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
             },
           ],
         }
-      },
+      }, 'lodgify_get_room_availability'),
     },
 
     // Check Next Availability Tool
@@ -181,7 +182,7 @@ Example response:
             .describe('Number of days to check ahead (1-365). Defaults to 90 days.'),
         },
       },
-      handler: async ({ propertyId, fromDate, daysToCheck }) => {
+      handler: wrapToolHandler(async ({ propertyId, fromDate, daysToCheck }) => {
         let validatedFromDate = fromDate
         let dateValidationInfo: DateValidationInfo | null = null
 
@@ -229,7 +230,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_check_next_availability'),
     },
 
     // Check Date Range Availability Tool
@@ -246,7 +247,7 @@ Example response:
           checkOutDate: DateStringSchema.describe('Desired check-out date (YYYY-MM-DD)'),
         },
       },
-      handler: async ({ propertyId, checkInDate, checkOutDate }) => {
+      handler: wrapToolHandler(async ({ propertyId, checkInDate, checkOutDate }) => {
         const validator = createValidator(DateToolCategory.AVAILABILITY)
         const rangeValidation = validator.validateDateRange(checkInDate, checkOutDate)
 
@@ -309,7 +310,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_check_date_range_availability'),
     },
 
     // Get Availability Calendar Tool
@@ -333,7 +334,7 @@ Example response:
             .describe('Number of days to display (1-90). Default: 30 days'),
         },
       },
-      handler: async ({ propertyId, fromDate, daysToShow }) => {
+      handler: wrapToolHandler(async ({ propertyId, fromDate, daysToShow }) => {
         let validatedFromDate = fromDate
         let dateValidationInfo: DateValidationInfo | null = null
 
@@ -381,7 +382,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_get_availability_calendar'),
     },
   ]
 }

@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import type { PropertySearchParams } from '../../api/v2/properties/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { wrapToolHandler } from '../utils/error-wrapper.js'
 import type { ToolRegistration } from '../utils/types.js'
 import { findProperties } from './helper-tools.js'
 
@@ -72,7 +73,7 @@ Example response:
             .describe('Number of items per page (max 50)'),
         },
       },
-      handler: async (params) => {
+      handler: wrapToolHandler(async (params) => {
         // Map MCP parameters to API parameters
         const mappedParams: PropertySearchParams = {}
         if (params.size !== undefined) mappedParams.limit = params.size
@@ -91,7 +92,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_list_properties'),
     },
 
     // Get Property Details Tool
@@ -143,7 +144,7 @@ Example response:
             .describe('Include available dates for arrival or departure'),
         },
       },
-      handler: async ({ id, wid, includeInOut }) => {
+      handler: wrapToolHandler(async ({ id, wid, includeInOut }) => {
         // Build params object for the API call
         const params: { wid?: number; includeInOut?: boolean } = {}
         if (wid !== undefined) params.wid = wid
@@ -162,7 +163,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_get_property'),
     },
 
     // List Property Rooms Tool
@@ -177,7 +178,7 @@ Example response:
           propertyId: z.string().min(1).describe('Property ID to list room types for'),
         },
       },
-      handler: async ({ propertyId }) => {
+      handler: wrapToolHandler(async ({ propertyId }) => {
         const result = await getClient().properties.listPropertyRooms(propertyId)
         return {
           content: [
@@ -187,7 +188,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_list_property_rooms'),
     },
 
     // Find Properties Tool
@@ -255,7 +256,7 @@ Example response:
             .describe('Maximum number of properties to return (default: 10)'),
         },
       },
-      handler: async ({ searchTerm, includePropertyIds, limit }) => {
+      handler: wrapToolHandler(async ({ searchTerm, includePropertyIds, limit }) => {
         const result = await findProperties(getClient(), searchTerm, includePropertyIds, limit)
         return {
           content: [
@@ -265,7 +266,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_find_properties'),
     },
 
     // List Deleted Properties Tool
@@ -285,7 +286,7 @@ Example response:
             ),
         },
       },
-      handler: async ({ params }) => {
+      handler: wrapToolHandler(async ({ params }) => {
         const result = await getClient().properties.listDeletedProperties(params)
         return {
           content: [
@@ -295,7 +296,7 @@ Example response:
             },
           ],
         }
-      },
+      }, 'lodgify_list_deleted_properties'),
     },
   ]
 }
