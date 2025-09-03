@@ -2,6 +2,16 @@
  * Type definitions for test utilities
  */
 
+import type { AddressInfo } from 'node:net'
+import type {
+  StreamableHTTPServerTransport,
+  StreamableHTTPServerTransportOptions,
+} from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import type {
+  JSONRPCMessage,
+  JSONRPCRequest,
+  JSONRPCResponse,
+} from '@modelcontextprotocol/sdk/types.js'
 import type { McpServer } from '../src/server.js'
 
 /**
@@ -143,4 +153,86 @@ export interface ExpectFunction {
     [key: string]: unknown
   }
   [key: string]: unknown
+}
+
+/**
+ * Mock transport interface for HTTP testing
+ */
+export interface MockHTTPTransport {
+  sessionId?: string
+  handleRequest: (req: unknown, res: unknown, body: unknown) => Promise<void>
+  close: () => void
+  onclose?: () => void
+}
+
+/**
+ * JSON-RPC request parameters
+ */
+export interface JSONRPCRequestParams {
+  [key: string]: unknown
+}
+
+/**
+ * Initialize method parameters
+ */
+export interface InitializeParams {
+  protocolVersion: string
+  capabilities: Record<string, unknown>
+}
+
+/**
+ * Tool call method parameters
+ */
+export interface ToolCallParams {
+  name: string
+  arguments: Record<string, unknown>
+}
+
+/**
+ * HTTP test request structure
+ */
+export interface HTTPTestRequest {
+  method?: string
+  headers?: Record<string, string>
+  body?: JSONRPCRequest | unknown
+}
+
+/**
+ * HTTP test response structure
+ */
+export interface HTTPTestResponse {
+  status: number
+  body: JSONRPCResponse | string | unknown
+  headers: Record<string, string>
+}
+
+/**
+ * Express-like response object for mocking
+ */
+export interface MockExpressResponse {
+  json: (data: unknown) => void
+  status: (code: number) => MockExpressResponse
+  send: (data: unknown) => void
+  end: () => void
+  headersSent: boolean
+}
+
+/**
+ * Express-like request object for mocking
+ */
+export interface MockExpressRequest {
+  method: string
+  headers: Record<string, string | string[] | undefined>
+  body?: unknown
+  params?: Record<string, string>
+}
+
+// Re-export commonly used types for convenience
+export type {
+  AddressInfo,
+  StreamableHTTPServerTransport,
+  StreamableHTTPServerTransportOptions,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  JSONRPCMessage,
 }

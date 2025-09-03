@@ -70,6 +70,115 @@ To rotate your LODGIFY_API_KEY safely:
 
 **Tip**: For zero-downtime rotation, use a two-step rollout (staging → production) and monitor error rates during the transition.
 
+## HTTP Transport Support (Streamable)
+
+The MCP server now supports HTTP transport using **Streamable HTTP transport** - the modern replacement for SSE (Server-Sent Events). This enables remote connections from Claude Desktop, Anthropic Messages API, and other MCP clients over the network.
+
+### Running the HTTP Server
+
+```bash
+# Development mode (with Bun)
+bun run dev:http
+
+# Production mode (compiled)
+npm run build
+npm run start:http
+
+# With custom port and authentication
+MCP_PORT=8080 MCP_TOKEN=your-secure-token-here npm run start:http
+```
+
+### HTTP Configuration
+
+Configure the HTTP server with these environment variables:
+
+```env
+# HTTP Server Configuration
+MCP_PORT="3000"                             # Port for HTTP server (default: 3000)
+MCP_TOKEN="your-secure-bearer-token-here"   # Bearer token for authentication (min 16 chars)
+```
+
+**Security Note**: Always set `MCP_TOKEN` in production. Without it, the server runs in development mode with no authentication.
+
+### Connecting via HTTP
+
+To connect to the HTTP server from an MCP client:
+
+1. **Initialize a session** with POST to `/mcp`:
+```json
+POST /mcp
+Authorization: Bearer your-secure-bearer-token-here
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-03-26",
+    "capabilities": {}
+  },
+  "id": 1
+}
+```
+
+2. **Use the session ID** returned in the `Mcp-Session-Id` header for subsequent requests
+3. **Send requests** with the session ID header:
+```json
+POST /mcp
+Authorization: Bearer your-secure-bearer-token-here
+Mcp-Session-Id: <session-id-from-initialize>
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "tools/list",
+  "id": 2
+}
+```
+
+### Available HTTP Endpoints
+
+| Endpoint | Method | Description | Authentication |
+|----------|--------|-------------|----------------|
+| `/mcp` | GET/POST/DELETE | Main MCP endpoint for Streamable transport | Required |
+| `/health` | GET | Health check with server status | Not required |
+| `/sessions` | GET | List active sessions (admin) | Required |
+| `/sessions/:id` | DELETE | Terminate a specific session (admin) | Required |
+
+### Session Management
+
+- Sessions are automatically created on initialization requests
+- Session IDs are provided via the `Mcp-Session-Id` header
+- Sessions are cleaned up automatically when connections close
+- Multiple concurrent sessions are supported
+
+### Docker Support for HTTP Mode
+
+To run the HTTP server in Docker:
+
+```dockerfile
+# In docker-compose.yml
+services:
+  lodgify-mcp:
+    image: lodgify-mcp:latest
+    ports:
+      - "3000:3000"
+    environment:
+      LODGIFY_API_KEY: ${LODGIFY_API_KEY}
+      MCP_PORT: 3000
+      MCP_TOKEN: ${MCP_TOKEN}
+    command: npm run start:http
+```
+
+### Advantages of HTTP Transport
+
+- **Remote Access**: Connect from any network location
+- **Session Persistence**: Maintain state across multiple requests
+- **Authentication**: Bearer token protection for secure access
+- **Scalability**: Support multiple concurrent client sessions
+- **Monitoring**: Health checks and session management endpoints
+- **Modern Protocol**: Uses Streamable HTTP transport (replacement for SSE)
+
 ## What You Can Do
 
 Ask Claude natural language questions about your Lodgify properties:

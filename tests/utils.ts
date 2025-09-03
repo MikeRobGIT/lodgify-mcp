@@ -1,4 +1,5 @@
 import { mock } from 'bun:test'
+import type { JSONRPCRequest, JSONRPCResponse } from '@modelcontextprotocol/sdk/types.js'
 
 /**
  * Create a mock Response object
@@ -334,6 +335,189 @@ export const mockTimers = {
       restore: () => {
         globalThis.setTimeout = originalSetTimeout
       },
+    }
+  },
+}
+
+/**
+ * HTTP test utilities for testing the HTTP transport server
+ */
+export const httpTestUtils = {
+  /**
+   * Create authentication headers for HTTP requests
+   */
+  createAuthHeaders(token?: string): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json, text/event-stream',
+    }
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    return headers
+  },
+
+  /**
+   * Create a JSON-RPC request object
+   */
+  createJSONRPCRequest(
+    method: string,
+    params: Record<string, unknown> = {},
+    id: number | string = 1,
+  ): JSONRPCRequest {
+    return {
+      jsonrpc: '2.0',
+      method,
+      params,
+      id,
+    }
+  },
+
+  /**
+   * Create an initialization request
+   */
+  createInitRequest(
+    protocolVersion: string = '2025-03-26',
+    capabilities: Record<string, unknown> = {},
+  ): JSONRPCRequest {
+    return {
+      jsonrpc: '2.0',
+      method: 'initialize',
+      params: {
+        protocolVersion,
+        capabilities,
+      },
+      id: 1,
+    }
+  },
+
+  /**
+   * Create a tool call request
+   */
+  createToolCallRequest(
+    name: string,
+    args: Record<string, unknown> = {},
+    id: number | string = 2,
+  ): JSONRPCRequest {
+    return {
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: {
+        name,
+        arguments: args,
+      },
+      id,
+    }
+  },
+
+  /**
+   * Create session headers
+   */
+  createSessionHeaders(sessionId: string): Record<string, string> {
+    return {
+      'Mcp-Session-Id': sessionId,
+    }
+  },
+
+  /**
+   * Helper to make HTTP requests in tests
+   */
+  async makeHTTPRequest(
+    url: string,
+    options: {
+      method?: string
+      headers?: Record<string, string>
+      body?: JSONRPCRequest | unknown
+    } = {},
+  ): Promise<{
+    status: number
+    body: JSONRPCResponse | string | unknown
+    headers: Record<string, string>
+  }> {
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    })
+
+    const responseHeaders: Record<string, string> = {}
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value
+    })
+
+    let body: JSONRPCResponse | string | unknown
+    const contentType = response.headers.get('content-type')
+
+    if (contentType?.includes('application/json')) {
+      body = await response.json()
+    } else {
+      body = await response.text()
+    }
+
+    return {
+      status: response.status,
+      body,
+      headers: responseHeaders,
+    }
+  },
+
+  /**
+   * Create a test HTTP server helper
+   */
+  async createTestHTTPServer(
+    port: number = 0,
+    _token?: string,
+  ): Promise<{
+    url: string
+    port: number
+    close: () => Promise<void>
+  }> {
+    // This would be implemented with actual server creation
+    // For now, return a mock structure
+    const actualPort = port || 3000 + Math.floor(Math.random() * 1000)
+
+    return {
+      url: `http://localhost:${actualPort}`,
+      port: actualPort,
+      close: async () => {
+        // Server cleanup
+      },
+    }
+  },
+
+  /**
+   * Wait for server to be ready
+   */
+  async waitForServer(url: string, maxAttempts: number = 10): Promise<boolean> {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const response = await fetch(`${url}/health`)
+        if (response.ok) {
+          return true
+        }
+      } catch {
+        // Server not ready yet
+      }
+      await delay(100)
+    }
+    return false
+  },
+
+  /**
+   * Create mock StreamableHTTPServerTransport
+   */
+  createMockTransport(sessionId?: string) {
+    return {
+      sessionId,
+      handleRequest: mock(
+        async (_req: unknown, res: { json: (data: JSONRPCResponse) => void }, _body: unknown) => {
+          res.json({ jsonrpc: '2.0', result: { success: true }, id: 1 })
+        },
+      ),
+      close: mock(() => {}),
+      onclose: undefined as (() => void) | undefined,
     }
   },
 }

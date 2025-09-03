@@ -69,6 +69,29 @@ const debugHttpSchema = z.unknown().optional().default(false).transform(normaliz
 const readOnlySchema = z.unknown().optional().default(false).transform(normalizeBoolean)
 
 /**
+ * HTTP server port validation schema
+ * Validates port number for HTTP server mode
+ */
+const httpPortSchema = z
+  .string()
+  .optional()
+  .default('3000')
+  .transform((val) => parseInt(val, 10))
+  .refine((port) => port > 0 && port <= 65535, 'Port must be between 1 and 65535')
+
+/**
+ * MCP authentication token schema
+ * Validates Bearer token for HTTP transport authentication
+ */
+const mcpTokenSchema = z
+  .string()
+  .optional()
+  .refine(
+    (token) => !token || token.length >= 16,
+    'MCP_TOKEN must be at least 16 characters long for security',
+  )
+
+/**
  * Complete environment schema
  */
 const envSchema = z.object({
@@ -77,6 +100,8 @@ const envSchema = z.object({
   DEBUG_HTTP: debugHttpSchema,
   LODGIFY_READ_ONLY: readOnlySchema,
   NODE_ENV: z.enum(['development', 'production', 'test']).optional().default('development'),
+  MCP_PORT: httpPortSchema,
+  MCP_TOKEN: mcpTokenSchema,
 })
 
 /**
@@ -185,7 +210,14 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
   try {
     // Build raw environment object, excluding undefined values
     // This allows Zod's default values to work properly
-    const optionalKeys = ['LOG_LEVEL', 'DEBUG_HTTP', 'LODGIFY_READ_ONLY', 'NODE_ENV'] as const
+    const optionalKeys = [
+      'LOG_LEVEL',
+      'DEBUG_HTTP',
+      'LODGIFY_READ_ONLY',
+      'NODE_ENV',
+      'MCP_PORT',
+      'MCP_TOKEN',
+    ] as const
 
     const rawEnv: Record<string, string | undefined> = {
       // Always include LODGIFY_API_KEY (required)
@@ -235,6 +267,8 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
       debugHttp: config.DEBUG_HTTP,
       readOnly: config.LODGIFY_READ_ONLY,
       nodeEnv: config.NODE_ENV,
+      httpPort: config.MCP_PORT,
+      httpAuthEnabled: !!config.MCP_TOKEN,
       apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
       warnings: apiKeyValidation.warnings.length > 0 ? apiKeyValidation.warnings : undefined,
     })
@@ -295,6 +329,8 @@ export function getSafeEnvInfo(config: EnvConfig): Record<string, unknown> {
     logLevel: config.LOG_LEVEL,
     debugHttp: config.DEBUG_HTTP,
     readOnly: config.LODGIFY_READ_ONLY,
+    httpPort: config.MCP_PORT,
+    httpAuthEnabled: !!config.MCP_TOKEN,
     apiKeyPresent: !!config.LODGIFY_API_KEY,
     apiKeyLength: config.LODGIFY_API_KEY.length,
     apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
@@ -315,4 +351,12 @@ export class EnvironmentError extends Error {
 }
 
 // Export the schemas for testing
-export { apiKeySchema, debugHttpSchema, envSchema, logLevelSchema, readOnlySchema }
+export {
+  apiKeySchema,
+  debugHttpSchema,
+  envSchema,
+  httpPortSchema,
+  logLevelSchema,
+  mcpTokenSchema,
+  readOnlySchema,
+}
