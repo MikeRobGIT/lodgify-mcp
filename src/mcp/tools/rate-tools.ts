@@ -42,10 +42,10 @@ Essential for pricing analysis, revenue optimization, and understanding seasonal
       
 Example request:
 {
-  "roomTypeId": 123,
-  "houseId": 456,
-  "startDate": "2024-03-01",
-  "endDate": "2024-03-31"
+  "roomTypeId": 123,           // Room Type ID (required)
+  "houseId": 456,              // House/Property ID (required)
+  "startDate": "2024-03-01",   // Start date for rates calendar (YYYY-MM-DD)
+  "endDate": "2024-03-31"      // End date for rates calendar (YYYY-MM-DD)
 }`,
         inputSchema: {
           roomTypeId: z.number().int().describe('Room Type ID (required)'),
@@ -137,8 +137,14 @@ Example request:
       category: CATEGORY,
       config: {
         title: 'Get Rate Configuration Settings',
-        description:
-          'Retrieve rate configuration settings including pricing rules, modifiers, seasonal adjustments, and rate calculation parameters. This shows HOW rates are calculated, not the actual prices themselves. Use lodgify_daily_rates to view actual pricing. Essential for understanding rate calculation logic and configuring pricing strategies.',
+        description: `Retrieve rate configuration settings including pricing rules, modifiers, seasonal adjustments, and rate calculation parameters. This shows HOW rates are calculated, not the actual prices themselves. Use lodgify_daily_rates to view actual pricing. Essential for understanding rate calculation logic and configuring pricing strategies.
+
+Example request:
+{
+  "params": {
+    "houseId": 456  // House/Property ID (optional)
+  }
+}`,
         inputSchema: {
           params: z
             .object({
@@ -173,8 +179,25 @@ Example request:
       category: CATEGORY,
       config: {
         title: 'Get Existing Booking Quote',
-        description:
-          'Retrieve an existing quote that was created when a booking was made. Quotes are associated with bookings and contain the pricing details that were calculated at booking time.\n\n⚠️ Important: This does NOT calculate new pricing. Use lodgify_daily_rates to view current pricing before creating a booking.\n\nWorkflow: Check prices with lodgify_daily_rates → Create booking → Use this tool to retrieve the quote from that booking.\n\nRequired parameters: dates (use either "from"/"to" or "arrival"/"departure" in YYYY-MM-DD format), plus room type and guest information.\n\nExample: {"from": "2025-09-01", "to": "2025-09-03", "roomTypes[0].Id": 123, "guest_breakdown[adults]": 2}',
+        description: `Retrieve an existing quote that was created when a booking was made. Quotes are associated with bookings and contain the pricing details that were calculated at booking time.
+
+⚠️ Important: This does NOT calculate new pricing. Use lodgify_daily_rates to view current pricing before creating a booking.
+
+Workflow: Check prices with lodgify_daily_rates → Create booking → Use this tool to retrieve the quote from that booking.
+
+Required parameters: dates (use either "from"/"to" or "arrival"/"departure" in YYYY-MM-DD format), plus room type and guest information.
+
+Example request:
+{
+  "propertyId": "123",                   // Property ID with existing booking/quote
+  "params": {
+    "from": "2025-09-01",                // Check-in date (or use "arrival")
+    "to": "2025-09-03",                  // Check-out date (or use "departure")
+    "roomTypes[0].Id": 123,              // Room type ID (uses bracket notation)
+    "guest_breakdown[adults]": 2,        // Number of adults (uses bracket notation)
+    "guest_breakdown[children]": 0       // Number of children (optional, uses bracket notation)
+  }
+}`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID with existing booking/quote'),
           params: z
@@ -327,23 +350,23 @@ Example request:
       
 Example request:
 {
-  "property_id": 123,
+  "property_id": 123,           // Property ID to update rates for
   "rates": [
     {
-      "room_type_id": 456,
-      "start_date": "2024-06-01",
-      "end_date": "2024-08-31",
-      "price_per_day": 150.00,
-      "min_stay": 3,
-      "currency": "USD"
+      "room_type_id": 456,      // Room type ID
+      "start_date": "2024-06-01", // Start date for rate period (YYYY-MM-DD)
+      "end_date": "2024-08-31",   // End date for rate period (YYYY-MM-DD)
+      "price_per_day": 150.00,  // Rate amount per day
+      "min_stay": 3,             // Minimum stay requirement
+      "currency": "USD"          // Currency code (e.g., USD, EUR)
     },
     {
-      "room_type_id": 457,
-      "start_date": "2024-06-01",
-      "end_date": "2024-08-31",
-      "price_per_day": 200.00,
-      "min_stay": 2,
-      "currency": "USD"
+      "room_type_id": 457,      // Room type ID
+      "start_date": "2024-06-01", // Start date for rate period (YYYY-MM-DD)
+      "end_date": "2024-08-31",   // End date for rate period (YYYY-MM-DD)
+      "price_per_day": 200.00,  // Rate amount per day
+      "min_stay": 2,             // Minimum stay requirement
+      "currency": "USD"          // Currency code (e.g., USD, EUR)
     }
   ]
 }`,
@@ -404,27 +427,27 @@ Example request:
 
 Example request:
 {
-  "bookingId": "BK12345",
+  "bookingId": "BK12345",        // Booking ID to create quote for
   "payload": {
-    "totalPrice": 1500.00,
-    "currency": "USD",
+    "totalPrice": 1500.00,      // Total quote amount
+    "currency": "USD",           // Currency code (e.g., USD, EUR)
     "breakdown": {
-      "accommodation": 1200.00,
-      "taxes": 150.00,
-      "fees": 100.00,
-      "discount": 50.00
+      "accommodation": 1200.00, // Accommodation cost
+      "taxes": 150.00,          // Tax amount
+      "fees": 100.00,           // Service fees
+      "discount": 50.00         // Discount amount
     },
-    "adjustments": [
+    "adjustments": [              // Custom pricing adjustments
       {
-        "type": "discount",
-        "description": "Early booking discount",
-        "amount": 50.00,
-        "isPercentage": false
+        "type": "discount",        // Type of adjustment
+        "description": "Early booking discount",  // Description of adjustment
+        "amount": 50.00,           // Adjustment amount
+        "isPercentage": false      // Is this a percentage?
       }
     ],
-    "validUntil": "2024-03-31T23:59:59Z",
-    "notes": "Special rate for returning guest",
-    "sendToGuest": true
+    "validUntil": "2024-03-31T23:59:59Z",  // Quote expiration date (ISO 8601)
+    "notes": "Special rate for returning guest",  // Internal notes about the quote
+    "sendToGuest": true            // Send quote to guest via email
   }
 }
 

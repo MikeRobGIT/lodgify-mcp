@@ -25,6 +25,9 @@ export function getWebhookTools(getClient: () => LodgifyOrchestrator): ToolRegis
         title: 'List Webhooks',
         description: `[${CATEGORY}] List all webhook subscriptions configured for the account. Returns webhook details including event types, target URLs, status, and last triggered timestamps. Essential for monitoring and managing webhook integrations.
       
+Example request:
+{}  // No parameters required
+
 Example response:
 {
   "webhooks": [
@@ -76,8 +79,8 @@ Available event types:
 
 Example request:
 {
-  "event": "booking_new_status_booked",
-  "target_url": "https://example.com/webhooks/lodgify"
+  "event": "booking_new_status_booked",      // Event type to subscribe to
+  "target_url": "https://example.com/webhooks/lodgify"  // HTTPS URL endpoint to receive webhook notifications
 }`,
         inputSchema: {
           event: WebhookEventEnum.describe('Event type to subscribe to'),
@@ -114,7 +117,7 @@ Example request:
       
 Example request:
 {
-  "id": "webhook_123"
+  "id": "webhook_123"  // Webhook subscription ID to remove
 }`,
         inputSchema: {
           id: z.string().min(1).describe('Webhook subscription ID to remove'),

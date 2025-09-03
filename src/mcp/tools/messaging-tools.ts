@@ -22,8 +22,12 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
       category: CATEGORY,
       config: {
         title: 'Get Messaging Thread',
-        description:
-          'Retrieve a messaging conversation thread including all messages, participants, and thread metadata. Use this for customer service inquiries, guest communication history, or managing ongoing conversations with guests and staff.',
+        description: `Retrieve a messaging conversation thread including all messages, participants, and thread metadata. Use this for customer service inquiries, guest communication history, or managing ongoing conversations with guests and staff.
+
+Example request:
+{
+  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Unique thread identifier (GUID) for the conversation
+}`,
         inputSchema: {
           threadGuid: z
             .string()
@@ -50,8 +54,17 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
       category: CATEGORY,
       config: {
         title: 'List Messaging Threads',
-        description:
-          'List conversation threads with optional filtering. Useful for inbox views, triage, and audit of guest communications.',
+        description: `List conversation threads with optional filtering. Useful for inbox views, triage, and audit of guest communications.
+
+Example request:
+{
+  "params": {
+    "includeMessages": true,        // Include messages in response (optional)
+    "includeParticipants": true,    // Include participant details (optional)
+    "messageLimit": 50,             // Maximum messages per thread, 1-200 (optional)
+    "since": "2024-03-01T00:00:00Z" // ISO date-time to filter threads since (optional)
+  }
+}`,
         inputSchema: {
           params: z
             .object({
@@ -82,8 +95,22 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
       category: CATEGORY,
       config: {
         title: 'Send Message To Thread',
-        description:
-          'Send a message to a specific conversation thread. Respects read-only mode and will be blocked when enabled.',
+        description: `Send a message to a specific conversation thread. Respects read-only mode and will be blocked when enabled.
+
+Example request:
+{
+  "threadGuid": "550e8400-e29b-41d4-a716-446655440000",  // Thread GUID
+  "message": {
+    "content": "Thank you for your inquiry about the Ocean View Villa.",  // Message content
+    "attachments": [                                                      // Optional attachments
+      {
+        "fileName": "villa_photos.pdf",                                  // File name
+        "fileUrl": "https://example.com/files/villa_photos.pdf",         // File URL
+        "fileType": "application/pdf"                                    // File MIME type (optional)
+      }
+    ]
+  }
+}`,
         inputSchema: {
           threadGuid: z.string().min(1).describe('Thread GUID'),
           message: z
@@ -121,8 +148,12 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
       category: CATEGORY,
       config: {
         title: 'Mark Thread As Read',
-        description:
-          'Mark a conversation thread as read to clear unread indicators. Respects read-only mode and will be blocked when enabled.',
+        description: `Mark a conversation thread as read to clear unread indicators. Respects read-only mode and will be blocked when enabled.
+
+Example request:
+{
+  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Thread GUID
+}`,
         inputSchema: {
           threadGuid: z.string().min(1).describe('Thread GUID'),
         },
@@ -146,8 +177,12 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
       category: CATEGORY,
       config: {
         title: 'Archive Thread',
-        description:
-          'Archive a conversation thread to remove it from active views. Respects read-only mode and will be blocked when enabled.',
+        description: `Archive a conversation thread to remove it from active views. Respects read-only mode and will be blocked when enabled.
+
+Example request:
+{
+  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Thread GUID
+}`,
         inputSchema: {
           threadGuid: z.string().min(1).describe('Thread GUID'),
         },

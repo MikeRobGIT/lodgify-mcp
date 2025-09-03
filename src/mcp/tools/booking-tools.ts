@@ -39,20 +39,20 @@ Note: Maximum page size is 50 items per request.
 
 Example request (filter by stay dates):
 {
-  "page": 1,
-  "size": 10,
-  "includeCount": true,
-  "stayFilter": "Upcoming",
-  "updatedSince": "2024-03-01T00:00:00Z",
-  "includeTransactions": false,
-  "includeQuoteDetails": false
+  "page": 1,                               // Page number to retrieve
+  "size": 10,                              // Number of items per page (max 50)
+  "includeCount": true,                    // Include total number of results
+  "stayFilter": "Upcoming",                // Filter bookings by stay dates
+  "updatedSince": "2024-03-01T00:00:00Z",  // Include only bookings updated since this date
+  "includeTransactions": false,            // Include details about transactions and schedule
+  "includeQuoteDetails": false             // Include quote details
 }
 
 Example request (filter by arrival date):
 {
-  "stayFilter": "ArrivalDate",
-  "stayFilterDate": "2024-03-15T00:00:00Z",
-  "size": 5
+  "stayFilter": "ArrivalDate",              // Filter bookings by stay dates
+  "stayFilterDate": "2024-03-15T00:00:00Z", // Date to filter when using ArrivalDate or DepartureDate in stayFilter
+  "size": 5                                 // Number of items per page (max 50)
 }
 
 Example response:
@@ -140,8 +140,12 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Get Booking Details',
-        description:
-          'Retrieve complete details for a specific booking including guest information, property details, room assignments, pricing breakdown, payment status, special requests, and booking timeline. Use this for customer service inquiries and detailed booking management.',
+        description: `Retrieve complete details for a specific booking including guest information, property details, room assignments, pricing breakdown, payment status, special requests, and booking timeline. Use this for customer service inquiries and detailed booking management.
+
+Example request:
+{
+  "id": "BK12345"  // Unique booking/reservation ID to retrieve
+}`,
         inputSchema: {
           id: z.string().min(1).describe('Unique booking/reservation ID to retrieve'),
         },
@@ -165,8 +169,12 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Get Booking Payment Link',
-        description:
-          'Retrieve existing payment link for a booking including payment status, amount due, and link expiration. Use this to check if a payment link already exists or to get current payment details for customer service inquiries.',
+        description: `Retrieve existing payment link for a booking including payment status, amount due, and link expiration. Use this to check if a payment link already exists or to get current payment details for customer service inquiries.
+
+Example request:
+{
+  "id": "BK12345"  // Booking ID to get payment link for
+}`,
         inputSchema: {
           id: z.string().min(1).describe('Booking ID to get payment link for'),
         },
@@ -194,8 +202,17 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Create Booking Payment Link',
-        description:
-          'Generate a secure payment link for a booking allowing guests to pay outstanding balances online. Useful for collecting deposits, final payments, or additional charges. The link will be sent to guests via email or can be shared directly.',
+        description: `Generate a secure payment link for a booking allowing guests to pay outstanding balances online. Useful for collecting deposits, final payments, or additional charges. The link will be sent to guests via email or can be shared directly.
+
+Example request:
+{
+  "id": "BK12345",              // Booking ID to create payment link for
+  "payload": {
+    "amount": 500.00,           // Payment amount (defaults to booking balance)
+    "currency": "USD",          // Currency code (e.g., USD, EUR)
+    "description": "Final payment for Ocean View Villa booking"  // Payment description for guest
+  }
+}`,
         inputSchema: {
           id: z.string().min(1).describe('Booking ID to create payment link for'),
           payload: z
@@ -234,8 +251,15 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Update Access Key Codes',
-        description:
-          'Update access key codes for a booking to provide guests with property entry information. Used for smart locks, keypad codes, or other access control systems. Essential for self-check-in processes and property access management.',
+        description: `Update access key codes for a booking to provide guests with property entry information. Used for smart locks, keypad codes, or other access control systems. Essential for self-check-in processes and property access management.
+
+Example request:
+{
+  "id": 12345,                   // Booking ID to update key codes for
+  "payload": {
+    "keyCodes": ["1234", "5678"]  // Array of access codes/keys for the property
+  }
+}`,
         inputSchema: {
           id: z.number().int().describe('Booking ID to update key codes for'),
           payload: z
@@ -264,8 +288,13 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Check In Booking',
-        description:
-          'Mark a booking as checked in. Updates the booking status to reflect that the guest has arrived and checked into the property. Essential for tracking guest arrivals and property occupancy.',
+        description: `Mark a booking as checked in. Updates the booking status to reflect that the guest has arrived and checked into the property. Essential for tracking guest arrivals and property occupancy.
+
+Example request:
+{
+  "id": 12345,                       // Booking ID to check in
+  "time": "2024-03-15T15:00:00Z"    // Check-in time in ISO 8601 date-time format (required)
+}`,
         inputSchema: {
           id: z.number().int().describe('Booking ID to check in'),
           time: z
@@ -293,8 +322,13 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Check Out Booking',
-        description:
-          'Mark a booking as checked out. Updates the booking status to reflect that the guest has departed from the property. Essential for tracking guest departures and property availability.',
+        description: `Mark a booking as checked out. Updates the booking status to reflect that the guest has departed from the property. Essential for tracking guest departures and property availability.
+
+Example request:
+{
+  "id": 12345,                       // Booking ID to check out
+  "time": "2024-03-22T11:00:00Z"    // Check-out time in ISO 8601 date-time format (required)
+}`,
         inputSchema: {
           id: z.number().int().describe('Booking ID to check out'),
           time: z
@@ -322,8 +356,12 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Get External Bookings',
-        description:
-          'Retrieve external bookings associated with a property. These are bookings made through external channels (OTAs like Booking.com, Airbnb, etc.) that are synchronized with Lodgify. Useful for understanding the full booking picture across all channels.',
+        description: `Retrieve external bookings associated with a property. These are bookings made through external channels (OTAs like Booking.com, Airbnb, etc.) that are synchronized with Lodgify. Useful for understanding the full booking picture across all channels.
+
+Example request:
+{
+  "id": "123"  // Property ID to get external bookings for
+}`,
         inputSchema: {
           id: z.string().min(1).describe('Property ID to get external bookings for'),
         },
@@ -371,16 +409,16 @@ Example response:
 
 Example MCP Tool Input (flat structure):
 {
-  "property_id": 684855,
-  "room_type_id": 751902,
-  "arrival": "2025-08-27",
-  "departure": "2025-08-28", 
-  "guest_name": "Test Guest",
-  "guest_email": "test@example.com",
-  "adults": 2,
-  "children": 0,
-  "status": "booked",
-  "source": "Direct Website"
+  "property_id": 684855,              // Property ID for the booking
+  "room_type_id": 751902,             // Room type ID (required - use lodgify_list_property_rooms to find valid IDs)
+  "arrival": "2025-08-27",             // Arrival date (YYYY-MM-DD)
+  "departure": "2025-08-28",          // Departure date (YYYY-MM-DD)
+  "guest_name": "Test Guest",          // Primary guest name
+  "guest_email": "test@example.com",   // Guest email address
+  "adults": 2,                         // Number of adult guests
+  "children": 0,                       // Number of children
+  "status": "booked",                  // Booking status
+  "source": "Direct Website"           // Booking source or channel
 }
 
 This gets automatically transformed to the nested API structure:
@@ -522,13 +560,13 @@ The transformation handles: guest name splitting, room structuring, status capit
 
 Example MCP Tool Input (flat structure):
 {
-  "id": 789,
-  "arrival": "2024-06-16",
-  "departure": "2024-06-21", 
-  "guest_name": "Updated Guest Name",
-  "adults": 3,
-  "status": "tentative",
-  "notes": "Room upgrade requested"
+  "id": 789,                           // Booking ID to update
+  "arrival": "2024-06-16",             // New arrival date (YYYY-MM-DD)
+  "departure": "2024-06-21",          // New departure date (YYYY-MM-DD)
+  "guest_name": "Updated Guest Name",  // Updated guest name
+  "adults": 3,                         // Updated number of adults
+  "status": "tentative",               // Updated booking status
+  "notes": "Room upgrade requested"    // Updated notes
 }
 
 This gets automatically transformed to the nested API structure with guest objects, rooms arrays, and proper field mapping similar to create_booking.`,
@@ -600,7 +638,7 @@ This gets automatically transformed to the nested API structure with guest objec
       
 Example request:
 {
-  "id": 789
+  "id": 789  // Booking ID to delete permanently
 }`,
         inputSchema: {
           id: z.number().int().describe('Booking ID to delete permanently'),

@@ -25,12 +25,12 @@ export function getPropertyTools(getClient: () => LodgifyOrchestrator): ToolRegi
 
 Example request:
 {
-  "wid": 12345,
-  "updatedSince": "2024-01-01T00:00:00Z",
-  "includeCount": true,
-  "includeInOut": false,
-  "page": 1,
-  "size": 10
+  "wid": 12345,                          // Website ID (typically a 3-5 digit number, e.g., 12345)
+  "updatedSince": "2024-01-01T00:00:00Z", // Return only properties modified since this datetime
+  "includeCount": true,                   // Return the total number of results
+  "includeInOut": false,                  // Include available dates for arrival or departure
+  "page": 1,                              // Page number to retrieve
+  "size": 10                              // Number of items per page (max 50)
 }
 
 Example response:
@@ -52,7 +52,11 @@ Example response:
   }
 }`,
         inputSchema: {
-          wid: z.number().int().optional().describe('Website ID'),
+          wid: z
+            .number()
+            .int()
+            .optional()
+            .describe('Website ID (typically a 3-5 digit number, e.g., 12345)'),
           updatedSince: z
             .string()
             .datetime()
@@ -78,7 +82,17 @@ Example response:
         const mappedParams: PropertySearchParams = {}
         if (params.size !== undefined) mappedParams.limit = params.size
         if (params.page !== undefined) mappedParams.offset = (params.page - 1) * (params.size || 50)
-        if (params.wid !== undefined) mappedParams.wid = params.wid
+
+        // Validate wid parameter - warn if suspiciously low but still allow the request
+        if (params.wid !== undefined) {
+          if (params.wid < 100) {
+            console.warn(
+              `Warning: Website ID (wid) ${params.wid} seems unusually low. Valid website IDs are typically 3+ digit numbers (e.g., 12345). This may cause an error if the website ID doesn't exist in Lodgify.`,
+            )
+          }
+          mappedParams.wid = params.wid
+        }
+
         if (params.updatedSince !== undefined) mappedParams.updatedSince = params.updatedSince
         if (params.includeCount !== undefined) mappedParams.includeCount = params.includeCount
         if (params.includeInOut !== undefined) mappedParams.includeInOut = params.includeInOut
@@ -105,9 +119,9 @@ Example response:
 
 Example request:
 {
-  "id": 123,
-  "wid": 456,
-  "includeInOut": true
+  "id": 123,           // Property ID (required)
+  "wid": 456,          // Website ID, only use this if you know the website ID
+  "includeInOut": true // Include available dates for arrival or departure
 }
 
 Example response:
@@ -172,8 +186,12 @@ Example response:
       category: 'Property Management',
       config: {
         title: 'List Property Room Types',
-        description:
-          'Retrieve all room types and configurations for a specific property. Returns room details including capacity, pricing structure, amenities, and booking rules. Use this before checking availability or making bookings to understand available accommodation options.',
+        description: `Retrieve all room types and configurations for a specific property. Returns room details including capacity, pricing structure, amenities, and booking rules. Use this before checking availability or making bookings to understand available accommodation options.
+
+Example request:
+{
+  "propertyId": "123"  // Property ID to list room types for
+}`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID to list room types for'),
         },
@@ -201,15 +219,15 @@ Example response:
 
 Example request (search by name):
 {
-  "searchTerm": "beach",
-  "includePropertyIds": true,
-  "limit": 5
+  "searchTerm": "beach",        // Optional search term to filter properties by name (case-insensitive)
+  "includePropertyIds": true,  // Include property IDs found in recent bookings (default: true)
+  "limit": 5                   // Maximum number of properties to return (default: 10)
 }
 
 Example request (list all):
 {
-  "includePropertyIds": true,
-  "limit": 10
+  "includePropertyIds": true,  // Include property IDs found in recent bookings (default: true)
+  "limit": 10                  // Maximum number of properties to return (default: 10)
 }
 
 Example response:
@@ -275,8 +293,14 @@ Example response:
       category: 'Property Management',
       config: {
         title: 'List Deleted Properties',
-        description:
-          'Retrieve properties that have been soft-deleted from the system. Useful for auditing, recovery operations, and understanding property lifecycle. Returns properties that were previously active but have been removed from general availability.',
+        description: `Retrieve properties that have been soft-deleted from the system. Useful for auditing, recovery operations, and understanding property lifecycle. Returns properties that were previously active but have been removed from general availability.
+
+Example request:
+{
+  "params": {
+    "deletedSince": "2024-01-01T00:00:00Z"  // Optional: filter properties deleted after this date (optional)
+  }
+}`,
         inputSchema: {
           params: z
             .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))

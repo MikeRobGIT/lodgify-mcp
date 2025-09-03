@@ -28,8 +28,15 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
       category: 'Availability & Calendar',
       config: {
         title: 'Get All Availabilities',
-        description:
-          'Get all availabilities for the calling user. Returns availability information for all properties for a given period.',
+        description: `Get all availabilities for the calling user. Returns availability information for all properties for a given period.
+
+Example request:
+{
+  "params": {
+    "start": "2024-03-01T00:00:00Z",  // Calendar start date (ISO 8601 date-time)
+    "end": "2024-03-31T23:59:59Z"     // Calendar end date (ISO 8601 date-time)
+  }
+}`,
         inputSchema: {
           params: z
             .object({
@@ -71,8 +78,16 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
       category: 'Availability & Calendar',
       config: {
         title: 'Get Property Availability',
-        description:
-          'Get availability for a specific property over a period. Useful for granular checks before booking or blocking dates.',
+        description: `Get availability for a specific property over a period. Useful for granular checks before booking or blocking dates.
+
+Example request:
+{
+  "propertyId": "123",              // Property ID
+  "params": {
+    "from": "2024-03-01",          // Start date (ISO date-time or YYYY-MM-DD)
+    "to": "2024-03-31"             // End date (ISO date-time or YYYY-MM-DD)
+  }
+}`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID'),
           params: z
@@ -109,7 +124,17 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
       category: 'Availability & Calendar',
       config: {
         title: 'Get Room Availability',
-        description: 'Get availability for a specific room type within a property over a period.',
+        description: `Get availability for a specific room type within a property over a period.
+
+Example request:
+{
+  "propertyId": "123",              // Property ID
+  "roomTypeId": "456",              // Room Type ID
+  "params": {
+    "from": "2024-03-01",          // Start date (ISO date-time or YYYY-MM-DD)
+    "to": "2024-03-31"             // End date (ISO date-time or YYYY-MM-DD)
+  }
+}`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID'),
           roomTypeId: z.string().min(1).describe('Room Type ID'),
@@ -152,9 +177,9 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
 
 Example request:
 {
-  "propertyId": "123",
-  "fromDate": "2024-03-15", // optional, defaults to today
-  "daysToCheck": 90
+  "propertyId": "123",         // Property ID
+  "fromDate": "2024-03-15",    // Start date to check from (YYYY-MM-DD). Defaults to today if not provided.
+  "daysToCheck": 90            // Number of days to check ahead (1-365). Defaults to 90 days.
 }
 
 Example response:
@@ -239,8 +264,14 @@ Example response:
       category: 'Availability & Calendar',
       config: {
         title: 'Check Date Range Availability',
-        description:
-          'Verify if a specific date range is available for booking at a property. Returns detailed availability status including any conflicts or restrictions. Use this before creating bookings to ensure availability and avoid booking conflicts.',
+        description: `Verify if a specific date range is available for booking at a property. Returns detailed availability status including any conflicts or restrictions. Use this before creating bookings to ensure availability and avoid booking conflicts.
+
+Example request:
+{
+  "propertyId": "123",              // Property ID to check availability for
+  "checkInDate": "2024-03-15",      // Desired check-in date (YYYY-MM-DD)
+  "checkOutDate": "2024-03-22"      // Desired check-out date (YYYY-MM-DD)
+}`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID to check availability for'),
           checkInDate: DateStringSchema.describe('Desired check-in date (YYYY-MM-DD)'),
@@ -319,8 +350,14 @@ Example response:
       category: 'Availability & Calendar',
       config: {
         title: 'Get Availability Calendar View',
-        description:
-          'Retrieve a visual calendar view of property availability showing available, booked, and blocked dates. Perfect for displaying availability to guests, planning maintenance windows, or understanding booking patterns over time.',
+        description: `Retrieve a visual calendar view of property availability showing available, booked, and blocked dates. Perfect for displaying availability to guests, planning maintenance windows, or understanding booking patterns over time.
+
+Example request:
+{
+  "propertyId": "123",              // Property ID to get calendar for
+  "fromDate": "2024-03-01",         // Calendar start date (YYYY-MM-DD). Defaults to today
+  "daysToShow": 30                  // Number of days to display (1-90). Default: 30 days
+}`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID to get calendar for'),
           fromDate: DateStringSchema.optional().describe(
