@@ -8,7 +8,6 @@ on:
       - 'beta/*'
     paths:
       - 'src/**'
-      - 'bin/**'
       - 'package.json'
       - 'tsconfig.json'
   workflow_dispatch:
