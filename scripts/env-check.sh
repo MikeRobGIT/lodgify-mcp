@@ -80,6 +80,13 @@ echo "=========================================="
 # Required variables
 check_required "LODGIFY_API_KEY"
 
+# Check for HTTP mode requirements
+if [ "$1" = "http" ] || [ -n "$MCP_TOKEN" ]; then
+    echo ""
+    echo "HTTP transport mode detected..."
+    check_required "MCP_TOKEN"
+fi
+
 echo ""
 echo "Checking optional environment variables..."
 echo "=========================================="

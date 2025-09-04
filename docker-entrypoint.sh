@@ -21,10 +21,16 @@ log() {
 
 log "${GREEN}Starting Lodgify MCP Server entrypoint...${NC}"
 
+# Detect mode based on command
+MODE="stdio"
+if echo "$@" | grep -q "server-http"; then
+    MODE="http"
+fi
+
 # Run environment validation if script exists
 if [ -f "/app/scripts/env-check.sh" ]; then
-    log "Running environment validation..."
-    if /app/scripts/env-check.sh; then
+    log "Running environment validation for $MODE mode..."
+    if /app/scripts/env-check.sh $MODE; then
         log "${GREEN}Environment validation passed${NC}"
     else
         log "${YELLOW}Environment validation completed with warnings${NC}"
@@ -59,19 +65,32 @@ if [ "$1" = "health-check" ]; then
     exec node /app/scripts/health-server.js
 fi
 
-# Check if LODGIFY_API_KEY is set (only for MCP mode)
+# Check required environment variables based on mode
 if [ -z "$LODGIFY_API_KEY" ] || [ "$LODGIFY_API_KEY" = "your_lodgify_api_key_here" ]; then
     log "${RED}ERROR: LODGIFY_API_KEY is not set or contains default value${NC}"
     log "${RED}Please set LODGIFY_API_KEY environment variable before starting${NC}"
     exit 1
 fi
 
+# Additional check for HTTP mode
+if [ "$MODE" = "http" ]; then
+    if [ -z "$MCP_TOKEN" ] || [ "$MCP_TOKEN" = "your-secret-token-here" ] || [ "$MCP_TOKEN" = "test-token-123" ]; then
+        log "${RED}ERROR: MCP_TOKEN is not set or contains default/test value${NC}"
+        log "${RED}Please set MCP_TOKEN environment variable for HTTP mode${NC}"
+        exit 1
+    fi
+fi
+
 # Log startup configuration (without sensitive data)
 log "Configuration:"
+log "  MODE: $MODE"
 log "  NODE_ENV: ${NODE_ENV:-production}"
 log "  PORT: ${PORT:-3000}"
 log "  LOG_LEVEL: ${LOG_LEVEL:-info}"
 log "  DEBUG_HTTP: ${DEBUG_HTTP:-0}"
+if [ "$MODE" = "http" ]; then
+    log "  MCP_TOKEN: [SET]"
+fi
 
 # Start MCP server directly in foreground
 log "${GREEN}Starting MCP server...${NC}"
