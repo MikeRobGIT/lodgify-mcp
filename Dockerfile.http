@@ -5,7 +5,7 @@ FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
-COPY package.json bun.lockb* ./
+COPY package.json bun.lockb ./
 RUN bun install --frozen-lockfile
 
 # Copy source and build
@@ -44,7 +44,7 @@ ENV PORT=${PORT}
 EXPOSE ${PORT}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:${PORT}/health || exit 1
+  CMD curl -fsS http://localhost:${PORT}/health || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["bun", "run", "start:http:prod"]
+CMD ["bun", "dist/server-http.js"]
