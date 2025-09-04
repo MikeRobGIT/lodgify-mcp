@@ -19,7 +19,13 @@ const AUTH_TOKEN = process.env.MCP_TOKEN
 
 // Fail fast if auth token is not configured
 if (!AUTH_TOKEN) {
-  safeLogger.error('MCP_TOKEN is not set. HTTP server requires an authentication token.')
+  try {
+    safeLogger.error('MCP_TOKEN is not set. HTTP server requires an authentication token.')
+  } catch (error) {
+    // Fallback to console.error if logger fails during early startup
+    console.error('MCP_TOKEN is not set. HTTP server requires an authentication token.')
+    console.error('Logger initialization error:', error)
+  }
   process.exit(1)
 }
 
@@ -78,9 +84,10 @@ async function main() {
       let sessionInfo = sessions.get(sessionId)
 
       if (!sessionInfo) {
-        // Create new session with proper sessionId configuration
+        // Create new session with undefined sessionIdGenerator to run in stateless mode
+        // This avoids the initialization validation issue in the SDK
         const transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => sessionId,
+          sessionIdGenerator: undefined, // Use stateless mode to avoid initialization issues
         })
 
         // Set up cleanup timer
@@ -115,6 +122,12 @@ async function main() {
 }
 
 main().catch((error) => {
-  safeLogger.error('Failed to start HTTP server', error)
+  try {
+    safeLogger.error('Failed to start HTTP server', error)
+  } catch (logError) {
+    // Fallback to console.error if logger fails
+    console.error('Failed to start HTTP server', error)
+    console.error('Logger error:', logError)
+  }
   process.exit(1)
 })

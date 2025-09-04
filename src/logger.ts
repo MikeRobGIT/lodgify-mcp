@@ -70,7 +70,7 @@ function createLogger() {
     },
     pino.destination({
       dest: logFile,
-      sync: false, // Async writes for better performance
+      sync: true, // Sync writes to ensure logger is immediately ready
       mkdir: true, // Create directory if needed
     }),
   )
