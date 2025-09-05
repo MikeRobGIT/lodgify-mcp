@@ -57,6 +57,37 @@ Optional settings:
 LODGIFY_READ_ONLY="1"   # Prevent write operations (recommended for testing)
 LOG_LEVEL="info"        # Options: error | warn | info | debug
 DEBUG_HTTP="0"          # Set to "1" for verbose HTTP debugging
+MCP_TOKEN="your_secret_token" # Required for HTTP mode
+PORT="3000"             # Optional HTTP port (default 3000)
+```
+
+### HTTP Server (Streamable HTTP)
+
+To expose the server over HTTP instead of stdio:
+
+```bash
+npm run start:http
+```
+
+This launches an Express server using the Streamable HTTP transport (modern replacement for SSE).
+
+- Endpoint: `POST /mcp`
+- Auth: send `Authorization: Bearer <MCP_TOKEN>` header
+- Configure port with the `PORT` environment variable (defaults to `3000`).
+
+Clients such as Claude Desktop or the Anthropic Messages API can connect using this endpoint.
+
+#### Docker
+
+Build and run the HTTP server in a container:
+
+```bash
+npm run docker:http:build
+docker run --rm \
+  -p 3000:3000 \
+  -e MCP_TOKEN=your_token \
+  -e LODGIFY_API_KEY=your_lodgify_api_key_here \
+  lodgify-mcp:http
 ```
 
 ### API Key Rotation

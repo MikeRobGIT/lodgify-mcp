@@ -87,17 +87,21 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
         data: [
           {
             id: 1,
-            propertyId: '123', // Change to string to match the property ID passed
+            propertyId: '123', // Use camelCase to match v2 API format
             checkIn: '2025-08-14',
             checkOut: '2025-08-16',
             status: 'booked',
+            guest: { name: 'Test Guest' },
+            guestBreakdown: { adults: 2 },
           },
           {
             id: 2,
-            propertyId: '123', // Change to string to match the property ID passed
+            propertyId: '123', // Use camelCase to match v2 API format
             checkIn: '2025-08-20',
             checkOut: '2025-08-22',
             status: 'booked',
+            guest: { name: 'Test Guest 2' },
+            guestBreakdown: { adults: 2 },
           },
         ],
       }
@@ -120,6 +124,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-14',
             checkOut: '2025-09-14', // Covers entire check period
             status: 'booked',
+            guest: { name: 'Test Guest' },
+            guestBreakdown: { adults: 2 },
           },
         ],
       }
@@ -141,6 +147,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-14',
             checkOut: '2025-08-16',
             status: 'declined', // Should be ignored
+            guest: { name: 'Test Guest' },
+            guestBreakdown: { adults: 2 },
           },
           {
             id: 2,
@@ -148,6 +156,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-20',
             checkOut: '2025-08-22',
             status: 'booked',
+            guest: { name: 'Test Guest 2' },
+            guestBreakdown: { adults: 2 },
           },
         ],
       }
@@ -179,6 +189,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-14',
             checkOut: '2025-08-16',
             status: 'booked',
+            guest: { name: 'Test Guest' },
+            guestBreakdown: { adults: 2 },
           },
           {
             id: 2,
@@ -186,6 +198,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-20',
             checkOut: '2025-08-22',
             status: 'booked',
+            guest: { name: 'Test Guest 2' },
+            guestBreakdown: { adults: 2 },
           },
         ],
       }
@@ -210,6 +224,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-10',
             checkOut: '2025-08-12',
             status: 'booked',
+            guest: { name: 'Test Guest' },
+            guestBreakdown: { adults: 2 },
           },
         ],
       }
@@ -236,6 +252,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-16',
             checkOut: '2025-08-18',
             status: 'booked',
+            guest: { name: 'Test Guest' },
+            guestBreakdown: { adults: 2 },
           },
         ],
       }
@@ -284,6 +302,8 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
             checkIn: '2025-08-16',
             checkOut: '2025-08-18',
             status: 'booked',
+            guest: { name: 'Test Guest' },
+            guestBreakdown: { adults: 2 },
           },
         ],
       }

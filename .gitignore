@@ -55,3 +55,4 @@ mcp_options.json
 # Task files
 tasks.json
 tasks/ 
+mcp.options.json

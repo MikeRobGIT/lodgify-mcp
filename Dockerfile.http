@@ -1,0 +1,50 @@
+# Multi-stage Dockerfile for Lodgify MCP Server in HTTP mode
+FROM oven/bun:1-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies
+COPY package.json bun.lockb* ./
+RUN bun install --frozen-lockfile
+
+# Copy source and build
+COPY src ./src
+COPY tsconfig.json ./
+RUN bun run build
+
+FROM oven/bun:1-alpine AS production
+
+LABEL maintainer="lodgify-mcp"
+LABEL description="Lodgify MCP Server - Streamable HTTP transport"
+
+# Install curl for healthchecks
+RUN apk add --no-cache curl
+
+# Create non-root user
+RUN addgroup -g 1001 -S mcpuser \
+    && adduser -u 1001 -S mcpuser -G mcpuser
+
+WORKDIR /app
+
+# Copy built files and dependencies
+COPY --from=builder --chown=mcpuser:mcpuser /app/node_modules ./node_modules
+COPY --from=builder --chown=mcpuser:mcpuser /app/dist ./dist
+COPY --chown=mcpuser:mcpuser package.json ./
+
+# Copy entrypoint and scripts
+COPY --chown=mcpuser:mcpuser docker-entrypoint.sh /app/
+COPY --chown=mcpuser:mcpuser scripts/env-check.sh /app/scripts/
+RUN chmod +x /app/docker-entrypoint.sh /app/scripts/env-check.sh
+
+USER mcpuser
+
+ARG PORT=3000
+ENV PORT=${PORT}
+EXPOSE ${PORT}
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -fsS http://localhost:${PORT}/health || exit 1
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["bun", "dist/server-http.js"]
