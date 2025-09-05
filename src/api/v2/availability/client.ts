@@ -3,9 +3,9 @@
  * Handles all availability-related API operations
  */
 
-import type { Booking, BookingsListResponse } from '../../../types/lodgify.js'
 import type { BaseApiClient } from '../../base-client.js'
 import { BaseApiModule, type ModuleConfig } from '../../base-module.js'
+import type { Booking, BookingsListResponse } from '../bookings/types.js'
 import type {
   AvailabilityCalendarResult,
   AvailabilityQueryParams,
@@ -150,17 +150,17 @@ export class AvailabilityClient extends BaseApiModule {
       },
     )) as BookingsListResponse
 
-    const bookings: Booking[] = bookingsData?.items || []
+    const bookings: Booking[] = bookingsData?.data || []
 
     // Filter bookings for this property that block availability
     const blockingBookings = bookings.filter(
       (booking) =>
-        booking.property_id?.toString() === propertyId.toString() &&
-        booking.status !== 'Declined' &&
-        booking.arrival &&
-        booking.departure &&
-        ['Booked', 'Confirmed', 'Tentative'].includes(booking.status) &&
-        this.isDateRangeOverlapping(fromDate, toDate, booking.arrival, booking.departure),
+        booking.propertyId?.toString() === propertyId.toString() &&
+        booking.status !== 'declined' &&
+        booking.checkIn &&
+        booking.checkOut &&
+        ['booked', 'confirmed', 'tentative'].includes(booking.status) &&
+        this.isDateRangeOverlapping(fromDate, toDate, booking.checkIn, booking.checkOut),
     )
 
     const isAvailable = blockingBookings.length === 0
@@ -174,8 +174,8 @@ export class AvailabilityClient extends BaseApiModule {
         closed_period: null,
         bookings: blockingBookings.map((booking) => ({
           id: typeof booking.id === 'string' ? parseInt(booking.id, 10) : booking.id,
-          arrival: booking.arrival,
-          departure: booking.departure,
+          arrival: booking.checkIn,
+          departure: booking.checkOut,
           status: booking.status,
           guest_name: booking.guest?.name || 'Unknown',
         })),
@@ -272,22 +272,22 @@ export class AvailabilityClient extends BaseApiModule {
       },
     )) as BookingsListResponse
 
-    const bookings: Booking[] = bookingsData?.items || []
+    const bookings: Booking[] = bookingsData?.data || []
 
     // Filter and sort bookings for this property
     const propertyBookings = bookings
       .filter(
         (booking) =>
-          booking.property_id?.toString() === propertyId.toString() &&
-          booking.status !== 'Declined' &&
-          booking.arrival &&
-          booking.departure,
+          booking.propertyId?.toString() === propertyId.toString() &&
+          booking.status !== 'declined' &&
+          booking.checkIn &&
+          booking.checkOut,
       )
       .map((booking) => ({
-        arrival: booking.arrival,
-        departure: booking.departure,
+        arrival: booking.checkIn,
+        departure: booking.checkOut,
         status: booking.status as string,
-        isBlocked: ['Booked', 'Tentative'].includes(booking.status),
+        isBlocked: ['booked', 'tentative'].includes(booking.status),
       }))
       .sort((a: BookingPeriod, b: BookingPeriod) => compareDates(a.arrival, b.arrival))
 
@@ -296,7 +296,7 @@ export class AvailabilityClient extends BaseApiModule {
       // Only check property existence if there are other bookings in the system
       if (bookings.length > 0) {
         const propertyExists = bookings.some(
-          (booking) => booking.property_id?.toString() === propertyId.toString(),
+          (booking) => booking.propertyId?.toString() === propertyId.toString(),
         )
 
         if (!propertyExists) {
@@ -403,21 +403,21 @@ export class AvailabilityClient extends BaseApiModule {
       },
     )) as BookingsListResponse
 
-    const bookings: Booking[] = bookingsData?.items || []
+    const bookings: Booking[] = bookingsData?.data || []
 
     // Find conflicting bookings
     const conflictingBookings = bookings
       .filter(
         (booking) =>
-          booking.property_id?.toString() === propertyId.toString() &&
-          booking.status !== 'Declined' &&
-          booking.arrival &&
-          booking.departure &&
-          ['Booked', 'Tentative'].includes(booking.status),
+          booking.propertyId?.toString() === propertyId.toString() &&
+          booking.status !== 'declined' &&
+          booking.checkIn &&
+          booking.checkOut &&
+          ['booked', 'tentative'].includes(booking.status),
       )
       .map((booking) => ({
-        arrival: booking.arrival,
-        departure: booking.departure,
+        arrival: booking.checkIn,
+        departure: booking.checkOut,
         status: booking.status,
         isBlocked: true,
       }))
@@ -471,7 +471,7 @@ export class AvailabilityClient extends BaseApiModule {
       },
     )) as BookingsListResponse
 
-    const bookings: Booking[] = bookingsData?.items || []
+    const bookings: Booking[] = bookingsData?.data || []
 
     // Create calendar array
     const calendar = []
@@ -483,12 +483,12 @@ export class AvailabilityClient extends BaseApiModule {
       // Find if this date is blocked by any booking
       const blockingBooking = bookings.find(
         (booking) =>
-          booking.property_id?.toString() === propertyId.toString() &&
-          booking.status !== 'Declined' &&
-          booking.arrival &&
-          booking.departure &&
-          ['Booked', 'Confirmed', 'Tentative'].includes(booking.status) &&
-          isDateInRange(currentDate, booking.arrival, booking.departure),
+          booking.propertyId?.toString() === propertyId.toString() &&
+          booking.status !== 'declined' &&
+          booking.checkIn &&
+          booking.checkOut &&
+          ['booked', 'confirmed', 'tentative'].includes(booking.status) &&
+          isDateInRange(currentDate, booking.checkIn, booking.checkOut),
       )
 
       const isAvailable = !blockingBooking
