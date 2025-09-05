@@ -62,3 +62,23 @@ export interface PropertyAvailabilityUpdatePayload {
   minStay?: number
   maxStay?: number
 }
+
+export interface PropertyAvailabilityResult {
+  user_id: number
+  property_id: number
+  room_type_id: number
+  periods: Array<{
+    start: string
+    end: string
+    available: number
+    closed_period: null
+    bookings: Array<{
+      id: number
+      arrival: string
+      departure: string
+      status: string
+      guest_name: string
+    }>
+    channel_calendars: unknown[]
+  }>
+}

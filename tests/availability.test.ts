@@ -84,20 +84,20 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
   describe('getNextAvailableDate', () => {
     test('should find next available date when property has bookings', async () => {
       const mockBookingsResponse = {
-        data: [
+        items: [
           {
             id: 1,
-            propertyId: '123', // Change to string to match the property ID passed
-            checkIn: '2025-08-14',
-            checkOut: '2025-08-16',
-            status: 'booked',
+            property_id: '123', // Use snake_case to match API format
+            arrival: '2025-08-14',
+            departure: '2025-08-16',
+            status: 'Booked',
           },
           {
             id: 2,
-            propertyId: '123', // Change to string to match the property ID passed
-            checkIn: '2025-08-20',
-            checkOut: '2025-08-22',
-            status: 'booked',
+            property_id: '123', // Use snake_case to match API format
+            arrival: '2025-08-20',
+            departure: '2025-08-22',
+            status: 'Booked',
           },
         ],
       }
@@ -113,13 +113,13 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
 
     test('should return null when no availability found', async () => {
       const mockBookingsResponse = {
-        data: [
+        items: [
           {
             id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-14',
-            checkOut: '2025-09-14', // Covers entire check period
-            status: 'booked',
+            property_id: '123',
+            arrival: '2025-08-14',
+            departure: '2025-09-14', // Covers entire check period
+            status: 'Booked',
           },
         ],
       }
@@ -134,20 +134,20 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
 
     test('should filter out cancelled bookings', async () => {
       const mockBookingsResponse = {
-        data: [
+        items: [
           {
             id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-14',
-            checkOut: '2025-08-16',
-            status: 'declined', // Should be ignored
+            property_id: '123',
+            arrival: '2025-08-14',
+            departure: '2025-08-16',
+            status: 'Declined', // Should be ignored
           },
           {
             id: 2,
-            propertyId: '123',
-            checkIn: '2025-08-20',
-            checkOut: '2025-08-22',
-            status: 'booked',
+            property_id: '123',
+            arrival: '2025-08-20',
+            departure: '2025-08-22',
+            status: 'Booked',
           },
         ],
       }
@@ -172,20 +172,20 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
 
     test('should detect when property does not exist', async () => {
       const mockBookingsResponse = {
-        data: [
+        items: [
           {
             id: 1,
-            propertyId: '456', // Different property ID
-            checkIn: '2025-08-14',
-            checkOut: '2025-08-16',
-            status: 'booked',
+            property_id: '456', // Different property ID
+            arrival: '2025-08-14',
+            departure: '2025-08-16',
+            status: 'Booked',
           },
           {
             id: 2,
-            propertyId: '789', // Another different property ID
-            checkIn: '2025-08-20',
-            checkOut: '2025-08-22',
-            status: 'booked',
+            property_id: '789', // Another different property ID
+            arrival: '2025-08-20',
+            departure: '2025-08-22',
+            status: 'Booked',
           },
         ],
       }
@@ -203,13 +203,13 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
   describe('checkDateRangeAvailability', () => {
     test('should return available when no conflicting bookings', async () => {
       const mockBookingsResponse = {
-        data: [
+        items: [
           {
             id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-10',
-            checkOut: '2025-08-12',
-            status: 'booked',
+            property_id: '123',
+            arrival: '2025-08-10',
+            departure: '2025-08-12',
+            status: 'Booked',
           },
         ],
       }
@@ -229,13 +229,13 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
 
     test('should return unavailable when there are conflicting bookings', async () => {
       const mockBookingsResponse = {
-        data: [
+        items: [
           {
             id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-16',
-            checkOut: '2025-08-18',
-            status: 'booked',
+            property_id: '123',
+            arrival: '2025-08-16',
+            departure: '2025-08-18',
+            status: 'Booked',
           },
         ],
       }
@@ -277,13 +277,13 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
   describe('getAvailabilityCalendar', () => {
     test('should generate calendar with availability status', async () => {
       const mockBookingsResponse = {
-        data: [
+        items: [
           {
             id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-16',
-            checkOut: '2025-08-18',
-            status: 'booked',
+            property_id: '123',
+            arrival: '2025-08-16',
+            departure: '2025-08-18',
+            status: 'Booked',
           },
         ],
       }
@@ -297,7 +297,7 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
       expect(result.calendar[0].isAvailable).toBe(true)
       expect(result.calendar[1].date).toBe('2025-08-16')
       expect(result.calendar[1].isAvailable).toBe(false)
-      expect(result.calendar[1].bookingStatus).toBe('booked')
+      expect(result.calendar[1].bookingStatus).toBe('Booked')
 
       expect(result.summary.totalDays).toBe(7)
       expect(result.summary.availableDays).toBe(5) // 7 total - 2 blocked days (exclusive end date)
