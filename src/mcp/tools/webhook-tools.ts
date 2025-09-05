@@ -6,7 +6,8 @@
 import { z } from 'zod'
 import type { WebhookSubscribeRequest } from '../../api/v1/webhooks/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
-import { WebhookEventEnum } from '../schemas/common.js'
+// Note: Schemas are inlined directly to avoid $ref issues with MCPO
+// Previously imported WebhookEventEnum from '../schemas/common.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
@@ -83,7 +84,20 @@ Example request:
   "target_url": "https://example.com/webhooks/lodgify"  // HTTPS URL endpoint to receive webhook notifications
 }`,
         inputSchema: {
-          event: WebhookEventEnum.describe('Event type to subscribe to'),
+          event: z
+            .enum([
+              'rate_change',
+              'availability_change',
+              'booking_new_any_status',
+              'booking_new_status_booked',
+              'booking_change',
+              'booking_status_change_booked',
+              'booking_status_change_tentative',
+              'booking_status_change_open',
+              'booking_status_change_declined',
+              'guest_message_received',
+            ])
+            .describe('Event type to subscribe to'),
           target_url: z
             .string()
             .url()

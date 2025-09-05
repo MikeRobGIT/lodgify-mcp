@@ -9,7 +9,8 @@ import type { RateUpdateV1Request } from '../../api/v1/rates/types.js'
 import type { QuoteParams } from '../../api/v2/quotes/types.js'
 import type { DailyRatesParams } from '../../api/v2/rates/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
-import { DateStringSchema } from '../schemas/common.js'
+// Note: Schemas are inlined directly to avoid $ref issues with MCPO
+// Previously imported DateStringSchema from '../schemas/common.js'
 import {
   createValidator,
   DateToolCategory,
@@ -50,8 +51,14 @@ Example request:
         inputSchema: {
           roomTypeId: z.number().int().describe('Room Type ID (required)'),
           houseId: z.number().int().describe('House/Property ID (required)'),
-          startDate: DateStringSchema.describe('Start date for rates calendar (YYYY-MM-DD)'),
-          endDate: DateStringSchema.describe('End date for rates calendar (YYYY-MM-DD)'),
+          startDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .describe('Start date for rates calendar (YYYY-MM-DD)'),
+          endDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .describe('End date for rates calendar (YYYY-MM-DD)'),
         },
       },
       handler: wrapToolHandler(async ({ roomTypeId, houseId, startDate, endDate }) => {

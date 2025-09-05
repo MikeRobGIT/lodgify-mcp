@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2025-09-03
+
+### Changed
+
+- Enhanced tool descriptions with example requests and responses for better developer experience
+- Refactored tool schemas: Inlined Zod schemas directly in tool modules for improved maintainability
+- Improved code formatting of Zod schemas in booking tools for better readability
+
+### Technical Details
+
+- Consolidated validation schemas within each tool module (availability, booking, rate, webhook tools)
+- Removed obsolete API key entries from .env.example
+- Code refactoring focused on schema organization without functional changes
+
 ## [0.1.10] - 2025-09-03
 
 ### Changed

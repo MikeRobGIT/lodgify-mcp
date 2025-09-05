@@ -7,12 +7,8 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
-import {
-  BookingStatusEnum,
-  DateTimeSchema,
-  StayFilterEnum,
-  TrashFilterEnum,
-} from '../schemas/common.js'
+// Note: Schemas are inlined directly to avoid $ref issues with MCPO
+// Previously imported from '../schemas/common.js'
 import {
   createValidator,
   DateToolCategory,
@@ -89,20 +85,34 @@ Example response:
           page: z.number().int().min(1).default(1).describe('Page number to retrieve'),
           size: z.number().int().min(1).max(50).default(50).describe('Number of items per page'),
           includeCount: z.boolean().default(false).describe('Include total number of results'),
-          stayFilter: StayFilterEnum.optional().describe('Filter bookings by stay dates'),
-          stayFilterDate: DateTimeSchema.optional().describe(
-            'Date to filter when using ArrivalDate or DepartureDate in stayFilter',
-          ),
-          updatedSince: DateTimeSchema.optional().describe(
-            'Include only bookings updated since this date',
-          ),
+          stayFilter: z
+            .enum(['Upcoming', 'Current', 'Historic', 'All', 'ArrivalDate', 'DepartureDate'])
+            .optional()
+            .describe('Filter bookings by stay dates'),
+          stayFilterDate: z
+            .string()
+            .datetime({
+              message: 'DateTime must be in ISO 8601 format (e.g., 2024-03-15T10:00:00Z)',
+            })
+            .optional()
+            .describe('Date to filter when using ArrivalDate or DepartureDate in stayFilter'),
+          updatedSince: z
+            .string()
+            .datetime({
+              message: 'DateTime must be in ISO 8601 format (e.g., 2024-03-15T10:00:00Z)',
+            })
+            .optional()
+            .describe('Include only bookings updated since this date'),
           includeTransactions: z
             .boolean()
             .default(false)
             .describe('Include details about transactions and schedule'),
           includeExternal: z.boolean().default(false).describe('Include external bookings'),
           includeQuoteDetails: z.boolean().default(false).describe('Include quote details'),
-          trash: TrashFilterEnum.optional().describe('Query bookings that are in trash'),
+          trash: z
+            .enum(['False', 'True', 'All'])
+            .optional()
+            .describe('Query bookings that are in trash'),
         },
       },
       handler: wrapToolHandler(async (params) => {
@@ -452,7 +462,10 @@ The transformation handles: guest name splitting, room structuring, status capit
           adults: z.number().int().min(1).describe('Number of adult guests'),
           children: z.number().int().min(0).default(0).describe('Number of children'),
           infants: z.number().int().min(0).optional().describe('Number of infants'),
-          status: BookingStatusEnum.optional().describe('Booking status'),
+          status: z
+            .enum(['booked', 'tentative', 'declined', 'confirmed'])
+            .optional()
+            .describe('Booking status'),
           source: z.string().optional().describe('Booking source or channel'),
           notes: z.string().optional().describe('Internal notes or special requests'),
         },
@@ -582,7 +595,10 @@ This gets automatically transformed to the nested API structure with guest objec
           adults: z.number().int().min(1).optional().describe('Updated number of adults'),
           children: z.number().int().min(0).optional().describe('Updated number of children'),
           infants: z.number().int().min(0).optional().describe('Updated number of infants'),
-          status: BookingStatusEnum.optional().describe('Updated booking status'),
+          status: z
+            .enum(['booked', 'tentative', 'declined', 'confirmed'])
+            .optional()
+            .describe('Updated booking status'),
           source: z.string().optional().describe('Updated booking source'),
           notes: z.string().optional().describe('Updated notes'),
         },
