@@ -17,9 +17,8 @@ Bump the package version and prepare for release. Usage: `/bump-version [patch|m
    - Ensure argument is one of: `patch`, `minor`, or `major`
 
 2. **Pre-bump Validation**
-   - Run `bun test` to ensure all tests pass
-   - Run `bun run build` to ensure the project builds successfully
-   - If either fails, abort the version bump
+   - Run `bun check` to ensure code quality, type checking passes, build passes, and all tests pass
+   - If any fail, abort the version bump
 
 3. **Bump Version**
    - Manually update the version in package.json based on the bump type
@@ -66,6 +65,7 @@ Bump the package version and prepare for release. Usage: `/bump-version [patch|m
 
 ## Error Handling
 
+- If `bun check` fails, show the error and stop
 - If tests fail, show the error and stop
 - If build fails, show the error and stop
 - If git operations fail, provide troubleshooting guidance

@@ -109,14 +109,18 @@ Example response:
           stayFilter: z
             .enum(['Upcoming', 'Current', 'Historic', 'All', 'ArrivalDate', 'DepartureDate'])
             .optional()
-            .describe('Filter bookings by their stay dates. Use "Upcoming" to find future reservations (most common), "Current" for active guests, "Historic" for past bookings, "ArrivalDate"/"DepartureDate" for specific dates (requires stayFilterDate), or "All" for everything.'),
+            .describe(
+              'Filter bookings by their stay dates. Use "Upcoming" to find future reservations (most common), "Current" for active guests, "Historic" for past bookings, "ArrivalDate"/"DepartureDate" for specific dates (requires stayFilterDate), or "All" for everything.',
+            ),
           stayFilterDate: z
             .string()
             .datetime({
               message: 'DateTime must be in ISO 8601 format (e.g., 2024-03-15T10:00:00Z)',
             })
             .optional()
-            .describe('Required when stayFilter is "ArrivalDate" or "DepartureDate". Specify the exact date to search for in ISO 8601 format (e.g., "2024-03-15T00:00:00Z").'),
+            .describe(
+              'Required when stayFilter is "ArrivalDate" or "DepartureDate". Specify the exact date to search for in ISO 8601 format (e.g., "2024-03-15T00:00:00Z").',
+            ),
           updatedSince: z
             .string()
             .datetime({
@@ -554,20 +558,20 @@ The transformation handles: guest name splitting, room structuring, status capit
         const finalResult =
           feedbackMessages.length > 0
             ? {
-              ...result,
-              dateValidation: {
-                feedback: feedbackMessages.map((fm) => fm.feedback),
-                messages: feedbackMessages.map((fm) => fm.message),
-                originalDates: {
-                  arrival: params.arrival,
-                  departure: params.departure,
+                ...result,
+                dateValidation: {
+                  feedback: feedbackMessages.map((fm) => fm.feedback),
+                  messages: feedbackMessages.map((fm) => fm.message),
+                  originalDates: {
+                    arrival: params.arrival,
+                    departure: params.departure,
+                  },
+                  validatedDates: {
+                    arrival: rangeValidation.start.validatedDate,
+                    departure: rangeValidation.end.validatedDate,
+                  },
                 },
-                validatedDates: {
-                  arrival: rangeValidation.start.validatedDate,
-                  departure: rangeValidation.end.validatedDate,
-                },
-              },
-            }
+              }
             : result
 
         return {
