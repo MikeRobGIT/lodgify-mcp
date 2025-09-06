@@ -5,7 +5,6 @@
 
 import type { BaseApiClient } from '../../base-client.js'
 import { BaseApiModule, type ModuleConfig } from '../../base-module.js'
-import type { Booking, BookingsListResponse } from '../bookings/types.js'
 import type {
   AvailabilityCalendarResult,
   AvailabilityQueryParams,
@@ -103,9 +102,6 @@ export class AvailabilityClient extends BaseApiModule {
   /**
    * Get availability for a specific property
    * GET /v2/availability/{propertyId}
-   *
-   * Note: This method now uses booking data to determine availability
-   * instead of relying on the potentially unreliable /v2/availability endpoint
    */
   async getAvailabilityForProperty<T = unknown>(
     propertyId: string,
@@ -115,97 +111,25 @@ export class AvailabilityClient extends BaseApiModule {
       throw new Error('Property ID is required')
     }
 
-    // If no date range specified, return the original API response
-    if (!params?.from || !params?.to) {
-      return this.request<T>(
-        'GET',
-        propertyId,
-        params ? { params: params as Record<string, unknown> } : {},
-      )
+    // Convert from/to parameters to start/end for the availability API
+    const apiParams: Record<string, unknown> = {}
+
+    if (params?.from) {
+      // Convert YYYY-MM-DD to ISO date-time format if needed
+      apiParams.start = params.from.includes('T') ? params.from : `${params.from}T00:00:00Z`
     }
 
-    // For date range queries, use booking data to determine availability
-    return this.getAvailabilityFromBookings(propertyId, params.from, params.to) as Promise<T>
-  }
-
-  /**
-   * Get availability for a property by checking actual booking data
-   * This is more reliable than the /v2/availability endpoint
-   */
-  private async getAvailabilityFromBookings(
-    propertyId: string,
-    fromDate: string,
-    toDate: string,
-  ): Promise<PropertyAvailabilityResult> {
-    // Get bookings for the date range
-    const bookingsData = (await this.request<BookingsListResponse>(
-      'GET',
-      '../reservations/bookings',
-      {
-        params: {
-          propertyId,
-          from: fromDate,
-          to: toDate,
-        },
-      },
-    )) as BookingsListResponse
-
-    const bookings: Booking[] = bookingsData?.data || []
-
-    // Filter bookings for this property that block availability
-    const blockingBookings = bookings.filter(
-      (booking) =>
-        booking.propertyId?.toString() === propertyId.toString() &&
-        booking.status !== 'declined' &&
-        booking.checkIn &&
-        booking.checkOut &&
-        ['booked', 'confirmed', 'tentative'].includes(booking.status) &&
-        this.isDateRangeOverlapping(fromDate, toDate, booking.checkIn, booking.checkOut),
-    )
-
-    const isAvailable = blockingBookings.length === 0
-
-    // Create periods array for the response format
-    const periods = [
-      {
-        start: fromDate,
-        end: toDate,
-        available: isAvailable ? 1 : 0,
-        closed_period: null,
-        bookings: blockingBookings.map((booking) => ({
-          id: typeof booking.id === 'string' ? parseInt(booking.id, 10) : booking.id,
-          arrival: booking.checkIn,
-          departure: booking.checkOut,
-          status: booking.status,
-          guest_name: booking.guest?.name || 'Unknown',
-        })),
-        channel_calendars: [],
-      },
-    ]
-
-    return {
-      user_id: 0, // Will be set by the calling context
-      property_id: parseInt(propertyId, 10),
-      room_type_id: 0, // Will be set by the calling context
-      periods,
+    if (params?.to) {
+      // Convert YYYY-MM-DD to ISO date-time format if needed
+      apiParams.end = params.to.includes('T') ? params.to : `${params.to}T23:59:59Z`
     }
-  }
 
-  /**
-   * Check if two date ranges overlap
-   */
-  private isDateRangeOverlapping(
-    start1: string,
-    end1: string,
-    start2: string,
-    end2: string,
-  ): boolean {
-    const start1Date = new Date(start1)
-    const end1Date = new Date(end1)
-    const start2Date = new Date(start2)
-    const end2Date = new Date(end2)
+    // Add includeDetails to get booking information when available
+    if (params?.from && params?.to) {
+      apiParams.includeDetails = true
+    }
 
-    return start1Date < end2Date && start2Date < end1Date
+    return this.request<T>('GET', propertyId, { params: apiParams })
   }
 
   /**
@@ -249,7 +173,7 @@ export class AvailabilityClient extends BaseApiModule {
   }
 
   /**
-   * Get the next available date for a property by analyzing bookings
+   * Get the next available date for a property by analyzing availability data
    * Returns null if no availability found in the specified range
    */
   async getNextAvailableDate(
@@ -260,116 +184,108 @@ export class AvailabilityClient extends BaseApiModule {
     const startDate = fromDate || getTodayISO()
     const endDate = addDays(startDate, daysToCheck)
 
-    // Get all bookings in the date range (without property filter to check if property exists)
-    const bookingsData = (await this.request<BookingsListResponse>(
-      'GET',
-      '../reservations/bookings',
-      {
-        params: {
-          from: startDate,
-          to: endDate,
+    try {
+      // Use the availability API to get structured availability data
+      const availabilityData = (await this.request<PropertyAvailabilityResult[]>(
+        'GET',
+        propertyId,
+        {
+          params: {
+            start: `${startDate}T00:00:00Z`,
+            end: `${endDate}T23:59:59Z`,
+            includeDetails: true, // Include booking details
+          },
         },
-      },
-    )) as BookingsListResponse
+      )) as PropertyAvailabilityResult[]
 
-    const bookings: Booking[] = bookingsData?.data || []
+      const availabilityResult = Array.isArray(availabilityData)
+        ? availabilityData[0]
+        : availabilityData
 
-    // Filter and sort bookings for this property
-    const propertyBookings = bookings
-      .filter(
-        (booking) =>
-          booking.propertyId?.toString() === propertyId.toString() &&
-          booking.status !== 'declined' &&
-          booking.checkIn &&
-          booking.checkOut,
-      )
-      .map((booking) => ({
-        arrival: booking.checkIn,
-        departure: booking.checkOut,
-        status: booking.status as string,
-        isBlocked: ['booked', 'tentative'].includes(booking.status),
-      }))
-      .sort((a: BookingPeriod, b: BookingPeriod) => compareDates(a.arrival, b.arrival))
-
-    // If no bookings found for this property, check if property exists
-    if (propertyBookings.length === 0) {
-      // Only check property existence if there are other bookings in the system
-      if (bookings.length > 0) {
-        const propertyExists = bookings.some(
-          (booking) => booking.propertyId?.toString() === propertyId.toString(),
-        )
-
-        if (!propertyExists) {
-          // No bookings found for this property ID in a system that has other bookings
-          return {
-            nextAvailableDate: null,
-            availableUntil: null,
-            blockedPeriods: [],
-            totalDaysAvailable: 0,
-            message: `No booking data found for property ID ${propertyId}. Property may not exist or may not have any bookings in the system. Use lodgify_find_properties to discover available property IDs.`,
-          }
+      if (
+        !availabilityResult ||
+        !availabilityResult.periods ||
+        availabilityResult.periods.length === 0
+      ) {
+        return {
+          nextAvailableDate: null,
+          availableUntil: null,
+          blockedPeriods: [],
+          totalDaysAvailable: 0,
+          message: `No availability data found for property ID ${propertyId}. Property may not exist.`,
         }
       }
-      // If no bookings exist at all in the system, we cannot verify property existence
-      // so we proceed with the assumption that no bookings = available
-    }
 
-    // Find the next available date
-    let currentDate = startDate
-    let nextAvailableDate: string | null = null
-    let availableUntil: string | null = null
-
-    while (compareDates(currentDate, endDate) <= 0) {
-      // Check if current date is blocked by any booking
-      const isBlocked = propertyBookings.some(
-        (booking: BookingPeriod) =>
-          booking.isBlocked && isDateInRange(currentDate, booking.arrival, booking.departure),
+      // Sort periods by start date
+      const sortedPeriods = availabilityResult.periods.sort((a, b) =>
+        compareDates(a.start, b.start),
       )
 
-      if (!isBlocked) {
-        if (!nextAvailableDate) {
-          nextAvailableDate = currentDate
+      let nextAvailableDate: string | null = null
+      let availableUntil: string | null = null
+      const blockedPeriods: BookingPeriod[] = []
+
+      // Extract all blocked bookings for reporting
+      for (const period of sortedPeriods) {
+        if (period.available === 0 && period.bookings) {
+          const periodBookings = period.bookings.map((booking) => ({
+            arrival: booking.arrival,
+            departure: booking.departure,
+            status: booking.status || 'booked',
+            isBlocked: true,
+          }))
+          blockedPeriods.push(...periodBookings)
         }
-        // Find how long this availability period lasts
-        let checkDate = currentDate
-        while (compareDates(checkDate, endDate) <= 0) {
-          const stillAvailable = !propertyBookings.some(
-            (booking: BookingPeriod) =>
-              booking.isBlocked && isDateInRange(checkDate, booking.arrival, booking.departure),
-          )
-          if (stillAvailable) {
-            availableUntil = checkDate
-            checkDate = addDays(checkDate, 1)
-          } else {
-            break
-          }
-        }
-        break
       }
 
-      currentDate = addDays(currentDate, 1)
-    }
+      // Find the first available period
+      for (const period of sortedPeriods) {
+        if (period.available === 1) {
+          // Convert period start/end to YYYY-MM-DD format
+          nextAvailableDate = period.start.split('T')[0]
+          availableUntil = period.end.split('T')[0]
 
-    const totalDaysAvailable =
-      nextAvailableDate && availableUntil ? daysBetween(nextAvailableDate, availableUntil) + 1 : 0
+          // Adjust to ensure we don't go beyond our check range
+          if (compareDates(nextAvailableDate, startDate) < 0) {
+            nextAvailableDate = startDate
+          }
+          if (compareDates(availableUntil, endDate) > 0) {
+            availableUntil = endDate
+          }
+          break
+        }
+      }
 
-    let message: string
-    if (nextAvailableDate) {
-      if (availableUntil && compareDates(nextAvailableDate, availableUntil) < 0) {
-        message = `Available from ${nextAvailableDate} to ${availableUntil} (${totalDaysAvailable} days)`
+      const totalDaysAvailable =
+        nextAvailableDate && availableUntil ? daysBetween(nextAvailableDate, availableUntil) + 1 : 0
+
+      let message: string
+      if (nextAvailableDate) {
+        if (availableUntil && compareDates(nextAvailableDate, availableUntil) < 0) {
+          message = `Available from ${nextAvailableDate} to ${availableUntil} (${totalDaysAvailable} days)`
+        } else {
+          message = `Available starting ${nextAvailableDate}`
+        }
       } else {
-        message = `Available starting ${nextAvailableDate}`
+        message = `No availability found in the next ${daysToCheck} days`
       }
-    } else {
-      message = `No availability found in the next ${daysToCheck} days`
-    }
 
-    return {
-      nextAvailableDate,
-      availableUntil,
-      blockedPeriods: propertyBookings.filter((b: BookingPeriod) => b.isBlocked),
-      totalDaysAvailable,
-      message,
+      return {
+        nextAvailableDate,
+        availableUntil,
+        blockedPeriods,
+        totalDaysAvailable,
+        message,
+      }
+    } catch (_error) {
+      // If availability API fails, return appropriate message
+      return {
+        nextAvailableDate: null,
+        availableUntil: null,
+        blockedPeriods: [],
+        totalDaysAvailable: 0,
+        message: `Unable to check availability for property ID ${propertyId}. Property may not exist or API error occurred.`,
+      }
     }
   }
 
@@ -390,58 +306,79 @@ export class AvailabilityClient extends BaseApiModule {
       throw new Error('Check-in date must be before check-out date')
     }
 
-    // Get bookings that might overlap with the requested range
-    const bookingsData = (await this.request<BookingsListResponse>(
-      'GET',
-      '../reservations/bookings',
-      {
-        params: {
-          propertyId,
-          from: addDays(checkInDate, -1), // Check one day before to catch overlaps
-          to: addDays(checkOutDate, 1), // Check one day after to catch overlaps
-        },
+    // Use the proper availability API endpoint with correct parameters
+    const availabilityData = (await this.request<PropertyAvailabilityResult[]>('GET', propertyId, {
+      params: {
+        start: `${checkInDate}T00:00:00Z`, // Convert to ISO date-time format
+        end: `${checkOutDate}T23:59:59Z`, // Convert to ISO date-time format
+        includeDetails: true, // Include booking status details
       },
-    )) as BookingsListResponse
+    })) as PropertyAvailabilityResult[]
 
-    const bookings: Booking[] = bookingsData?.data || []
+    const availabilityResult = Array.isArray(availabilityData)
+      ? availabilityData[0]
+      : availabilityData
 
-    // Find conflicting bookings
-    const conflictingBookings = bookings
-      .filter(
-        (booking) =>
-          booking.propertyId?.toString() === propertyId.toString() &&
-          booking.status !== 'declined' &&
-          booking.checkIn &&
-          booking.checkOut &&
-          ['booked', 'tentative'].includes(booking.status),
+    if (!availabilityResult || !availabilityResult.periods) {
+      throw new Error('No availability data returned for property')
+    }
+
+    // Check availability across all periods that overlap with our date range
+    const relevantPeriods = availabilityResult.periods.filter((period) => {
+      // Check if period overlaps with our requested range
+      return !(
+        compareDates(period.end, checkInDate) <= 0 || compareDates(period.start, checkOutDate) >= 0
       )
-      .map((booking) => ({
-        arrival: booking.checkIn,
-        departure: booking.checkOut,
-        status: booking.status,
-        isBlocked: true,
-      }))
-      .filter((booking: BookingPeriod) => {
-        // Check for date overlap: booking overlaps if it doesn't end before check-in or start after check-out
-        return !(
-          compareDates(booking.departure, checkInDate) <= 0 ||
-          compareDates(booking.arrival, checkOutDate) >= 0
-        )
-      })
+    })
 
-    const isAvailable = conflictingBookings.length === 0
+    // Determine if the entire requested range is available
+    let isAvailable = true
+    const conflictingBookings: BookingPeriod[] = []
+
+    for (const period of relevantPeriods) {
+      if (period.available === 0) {
+        isAvailable = false
+
+        // Extract conflicting bookings from the period
+        if (period.bookings) {
+          const periodBookings = period.bookings
+            .filter((booking) => {
+              // Check if booking overlaps with our requested range
+              return !(
+                compareDates(booking.departure, checkInDate) <= 0 ||
+                compareDates(booking.arrival, checkOutDate) >= 0
+              )
+            })
+            .map((booking) => ({
+              arrival: booking.arrival,
+              departure: booking.departure,
+              status: booking.status || 'booked',
+              isBlocked: true,
+            }))
+
+          conflictingBookings.push(...periodBookings)
+        }
+      }
+    }
+
+    // Remove duplicate bookings (in case they appear in multiple periods)
+    const uniqueConflictingBookings = conflictingBookings.filter(
+      (booking, index, self) =>
+        index ===
+        self.findIndex((b) => b.arrival === booking.arrival && b.departure === booking.departure),
+    )
 
     let message: string
     if (isAvailable) {
       const nights = daysBetween(checkInDate, checkOutDate)
       message = `Available for ${nights} nights from ${checkInDate} to ${checkOutDate}`
     } else {
-      message = `Not available: ${conflictingBookings.length} conflicting booking(s) found`
+      message = `Not available: ${uniqueConflictingBookings.length} conflicting booking(s) found`
     }
 
     return {
       isAvailable,
-      conflictingBookings,
+      conflictingBookings: uniqueConflictingBookings,
       message,
     }
   }
@@ -458,61 +395,99 @@ export class AvailabilityClient extends BaseApiModule {
     const endDate = addDays(startDate, daysToShow - 1)
     const today = getTodayISO()
 
-    // Get bookings for the date range
-    const bookingsData = (await this.request<BookingsListResponse>(
-      'GET',
-      '../reservations/bookings',
-      {
-        params: {
-          propertyId,
-          from: startDate,
-          to: endDate,
+    try {
+      // Use the availability API to get structured availability data
+      const availabilityData = (await this.request<PropertyAvailabilityResult[]>(
+        'GET',
+        propertyId,
+        {
+          params: {
+            start: `${startDate}T00:00:00Z`,
+            end: `${endDate}T23:59:59Z`,
+            includeDetails: true, // Include booking status details
+          },
         },
-      },
-    )) as BookingsListResponse
+      )) as PropertyAvailabilityResult[]
 
-    const bookings: Booking[] = bookingsData?.data || []
+      const availabilityResult = Array.isArray(availabilityData)
+        ? availabilityData[0]
+        : availabilityData
 
-    // Create calendar array
-    const calendar = []
-    let availableDays = 0
+      if (!availabilityResult || !availabilityResult.periods) {
+        throw new Error('No availability data returned for property')
+      }
 
-    for (let i = 0; i < daysToShow; i++) {
-      const currentDate = addDays(startDate, i)
+      // Create calendar array
+      const calendar = []
+      let availableDays = 0
 
-      // Find if this date is blocked by any booking
-      const blockingBooking = bookings.find(
-        (booking) =>
-          booking.propertyId?.toString() === propertyId.toString() &&
-          booking.status !== 'declined' &&
-          booking.checkIn &&
-          booking.checkOut &&
-          ['booked', 'confirmed', 'tentative'].includes(booking.status) &&
-          isDateInRange(currentDate, booking.checkIn, booking.checkOut),
-      )
+      for (let i = 0; i < daysToShow; i++) {
+        const currentDate = addDays(startDate, i)
 
-      const isAvailable = !blockingBooking
-      if (isAvailable) availableDays++
+        // Find which availability period covers this date
+        const coveringPeriod = availabilityResult.periods.find((period) => {
+          const periodStart = period.start.split('T')[0]
+          const periodEnd = period.end.split('T')[0]
+          return (
+            compareDates(currentDate, periodStart) >= 0 && compareDates(currentDate, periodEnd) < 0
+          )
+        })
 
-      calendar.push({
-        date: currentDate,
-        isAvailable,
-        bookingStatus: blockingBooking?.status,
-        isToday: currentDate === today,
-      })
-    }
+        const isAvailable = coveringPeriod ? coveringPeriod.available === 1 : true // Default to available if no period data
 
-    const blockedDays = daysToShow - availableDays
-    const availabilityRate = Math.round((availableDays / daysToShow) * 100)
+        // Find booking status if not available
+        let bookingStatus: string | undefined
+        if (!isAvailable && coveringPeriod?.bookings) {
+          const relevantBooking = coveringPeriod.bookings.find((booking) =>
+            isDateInRange(currentDate, booking.arrival, booking.departure),
+          )
+          bookingStatus = relevantBooking?.status || undefined
+        }
 
-    return {
-      calendar,
-      summary: {
-        totalDays: daysToShow,
-        availableDays,
-        blockedDays,
-        availabilityRate,
-      },
+        if (isAvailable) availableDays++
+
+        calendar.push({
+          date: currentDate,
+          isAvailable,
+          bookingStatus,
+          isToday: currentDate === today,
+        })
+      }
+
+      const blockedDays = daysToShow - availableDays
+      const availabilityRate = Math.round((availableDays / daysToShow) * 100)
+
+      return {
+        calendar,
+        summary: {
+          totalDays: daysToShow,
+          availableDays,
+          blockedDays,
+          availabilityRate,
+        },
+      }
+    } catch (_error) {
+      // Fallback: create calendar with all days showing as unavailable if API fails
+      const calendar = []
+      for (let i = 0; i < daysToShow; i++) {
+        const currentDate = addDays(startDate, i)
+        calendar.push({
+          date: currentDate,
+          isAvailable: false,
+          bookingStatus: 'unknown',
+          isToday: currentDate === today,
+        })
+      }
+
+      return {
+        calendar,
+        summary: {
+          totalDays: daysToShow,
+          availableDays: 0,
+          blockedDays: daysToShow,
+          availabilityRate: 0,
+        },
+      }
     }
   }
 }

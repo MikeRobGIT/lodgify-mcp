@@ -83,30 +83,55 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
 
   describe('getNextAvailableDate', () => {
     test('should find next available date when property has bookings', async () => {
-      const mockBookingsResponse = {
-        data: [
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
           {
-            id: 1,
-            propertyId: '123', // Use camelCase to match v2 API format
-            checkIn: '2025-08-14',
-            checkOut: '2025-08-16',
-            status: 'booked',
-            guest: { name: 'Test Guest' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-14T00:00:00Z',
+            end: '2025-08-16T00:00:00Z',
+            available: 0,
+            closed_period: null,
+            bookings: [
+              {
+                id: 1,
+                arrival: '2025-08-14',
+                departure: '2025-08-16',
+                status: 'booked',
+                guest_name: 'Test Guest',
+              },
+            ],
+            channel_calendars: [],
           },
           {
-            id: 2,
-            propertyId: '123', // Use camelCase to match v2 API format
-            checkIn: '2025-08-20',
-            checkOut: '2025-08-22',
-            status: 'booked',
-            guest: { name: 'Test Guest 2' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-16T00:00:00Z',
+            end: '2025-08-20T00:00:00Z',
+            available: 1,
+            closed_period: null,
+            bookings: [],
+            channel_calendars: [],
+          },
+          {
+            start: '2025-08-20T00:00:00Z',
+            end: '2025-08-22T00:00:00Z',
+            available: 0,
+            closed_period: null,
+            bookings: [
+              {
+                id: 2,
+                arrival: '2025-08-20',
+                departure: '2025-08-22',
+                status: 'booked',
+                guest_name: 'Test Guest 2',
+              },
+            ],
+            channel_calendars: [],
           },
         ],
       }
 
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.getNextAvailableDate('123', '2025-08-14', 30)
 
@@ -116,53 +141,72 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
     })
 
     test('should return null when no availability found', async () => {
-      const mockBookingsResponse = {
-        data: [
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
           {
-            id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-14',
-            checkOut: '2025-09-14', // Covers entire check period
-            status: 'booked',
-            guest: { name: 'Test Guest' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-14T00:00:00Z',
+            end: '2025-09-14T00:00:00Z', // Covers entire check period
+            available: 0,
+            closed_period: null,
+            bookings: [
+              {
+                id: 1,
+                arrival: '2025-08-14',
+                departure: '2025-09-14',
+                status: 'booked',
+                guest_name: 'Test Guest',
+              },
+            ],
+            channel_calendars: [],
           },
         ],
       }
 
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.getNextAvailableDate('123', '2025-08-14', 30)
 
       expect(result.nextAvailableDate).toBeNull()
-      expect(result.message).toContain('No availability found')
+      expect(result.message).toContain('No availability found in the next 30 days')
     })
 
     test('should filter out cancelled bookings', async () => {
-      const mockBookingsResponse = {
-        data: [
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
           {
-            id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-14',
-            checkOut: '2025-08-16',
-            status: 'declined', // Should be ignored
-            guest: { name: 'Test Guest' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-14T00:00:00Z',
+            end: '2025-08-20T00:00:00Z',
+            available: 1, // Available - declined booking is filtered out
+            closed_period: null,
+            bookings: [], // Cancelled booking not included
+            channel_calendars: [],
           },
           {
-            id: 2,
-            propertyId: '123',
-            checkIn: '2025-08-20',
-            checkOut: '2025-08-22',
-            status: 'booked',
-            guest: { name: 'Test Guest 2' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-20T00:00:00Z',
+            end: '2025-08-22T00:00:00Z',
+            available: 0,
+            closed_period: null,
+            bookings: [
+              {
+                id: 2,
+                arrival: '2025-08-20',
+                departure: '2025-08-22',
+                status: 'booked',
+                guest_name: 'Test Guest 2',
+              },
+            ],
+            channel_calendars: [],
           },
         ],
       }
 
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.getNextAvailableDate('123', '2025-08-14', 30)
 
@@ -171,66 +215,66 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
     })
 
     test('should use default values when not provided', async () => {
-      const mockBookingsResponse = { data: [] }
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
+          {
+            start: '2025-08-14T00:00:00Z',
+            end: '2025-11-14T00:00:00Z', // 90+ days available
+            available: 1,
+            closed_period: null,
+            bookings: [],
+            channel_calendars: [],
+          },
+        ],
+      }
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.getNextAvailableDate('123')
 
       expect(result.nextAvailableDate).toBe(getTodayISO())
-      expect(result.totalDaysAvailable).toBeGreaterThan(80) // Should be close to 90 days default
+      expect(result.totalDaysAvailable).toBeGreaterThan(60) // Based on availability period
     })
 
     test('should detect when property does not exist', async () => {
-      const mockBookingsResponse = {
-        data: [
-          {
-            id: 1,
-            propertyId: '456', // Different property ID
-            checkIn: '2025-08-14',
-            checkOut: '2025-08-16',
-            status: 'booked',
-            guest: { name: 'Test Guest' },
-            guestBreakdown: { adults: 2 },
-          },
-          {
-            id: 2,
-            propertyId: '789', // Another different property ID
-            checkIn: '2025-08-20',
-            checkOut: '2025-08-22',
-            status: 'booked',
-            guest: { name: 'Test Guest 2' },
-            guestBreakdown: { adults: 2 },
-          },
-        ],
+      const mockEmptyAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [], // Empty periods indicates no availability data
       }
 
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      global.fetch = mock(async () => createMockResponse(200, mockEmptyAvailabilityResponse))
 
       const result = await client.availability.getNextAvailableDate('123', '2025-08-14', 30)
 
       expect(result.nextAvailableDate).toBeNull()
-      expect(result.message).toContain('No booking data found for property ID 123')
+      expect(result.message).toContain('No availability data found for property ID 123')
       expect(result.message).toContain('Property may not exist')
     })
   })
 
   describe('checkDateRangeAvailability', () => {
     test('should return available when no conflicting bookings', async () => {
-      const mockBookingsResponse = {
-        data: [
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
           {
-            id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-10',
-            checkOut: '2025-08-12',
-            status: 'booked',
-            guest: { name: 'Test Guest' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-15T00:00:00Z',
+            end: '2025-08-18T23:59:59Z',
+            available: 1,
+            closed_period: null,
+            bookings: [],
+            channel_calendars: [],
           },
         ],
       }
 
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.checkDateRangeAvailability(
         '123',
@@ -244,21 +288,31 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
     })
 
     test('should return unavailable when there are conflicting bookings', async () => {
-      const mockBookingsResponse = {
-        data: [
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
           {
-            id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-16',
-            checkOut: '2025-08-18',
-            status: 'booked',
-            guest: { name: 'Test Guest' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-15T00:00:00Z',
+            end: '2025-08-17T23:59:59Z',
+            available: 0,
+            closed_period: null,
+            bookings: [
+              {
+                id: 1,
+                arrival: '2025-08-16',
+                departure: '2025-08-18',
+                status: 'booked',
+                guest_name: 'Test Guest',
+              },
+            ],
+            channel_calendars: [],
           },
         ],
       }
 
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.checkDateRangeAvailability(
         '123',
@@ -294,21 +348,31 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
 
   describe('getAvailabilityCalendar', () => {
     test('should generate calendar with availability status', async () => {
-      const mockBookingsResponse = {
-        data: [
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
           {
-            id: 1,
-            propertyId: '123',
-            checkIn: '2025-08-16',
-            checkOut: '2025-08-18',
-            status: 'booked',
-            guest: { name: 'Test Guest' },
-            guestBreakdown: { adults: 2 },
+            start: '2025-08-16T00:00:00Z',
+            end: '2025-08-18T00:00:00Z',
+            available: 0,
+            closed_period: null,
+            bookings: [
+              {
+                id: 1,
+                arrival: '2025-08-16',
+                departure: '2025-08-18',
+                status: 'booked',
+                guest_name: 'Test Guest',
+              },
+            ],
+            channel_calendars: [],
           },
         ],
       }
 
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.getAvailabilityCalendar('123', '2025-08-15', 7)
 
@@ -326,8 +390,22 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
     })
 
     test('should mark today correctly', async () => {
-      const mockBookingsResponse = { data: [] }
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
+          {
+            start: '2025-08-15T00:00:00Z',
+            end: '2025-08-18T00:00:00Z',
+            available: 1,
+            closed_period: null,
+            bookings: [],
+            channel_calendars: [],
+          },
+        ],
+      }
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const today = getTodayISO()
       const result = await client.availability.getAvailabilityCalendar('123', today, 3)
@@ -338,8 +416,22 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
     })
 
     test('should use default values when not provided', async () => {
-      const mockBookingsResponse = { data: [] }
-      global.fetch = mock(async () => createMockResponse(200, mockBookingsResponse))
+      const mockAvailabilityResponse = {
+        user_id: 1,
+        property_id: 123,
+        room_type_id: 0,
+        periods: [
+          {
+            start: '2025-08-15T00:00:00Z',
+            end: '2025-09-14T00:00:00Z', // 30 days available
+            available: 1,
+            closed_period: null,
+            bookings: [],
+            channel_calendars: [],
+          },
+        ],
+      }
+      global.fetch = mock(async () => createMockResponse(200, mockAvailabilityResponse))
 
       const result = await client.availability.getAvailabilityCalendar('123')
 
@@ -356,21 +448,28 @@ describe('LodgifyOrchestrator Availability Helper Methods', () => {
         throw new Error('Network error')
       })
 
-      await expect(client.availability.getNextAvailableDate('123')).rejects.toThrow()
+      // getNextAvailableDate catches errors and returns a result
+      const result = await client.availability.getNextAvailableDate('123')
+      expect(result.nextAvailableDate).toBeNull()
+      expect(result.message).toContain('Unable to check availability')
 
+      // Other methods still throw errors
       await expect(
         client.availability.checkDateRangeAvailability('123', '2025-08-15', '2025-08-18'),
       ).rejects.toThrow()
 
-      await expect(client.availability.getAvailabilityCalendar('123')).rejects.toThrow()
+      // getAvailabilityCalendar also catches errors and returns a fallback result
+      const calendarResult = await client.availability.getAvailabilityCalendar('123')
+      expect(calendarResult.summary.availableDays).toBe(0)
+      expect(calendarResult.calendar[0].bookingStatus).toBe('unknown')
     })
 
-    test('should handle empty booking responses', async () => {
+    test('should handle empty availability responses', async () => {
       global.fetch = mock(async () => createMockResponse(200, {}))
 
-      const result = await client.getNextAvailableDate('123', '2025-08-14', 7)
-      expect(result.nextAvailableDate).toBe('2025-08-14')
-      expect(result.blockedPeriods).toHaveLength(0)
+      const result = await client.availability.getNextAvailableDate('123', '2025-08-14', 7)
+      expect(result.nextAvailableDate).toBeNull()
+      expect(result.message).toContain('No availability data found')
     })
   })
 })
