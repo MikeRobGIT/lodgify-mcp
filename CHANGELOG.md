@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.13] - 2025-09-06
+
+### Added
+
+- **AI Assistant System Prompts**: Comprehensive system prompts for hotel employee and front desk assistants
+- Enhanced availability client capabilities with improved booking calendar functionality
+
+### Changed
+
+- Updated Biome configuration from schema version 1.9.4 to 1.9.0 for better compatibility
+- Improved availability client implementation with enhanced type safety and functionality
+- Enhanced test coverage for availability features with more comprehensive scenarios
+
+### Technical Details
+
+- Added two detailed system prompts (517 and 318 lines) for hospitality AI assistant implementations
+- Refactored availability client with improved architecture and helper methods
+- Enhanced availability testing with extended test cases and edge case coverage
+- Updated package-lock.json with latest dependency resolutions
+
 ## [0.1.12] - 2025-09-05
 
 ### Added
