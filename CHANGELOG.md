@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.14] - 2025-09-06
+
+### Changed
+
+- Updated @biomejs/biome dependency from 2.2.0 to 2.2.3 for improved linting and formatting capabilities
+- Removed obsolete package-lock.json in favor of Bun's bun.lock for more consistent dependency management
+
+### Technical Details
+
+- Cleaned up dependency files to maintain consistency with Bun-first development approach
+- Minor maintenance release focused on tooling improvements
+
 ## [0.1.13] - 2025-09-06
 
 ### Added
