@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2025-09-05
+
+### Added
+
+- **HTTP Transport Server**: New `server-http.ts` for HTTP-based MCP communication alongside existing stdio transport
+- Docker HTTP server deployment with dedicated Dockerfile.http and docker-compose.yml configuration
+- Comprehensive environment checking with `scripts/env-check.sh` for Docker deployments
+- Enhanced availability client with helper methods for next available date and calendar views
+- Docker override support for development environments (docker-compose.override.yml)
+
+### Changed
+
+- Enhanced availability types with comprehensive booking calendar interfaces
+- Updated installation documentation with HTTP server deployment options
+- Improved Docker entrypoint script with environment validation and startup modes
+- Extended package.json with HTTP server scripts for both development and production
+- Updated bump-version command documentation with detailed release process
+
+### Technical Details
+
+- Added Express.js dependency for HTTP server implementation
+- Enhanced logger configuration for better debugging capabilities
+- Improved availability testing with comprehensive date utilities
+- Updated .gitignore to handle Docker-related temporary files
+- Enhanced Docker deployment workflow with multi-transport support
+
 ## [0.1.11] - 2025-09-03
 
 ### Changed
