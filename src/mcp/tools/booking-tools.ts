@@ -33,22 +33,43 @@ export function getBookingTools(getClient: () => LodgifyOrchestrator): ToolRegis
 
 Note: Maximum page size is 50 items per request.
 
-Example request (filter by stay dates):
+**STAY FILTER OPTIONS - Use these to find bookings by their stay dates:**
+
+- **"Upcoming"** - Bookings with check-in dates in the future (most common for finding active reservations)
+- **"Current"** - Bookings that are currently active (guests are checked in)
+- **"Historic"** - Past bookings where guests have already checked out
+- **"All"** - All bookings regardless of date (default behavior)
+- **"ArrivalDate"** - Bookings arriving on a specific date (requires stayFilterDate)
+- **"DepartureDate"** - Bookings departing on a specific date (requires stayFilterDate)
+
+**COMMON USE CASES:**
+- Find bookings blocking a property: Use "Upcoming" to see future reservations
+- Check current guests: Use "Current" to see who's checked in now
+- Find bookings for a specific date: Use "ArrivalDate" or "DepartureDate" with stayFilterDate
+- Get booking history: Use "Historic" for past reservations
+
+Example request (find upcoming bookings):
 {
   "page": 1,                               // Page number to retrieve
   "size": 10,                              // Number of items per page (max 50)
   "includeCount": true,                    // Include total number of results
-  "stayFilter": "Upcoming",                // Filter bookings by stay dates
+  "stayFilter": "Upcoming",                // Find future bookings
   "updatedSince": "2024-03-01T00:00:00Z",  // Include only bookings updated since this date
   "includeTransactions": false,            // Include details about transactions and schedule
   "includeQuoteDetails": false             // Include quote details
 }
 
-Example request (filter by arrival date):
+Example request (find bookings arriving on specific date):
 {
-  "stayFilter": "ArrivalDate",              // Filter bookings by stay dates
-  "stayFilterDate": "2024-03-15T00:00:00Z", // Date to filter when using ArrivalDate or DepartureDate in stayFilter
+  "stayFilter": "ArrivalDate",              // Filter by arrival date
+  "stayFilterDate": "2024-03-15T00:00:00Z", // Specific arrival date (ISO format)
   "size": 5                                 // Number of items per page (max 50)
+}
+
+Example request (find current guests):
+{
+  "stayFilter": "Current",                  // Find currently checked-in guests
+  "size": 20                                // Number of items per page (max 50)
 }
 
 Example response:
@@ -88,14 +109,14 @@ Example response:
           stayFilter: z
             .enum(['Upcoming', 'Current', 'Historic', 'All', 'ArrivalDate', 'DepartureDate'])
             .optional()
-            .describe('Filter bookings by stay dates'),
+            .describe('Filter bookings by their stay dates. Use "Upcoming" to find future reservations (most common), "Current" for active guests, "Historic" for past bookings, "ArrivalDate"/"DepartureDate" for specific dates (requires stayFilterDate), or "All" for everything.'),
           stayFilterDate: z
             .string()
             .datetime({
               message: 'DateTime must be in ISO 8601 format (e.g., 2024-03-15T10:00:00Z)',
             })
             .optional()
-            .describe('Date to filter when using ArrivalDate or DepartureDate in stayFilter'),
+            .describe('Required when stayFilter is "ArrivalDate" or "DepartureDate". Specify the exact date to search for in ISO 8601 format (e.g., "2024-03-15T00:00:00Z").'),
           updatedSince: z
             .string()
             .datetime({
@@ -533,20 +554,20 @@ The transformation handles: guest name splitting, room structuring, status capit
         const finalResult =
           feedbackMessages.length > 0
             ? {
-                ...result,
-                dateValidation: {
-                  feedback: feedbackMessages.map((fm) => fm.feedback),
-                  messages: feedbackMessages.map((fm) => fm.message),
-                  originalDates: {
-                    arrival: params.arrival,
-                    departure: params.departure,
-                  },
-                  validatedDates: {
-                    arrival: rangeValidation.start.validatedDate,
-                    departure: rangeValidation.end.validatedDate,
-                  },
+              ...result,
+              dateValidation: {
+                feedback: feedbackMessages.map((fm) => fm.feedback),
+                messages: feedbackMessages.map((fm) => fm.message),
+                originalDates: {
+                  arrival: params.arrival,
+                  departure: params.departure,
                 },
-              }
+                validatedDates: {
+                  arrival: rangeValidation.start.validatedDate,
+                  departure: rangeValidation.end.validatedDate,
+                },
+              },
+            }
             : result
 
         return {
