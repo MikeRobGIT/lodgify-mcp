@@ -57,29 +57,55 @@ Optional settings:
 LODGIFY_READ_ONLY="1"   # Prevent write operations (recommended for testing)
 LOG_LEVEL="info"        # Options: error | warn | info | debug
 DEBUG_HTTP="0"          # Set to "1" for verbose HTTP debugging
-MCP_TOKEN="your_secret_token" # Required for HTTP mode
-PORT="3000"             # Optional HTTP port (default 3000)
+
+# HTTP/SSE Server Settings (required for HTTP mode)
+MCP_TOKEN="your_secret_token" # Required: Bearer token for HTTP authentication
+PORT="3000"             # Server port (default: 3000)
+ENABLE_CORS="false"     # Enable CORS for browser clients (default: false)
+CORS_ORIGIN="*"         # CORS allowed origins when enabled (default: *)
 ```
 
-### HTTP Server (Streamable HTTP)
+### HTTP Server with SSE Support
 
-To expose the server over HTTP instead of stdio:
+To expose the server over HTTP with Server-Sent Events (SSE) for real-time notifications:
 
 ```bash
 npm run start:http
 ```
 
-This launches an Express server using the Streamable HTTP transport (modern replacement for SSE).
+This launches an Express server using Streamable HTTP transport with full SSE capabilities for bidirectional communication.
 
-- Endpoint: `POST /mcp`
-- Auth: send `Authorization: Bearer <MCP_TOKEN>` header
-- Configure port with the `PORT` environment variable (defaults to `3000`).
+#### Endpoints
 
-Clients such as Claude Desktop or the Anthropic Messages API can connect using this endpoint.
+- **`POST /mcp`** - Client-to-server messages (request/response)
+- **`GET /mcp`** - SSE event stream for server-to-client notifications
+- **`DELETE /mcp`** - Session termination
+- **`GET /health`** - Health check (no auth required)
+
+#### Configuration
+
+All requests to `/mcp` endpoints require authentication:
+- Header: `Authorization: Bearer <MCP_TOKEN>`
+- Session tracking: `mcp-session-id` header (automatically managed)
+
+Environment variables:
+- `MCP_TOKEN` (required) - Bearer token for authentication
+- `PORT` (optional) - Server port (default: 3000)
+- `ENABLE_CORS` (optional) - Enable CORS for browser clients (default: false)
+- `CORS_ORIGIN` (optional) - Allowed CORS origins when enabled (default: *)
+
+#### Features
+
+- **Real-time Notifications**: Server can push updates to clients via SSE
+- **Session Management**: Stateful sessions with 30-minute TTL
+- **Auto-cleanup**: Sessions are automatically cleaned up on disconnect or timeout
+- **Browser Support**: Optional CORS configuration for web-based clients
+
+Clients such as Claude Desktop or the Anthropic Messages API can connect using these endpoints.
 
 #### Docker
 
-Build and run the HTTP server in a container:
+Build and run the SSE-enabled HTTP server in a container:
 
 ```bash
 npm run docker:http:build
@@ -87,8 +113,22 @@ docker run --rm \
   -p 3000:3000 \
   -e MCP_TOKEN=your_token \
   -e LODGIFY_API_KEY=your_lodgify_api_key_here \
+  -e ENABLE_CORS=false \
+  -e CORS_ORIGIN="*" \
   lodgify-mcp:http
 ```
+
+Or use docker-compose:
+
+```bash
+docker-compose --profile http up
+```
+
+The containerized server provides:
+- All SSE endpoints (`POST /mcp`, `GET /mcp`, `DELETE /mcp`)
+- Health checks at `/health`
+- Optional CORS support for browser clients
+- Automatic session management with cleanup
 
 ### API Key Rotation
 

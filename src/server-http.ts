@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * HTTP entrypoint for Lodgify MCP server using Streamable HTTP transport
+ * HTTP entrypoint for Lodgify MCP server using Streamable HTTP transport with SSE support
  */
 
 import { randomUUID } from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import { config } from 'dotenv'
 import express from 'express'
 import { safeLogger } from './logger.js'
@@ -16,6 +17,7 @@ config()
 
 const PORT = Number(process.env.PORT) || 3000
 const AUTH_TOKEN = process.env.MCP_TOKEN
+const ENABLE_CORS = process.env.ENABLE_CORS === 'true'
 
 // Fail fast if auth token is not configured
 if (!AUTH_TOKEN) {
@@ -32,36 +34,25 @@ if (!AUTH_TOKEN) {
 // Session TTL configuration (30 minutes)
 const SESSION_TTL_MS = 30 * 60 * 1000
 
-interface SessionInfo {
-  transport: StreamableHTTPServerTransport
-  timer: NodeJS.Timeout
-}
+// Map to store transports by session ID
+const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
 
 async function main() {
-  const { server } = setupServer()
-  const sessions = new Map<string, SessionInfo>()
-
-  // Helper function to clean up a session
-  const cleanupSession = (sessionId: string) => {
-    const session = sessions.get(sessionId)
-    if (session) {
-      clearTimeout(session.timer)
-      session.transport.close?.()
-      sessions.delete(sessionId)
-      safeLogger.debug(`Session ${sessionId} cleaned up`)
-    }
-  }
-
-  // Helper function to reset session timer
-  const resetSessionTimer = (sessionId: string) => {
-    const session = sessions.get(sessionId)
-    if (session) {
-      clearTimeout(session.timer)
-      session.timer = setTimeout(() => cleanupSession(sessionId), SESSION_TTL_MS)
-    }
-  }
-
   const app = express()
+  app.use(express.json())
+
+  // Optional CORS support for browser clients
+  if (ENABLE_CORS) {
+    const cors = (await import('cors')).default
+    app.use(
+      cors({
+        origin: process.env.CORS_ORIGIN || '*',
+        exposedHeaders: ['Mcp-Session-Id'],
+        allowedHeaders: ['Content-Type', 'mcp-session-id', 'authorization'],
+      }),
+    )
+    safeLogger.info('CORS enabled')
+  }
 
   // Health check endpoint (no authentication required)
   app.get('/health', (_req, res) => {
@@ -69,64 +60,152 @@ async function main() {
   })
 
   // Bearer token authentication middleware for /mcp endpoint only
-  app.use('/mcp', (req, res, next) => {
+  const authenticateRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const auth = req.header('authorization')
     if (auth !== `Bearer ${AUTH_TOKEN}`) {
       res.set('WWW-Authenticate', 'Bearer').status(401).json({ error: 'Unauthorized' })
       return
     }
     next()
-  })
+  }
 
-  app.all('/mcp', async (req, res) => {
+  // Handle POST requests for client-to-server communication
+  app.post('/mcp', authenticateRequest, async (req, res) => {
     try {
-      const sessionId = (req.header('mcp-session-id') || randomUUID()).trim()
-      let sessionInfo = sessions.get(sessionId)
+      // Check for existing session ID
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      let transport: StreamableHTTPServerTransport
 
-      if (!sessionInfo) {
-        // Create new session with undefined sessionIdGenerator to run in stateless mode
-        // This avoids the initialization validation issue in the SDK
-        const transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: undefined, // Use stateless mode to avoid initialization issues
+      if (sessionId && transports[sessionId]) {
+        // Reuse existing transport
+        transport = transports[sessionId]
+        safeLogger.debug(`Session reused: ${sessionId}`)
+      } else if (!sessionId && isInitializeRequest(req.body)) {
+        // New initialization request - create stateful transport with session management
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (newSessionId) => {
+            // Store the transport by session ID
+            transports[newSessionId] = transport
+            safeLogger.info(`New SSE-enabled session created: ${newSessionId}`)
+
+            // Set up session cleanup timer
+            setTimeout(() => {
+              if (transports[newSessionId]) {
+                delete transports[newSessionId]
+                safeLogger.debug(`Session ${newSessionId} timed out and was cleaned up`)
+              }
+            }, SESSION_TTL_MS)
+          },
+          // DNS rebinding protection disabled for local development
+          // Enable this in production with proper allowedHosts configuration
+          enableDnsRebindingProtection: false,
         })
 
-        // Set up cleanup timer
-        const timer = setTimeout(() => cleanupSession(sessionId), SESSION_TTL_MS)
-
-        sessionInfo = { transport, timer }
-        sessions.set(sessionId, sessionInfo)
-
-        // Set up onclose handler
+        // Clean up transport when closed
         transport.onclose = () => {
-          cleanupSession(sessionId)
+          if (transport.sessionId) {
+            delete transports[transport.sessionId]
+            safeLogger.debug(`Session ${transport.sessionId} closed and cleaned up`)
+          }
         }
 
+        // Create and connect a new MCP server instance for this session
+        const { server } = setupServer()
         await server.connect(transport)
-        safeLogger.debug(`New session created: ${sessionId}`)
       } else {
-        // Reset TTL for existing session
-        resetSessionTimer(sessionId)
-        safeLogger.debug(`Session reused: ${sessionId}`)
+        // Invalid request - no session ID for non-initialization request
+        res.status(400).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: 'Bad Request: No valid session ID provided',
+          },
+          id: null,
+        })
+        return
       }
 
-      await sessionInfo.transport.handleRequest(req, res)
+      // Handle the request
+      await transport.handleRequest(req, res, req.body)
     } catch (err) {
-      safeLogger.error('Request handling failed', err)
-      res.status(500).json({ error: 'Internal server error' })
+      safeLogger.error('POST request handling failed', err)
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal server error',
+          },
+          id: null,
+        })
+      }
+    }
+  })
+
+  // Handle GET requests for server-to-client notifications via SSE
+  app.get('/mcp', authenticateRequest, async (req, res) => {
+    try {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (!sessionId || !transports[sessionId]) {
+        res.status(400).send('Invalid or missing session ID')
+        return
+      }
+
+      const transport = transports[sessionId]
+      safeLogger.debug(`SSE stream established for session: ${sessionId}`)
+
+      // Handle the SSE request
+      await transport.handleRequest(req, res)
+    } catch (err) {
+      safeLogger.error('GET request (SSE) handling failed', err)
+      if (!res.headersSent) {
+        res.status(500).send('Internal server error')
+      }
+    }
+  })
+
+  // Handle DELETE requests for session termination
+  app.delete('/mcp', authenticateRequest, async (req, res) => {
+    try {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (!sessionId || !transports[sessionId]) {
+        res.status(400).send('Invalid or missing session ID')
+        return
+      }
+
+      const transport = transports[sessionId]
+      safeLogger.info(`Session termination requested: ${sessionId}`)
+
+      // Handle the termination request
+      await transport.handleRequest(req, res)
+
+      // Clean up the session
+      delete transports[sessionId]
+    } catch (err) {
+      safeLogger.error('DELETE request handling failed', err)
+      if (!res.headersSent) {
+        res.status(500).send('Internal server error')
+      }
     }
   })
 
   app.listen(PORT, () => {
-    safeLogger.info(`HTTP MCP server listening on port ${PORT}`)
+    safeLogger.info(`SSE-enabled HTTP MCP server listening on port ${PORT}`)
+    safeLogger.info('Endpoints:')
+    safeLogger.info(`  POST   /mcp - Client-to-server messages`)
+    safeLogger.info(`  GET    /mcp - SSE stream for server-to-client notifications`)
+    safeLogger.info(`  DELETE /mcp - Session termination`)
+    safeLogger.info(`  GET    /health - Health check`)
   })
 }
 
 main().catch((error) => {
   try {
-    safeLogger.error('Failed to start HTTP server', error)
+    safeLogger.error('Failed to start SSE-enabled HTTP server', error)
   } catch (logError) {
     // Fallback to console.error if logger fails
-    console.error('Failed to start HTTP server', error)
+    console.error('Failed to start SSE-enabled HTTP server', error)
     console.error('Logger error:', logError)
   }
   process.exit(1)

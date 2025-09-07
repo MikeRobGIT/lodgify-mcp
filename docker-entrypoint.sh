@@ -90,6 +90,11 @@ log "  LOG_LEVEL: ${LOG_LEVEL:-info}"
 log "  DEBUG_HTTP: ${DEBUG_HTTP:-0}"
 if [ "$MODE" = "http" ]; then
     log "  MCP_TOKEN: [SET]"
+    log "  SSE: Enabled (GET /mcp for notifications)"
+    log "  ENABLE_CORS: ${ENABLE_CORS:-false}"
+    if [ "${ENABLE_CORS:-false}" = "true" ]; then
+        log "  CORS_ORIGIN: ${CORS_ORIGIN:-*}"
+    fi
 fi
 
 # Start MCP server directly in foreground

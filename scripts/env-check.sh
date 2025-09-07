@@ -97,6 +97,14 @@ check_optional "DOCKER_PORT" "3000"
 check_optional "LOG_LEVEL" "info"
 check_optional "DEBUG_HTTP" "0"
 
+# CORS settings for HTTP mode
+if [ "$1" = "http" ] || [ -n "$MCP_TOKEN" ]; then
+    check_optional "ENABLE_CORS" "false"
+    if [ "${ENABLE_CORS:-false}" = "true" ]; then
+        check_optional "CORS_ORIGIN" "*"
+    fi
+fi
+
 echo ""
 echo "Validating environment variable values..."
 echo "=========================================="
@@ -108,6 +116,10 @@ fi
 
 if [ -n "$LOG_LEVEL" ]; then
     check_enum "LOG_LEVEL" "error" "warn" "info" "debug"
+fi
+
+if [ -n "$ENABLE_CORS" ]; then
+    check_enum "ENABLE_CORS" "true" "false"
 fi
 
 echo ""

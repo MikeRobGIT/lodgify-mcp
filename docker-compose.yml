@@ -56,6 +56,7 @@ services:
       - production
 
   lodgify-mcp-http:
+    # HTTP server with SSE support for real-time notifications
     build:
       context: .
       dockerfile: Dockerfile.http
@@ -72,6 +73,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - PORT=${DOCKER_PORT:-3000}
       - MCP_TOKEN=${MCP_TOKEN}
+      - ENABLE_CORS=${ENABLE_CORS:-false}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
 
     ports:
       - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"

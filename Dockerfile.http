@@ -16,7 +16,7 @@ RUN bun run build
 FROM oven/bun:1-alpine AS production
 
 LABEL maintainer="lodgify-mcp"
-LABEL description="Lodgify MCP Server - Streamable HTTP transport"
+LABEL description="Lodgify MCP Server - Streamable HTTP transport with SSE support"
 
 # Install curl for healthchecks
 RUN apk add --no-cache curl
