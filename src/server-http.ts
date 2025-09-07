@@ -60,7 +60,11 @@ async function main() {
   })
 
   // Bearer token authentication middleware for /mcp endpoint only
-  const authenticateRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authenticateRequest = (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
     const auth = req.header('authorization')
     if (auth !== `Bearer ${AUTH_TOKEN}`) {
       res.set('WWW-Authenticate', 'Bearer').status(401).json({ error: 'Unauthorized' })
