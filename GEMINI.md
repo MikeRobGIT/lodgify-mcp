@@ -135,8 +135,7 @@ The server implements these Lodgify v2 endpoints as MCP tools:
 
 ### Availability
 
-- `lodgify.availability_room` - GET /v2/availability/{propertyId}/{roomTypeId}
-- `lodgify.availability_property` - GET /v2/availability/{propertyId}
+- `lodgify.get_property_availability` - GET /v2/availability/{propertyId}
 
 ### Quotes & Messaging
 
