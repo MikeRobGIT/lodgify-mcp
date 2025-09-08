@@ -9,7 +9,7 @@ describe('Tool Deprecation System', () => {
         removeIn: '1.0.0',
         reason:
           'Raw availability data is complex. Use availability helper tools for better results',
-        replacement: 'lodgify_check_next_availability, lodgify_get_availability_calendar',
+        replacement: 'lodgify_get_property_availability',
       }
 
       // This matches the generateDeprecationWarning function logic
@@ -101,17 +101,14 @@ describe('Tool Deprecation System', () => {
         // No deprecated tools currently
       ]
 
-      const expectedReplacements = [
-        'lodgify_check_next_availability',
-        'lodgify_get_availability_calendar',
-      ]
+      const expectedReplacements = ['lodgify_get_property_availability']
 
       deprecatedAvailabilityTools.forEach((toolName) => {
         expect(toolName).toMatch(/^lodgify_availability_/)
       })
 
       expectedReplacements.forEach((replacement) => {
-        expect(replacement).toMatch(/^lodgify_(check_|get_availability_)/)
+        expect(replacement).toMatch(/^lodgify_get_property_availability$/)
       })
     })
 

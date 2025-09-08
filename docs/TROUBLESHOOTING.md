@@ -74,12 +74,9 @@ All errors now follow JSON-RPC 2.0 format. Check the `code` field:
 - **Monitor**: Use `tail -f logs/lodgify-mcp-$(date +%Y-%m-%d).log` to monitor in real-time
 
 ### Availability Queries Issues
-- **Raw availability returns "0001-01-01" dates**: This is expected. Use the new helper tools instead:
-  - `lodgify_check_next_availability` for finding next available dates
-  - `lodgify_check_date_range_availability` for checking specific dates
-  - `lodgify_get_availability_calendar` for calendar views
-- **Unexpected availability results**: The helper tools analyze actual bookings to determine availability, providing more accurate results than the raw API
-- **Date format errors**: Always use YYYY-MM-DD format for dates (e.g., "2025-08-14")
+- **Use the recommended tool**: Use `lodgify_get_property_availability` for checking availability - it's the most accurate availability checker that directly queries the API
+- **Date format**: The tool accepts both YYYY-MM-DD and ISO date-time formats (e.g., "2025-08-14" or "2025-08-14T00:00:00Z")
+- **Date ranges**: Specify both `from` and `to` dates in the params for checking date ranges
 
 ## Docker-Specific Issues
 

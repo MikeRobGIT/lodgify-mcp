@@ -413,74 +413,23 @@ Find properties in the system when you don't know the exact property ID. Searche
 
 ## Availability & Calendar
 
-### `lodgify_availability_all`
-Get all availabilities for the calling user. Returns availability information for all properties for a given period.
-
-**Parameters:**
-- `params` (optional): Query parameters for filtering availabilities
-  - `start` (optional): Calendar start date (ISO 8601 date-time)
-  - `end` (optional): Calendar end date (ISO 8601 date-time)
-  - `includeDetails` (optional): Include booking status details
-
-**Example:**
-```javascript
-{
-  "params": {
-    "start": "2024-03-01T00:00:00Z",
-    "end": "2024-03-31T23:59:59Z",
-    "includeDetails": true
-  }
-}
-```
-
-### `lodgify_check_next_availability`
-Find the next available date for a property by analyzing bookings. Returns when the property is next available and for how long.
+### `lodgify_get_property_availability`
+Get availability for a specific property over a period. This is the most accurate availability checker that directly queries the property's availability status from the API. Use this for checking before booking or blocking dates.
 
 **Parameters:**
 - `propertyId` (required): Property ID
-- `fromDate` (optional): Start date to check from (YYYY-MM-DD, defaults to today)
-- `daysToCheck` (optional): Number of days to check ahead (1-365, defaults to 90)
+- `params` (optional): Query parameters
+  - `from` (optional): Start date (ISO date-time or YYYY-MM-DD)
+  - `to` (optional): End date (ISO date-time or YYYY-MM-DD)
 
 **Example:**
 ```javascript
 {
   "propertyId": "123",
-  "fromDate": "2024-03-15",
-  "daysToCheck": 90
-}
-```
-
-### `lodgify_check_date_range_availability`
-Verify if a specific date range is available for booking at a property. Returns detailed availability status including any conflicts or restrictions.
-
-**Parameters:**
-- `propertyId` (required): Property ID to check availability for
-- `checkInDate` (required): Desired check-in date (YYYY-MM-DD)
-- `checkOutDate` (required): Desired check-out date (YYYY-MM-DD)
-
-**Example:**
-```javascript
-{
-  "propertyId": "123",
-  "checkInDate": "2025-12-20",
-  "checkOutDate": "2025-12-27"
-}
-```
-
-### `lodgify_get_availability_calendar`
-Retrieve a visual calendar view of property availability showing available, booked, and blocked dates.
-
-**Parameters:**
-- `propertyId` (required): Property ID to get calendar for
-- `fromDate` (optional): Calendar start date (YYYY-MM-DD, defaults to today)
-- `daysToShow` (optional): Number of days to display (1-90, default: 30 days)
-
-**Example:**
-```javascript
-{
-  "propertyId": "123",
-  "fromDate": "2025-12-01",
-  "daysToShow": 30
+  "params": {
+    "from": "2024-03-01",
+    "to": "2024-03-31"
+  }
 }
 ```
 

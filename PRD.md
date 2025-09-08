@@ -80,10 +80,7 @@ Current tool categories (representative list; see docs/API_REFERENCE.md for full
   * v1 CRUD: `lodgify_create_booking`, `lodgify_update_booking`, `lodgify_delete_booking` (WRITE; read‑only enforced)
 
 * **Availability & Calendar**
-  * `lodgify_availability_all` → GET `/v2/availability`
-  * `lodgify_get_property_availability` → GET `/v2/availability/{propertyId}`
-  * `lodgify_get_room_availability` → GET `/v2/availability/{propertyId}/{roomTypeId}`
-  * Helpers: `lodgify_check_next_availability`, `lodgify_check_date_range_availability`, `lodgify_get_availability_calendar`
+  * `lodgify_get_property_availability` → GET `/v2/availability/{propertyId}` (most accurate availability checker)
 
 * **Rates & Pricing**
   * `lodgify_daily_rates` → GET `/v2/rates/calendar`
@@ -234,12 +231,7 @@ Each tool exposes a **Zod input schema** and returns Lodgify JSON as a stringifi
   { "name": "lodgify_update_booking", "desc": "PUT /v1/reservation/booking/{id}" },
   { "name": "lodgify_delete_booking", "desc": "DELETE /v1/reservation/booking/{id}" },
 
-  { "name": "lodgify_availability_all", "desc": "GET /v2/availability" },
   { "name": "lodgify_get_property_availability", "desc": "GET /v2/availability/{propertyId}" },
-  { "name": "lodgify_get_room_availability", "desc": "GET /v2/availability/{propertyId}/{roomTypeId}" },
-  { "name": "lodgify_check_next_availability", "desc": "Helper: next available date range" },
-  { "name": "lodgify_check_date_range_availability", "desc": "Helper: range conflict check" },
-  { "name": "lodgify_get_availability_calendar", "desc": "Helper: calendar view" },
 
   { "name": "lodgify_daily_rates", "desc": "GET /v2/rates/calendar" },
   { "name": "lodgify_rate_settings", "desc": "GET /v2/rates/settings" },

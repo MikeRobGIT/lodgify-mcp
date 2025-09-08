@@ -147,7 +147,7 @@ export async function findProperties(
 
     if (properties.length > 0) {
       suggestions.push(
-        'Use one of these property IDs with availability tools like lodgify_check_next_availability',
+        'Use one of these property IDs with availability tools like lodgify_get_property_availability',
       )
       if (searchTerm) {
         suggestions.push(

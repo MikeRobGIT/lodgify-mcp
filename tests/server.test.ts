@@ -119,7 +119,7 @@ describe('MCP Server Integration Tests', () => {
     test('should register all Lodgify tools', async () => {
       const response = await testServer.listTools()
 
-      expect(response.tools).toHaveLength(34)
+      expect(response.tools).toHaveLength(29)
 
       const toolNames = response.tools.map((t: { name: string }) => t.name)
       expect(toolNames).toContain('lodgify_list_properties')
@@ -156,18 +156,12 @@ describe('MCP Server Integration Tests', () => {
       expect(toolNames).toContain('lodgify_update_rates')
 
       // Missing v2 endpoints
-      expect(toolNames).toContain('lodgify_availability_all')
       expect(toolNames).toContain('lodgify_checkin_booking')
       expect(toolNames).toContain('lodgify_checkout_booking')
       expect(toolNames).toContain('lodgify_get_external_bookings')
 
-      // Availability helper tools
-      expect(toolNames).toContain('lodgify_check_next_availability')
-      expect(toolNames).toContain('lodgify_check_date_range_availability')
-      expect(toolNames).toContain('lodgify_get_availability_calendar')
-      // New availability fetch tools
+      // Availability tool
       expect(toolNames).toContain('lodgify_get_property_availability')
-      expect(toolNames).toContain('lodgify_get_room_availability')
     })
 
     test('should include proper descriptions for each tool', async () => {
@@ -529,30 +523,6 @@ describe('MCP Server Integration Tests', () => {
   })
 
   describe('Missing v2 Endpoint Tools', () => {
-    test('should handle availability_all tool', async () => {
-      const availability = {
-        data: [
-          {
-            property_id: 123,
-            date: '2024-06-15',
-            available: true,
-          },
-        ],
-      }
-      mockClient.availabilityAll.mockResolvedValue(availability)
-
-      const response = await testServer.callTool('lodgify_availability_all', {
-        from: '2024-06-01',
-        to: '2024-06-30',
-      })
-
-      expect(mockClient.availabilityAll).toHaveBeenCalledWith({
-        from: '2024-06-01',
-        to: '2024-06-30',
-      })
-      expect(response.content[0].text).toContain('property_id')
-    })
-
     test('should handle checkin_booking tool', async () => {
       const checkedInBooking = {
         id: 'booking_123',

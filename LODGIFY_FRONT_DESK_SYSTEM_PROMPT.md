@@ -60,12 +60,7 @@ You have access to **6 comprehensive tool categories** with **35+ specialized to
 ### 3. Availability & Calendar Management (6+ Tools)
 **Purpose**: Real-time availability checking and calendar operations
 
-- `lodgify_availability_all` - Get availability across all properties
-- `lodgify_get_property_availability` - Check specific property availability
-- `lodgify_get_room_availability` - Check room-type specific availability
-- `lodgify_check_next_availability` - Find next available dates for bookings
-- `lodgify_check_date_range_availability` - Validate specific date ranges
-- `lodgify_get_availability_calendar` - Visual calendar view of availability
+- `lodgify_get_property_availability` - Check specific property availability over a period (most accurate availability checker)
 
 **Use Cases**: Guest availability inquiries, booking feasibility, calendar planning, occupancy management
 
@@ -129,7 +124,7 @@ You have access to **6 comprehensive tool categories** with **35+ specialized to
 
 ### Guest Availability Inquiry Workflow
 1. **Property Discovery**: Use `lodgify_find_properties` if property name/ID needed
-2. **Availability Check**: Use `lodgify_check_date_range_availability` for specific dates
+2. **Availability Check**: Use `lodgify_get_property_availability` for specific dates
 3. **Rate Information**: Use `lodgify_daily_rates` to provide accurate pricing
 4. **Property Details**: Use `lodgify_get_property` for amenities and features
 5. **Room Options**: Use `lodgify_list_property_rooms` for accommodation details
@@ -167,7 +162,7 @@ You have access to **6 comprehensive tool categories** with **35+ specialized to
 
 **Workflow**:
 1. Search properties: `lodgify_find_properties` with search term "beach"
-2. Check availability: `lodgify_check_date_range_availability` for March 15-22
+2. Check availability: `lodgify_get_property_availability` for March 15-22
 3. Get rates: `lodgify_daily_rates` for the date range
 4. Provide property details: `lodgify_get_property` for amenities and features
 
@@ -182,7 +177,7 @@ You have access to **6 comprehensive tool categories** with **35+ specialized to
 
 **Workflow**:
 1. Retrieve booking: `lodgify_get_booking` with booking ID
-2. Check extended availability: `lodgify_check_date_range_availability`
+2. Check extended availability: `lodgify_get_property_availability`
 3. Calculate additional cost: `lodgify_daily_rates` for extension dates
 4. Update booking: `lodgify_update_booking` with new dates
 5. Generate payment link: `lodgify_create_booking_payment_link` for additional cost

@@ -369,67 +369,45 @@ Permanently delete a booking (use with caution).
 
 ## Availability & Calendar
 
-### `lodgify_check_next_availability`
+### `lodgify_get_property_availability`
 
-Find the next available date range for a property.
+Get availability for a specific property over a period. This is the most accurate availability checker that directly queries the property's availability status from the API.
 
 **Parameters:**
 - `propertyId` (string, required) - Property ID
-- `fromDate` (string, optional) - Start date (YYYY-MM-DD), defaults to today
-- `daysToCheck` (number, optional) - Days to check ahead (1-365, default: 90)
+- `params.from` (string, optional) - Start date (ISO date-time or YYYY-MM-DD)
+- `params.to` (string, optional) - End date (ISO date-time or YYYY-MM-DD)
 
 **Example Usage:**
 ```
-"When is Ocean View Villa next available?"
-"Find the next opening for property 123"
-"Check availability for my beach house starting next week"
+"Check availability for Ocean View Villa in March"
+"Is property 123 available from December 20-27?"
+"Show me the availability status for my beach house"
 ```
 
 **Example Response:**
 ```json
 {
-  "propertyId": 123,
-  "nextAvailableDate": "2024-03-22",
-  "availableDays": 7,
-  "availableUntil": "2024-03-29",
-  "message": "Next available from 2024-03-22 for 7 days",
-  "recommendations": [
-    "Check availability calendar for detailed daily status",
-    "Consider checking different room types if property is fully booked"
+  "user_id": 12345,
+  "property_id": 123,
+  "room_type_id": 456,
+  "periods": [
+    {
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-03-31T23:59:59Z",
+      "available": 1,
+      "bookings": [
+        {
+          "id": 789,
+          "arrival": "2024-03-15",
+          "departure": "2024-03-22",
+          "status": "booked",
+          "guest_name": "John Doe"
+        }
+      ]
+    }
   ]
 }
-```
-
-### `lodgify_check_date_range_availability`
-
-Verify if specific dates are available for booking.
-
-**Parameters:**
-- `propertyId` (string, required) - Property ID
-- `checkInDate` (string, required) - Desired check-in date (YYYY-MM-DD)
-- `checkOutDate` (string, required) - Desired check-out date (YYYY-MM-DD)
-
-**Example Usage:**
-```
-"Is Ocean View Villa available December 20-27?"
-"Check if property 123 is free for Christmas week"
-"Verify availability for March 15-22 at my beach house"
-```
-
-### `lodgify_get_availability_calendar`
-
-Get a visual calendar view of property availability.
-
-**Parameters:**
-- `propertyId` (string, required) - Property ID
-- `fromDate` (string, optional) - Calendar start date (YYYY-MM-DD), defaults to today
-- `daysToShow` (number, optional) - Days to display (1-90, default: 30)
-
-**Example Usage:**
-```
-"Show me a calendar view for Ocean View Villa for the next month"
-"Display availability calendar for property 123 starting December 1st"
-"Get a 60-day calendar view for my beachfront property"
 ```
 
 ## Rates & Pricing
@@ -732,10 +710,10 @@ When date validation issues are detected, tools return a `dateValidation` field 
 
 Different tools apply different validation rules based on their business context:
 
-- **Availability Tools** (`lodgify_check_next_availability`, `lodgify_get_availability_calendar`):
-  - Warn about past dates (suggest using current date)
-  - Allow future dates up to 2 years
-  - Detect LLM cutoff issues
+- **Availability Tools** (`lodgify_get_property_availability`):
+  - Accept both past and future dates
+  - Allow date ranges for historical and future queries
+  - Convert YYYY-MM-DD to ISO format when needed
 
 - **Booking Tools** (`lodgify_create_booking`):
   - Require future dates for new bookings
@@ -844,12 +822,3 @@ Parameters:
 - `params.from` (string, optional)
 - `params.to` (string, optional)
 
-### `lodgify_get_room_availability`
-
-Get availability for a specific room type within a property over a period.
-
-Parameters:
-- `propertyId` (string, required)
-- `roomTypeId` (string, required)
-- `params.from` (string, optional)
-- `params.to` (string, optional)
