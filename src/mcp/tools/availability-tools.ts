@@ -26,16 +26,16 @@ Example request:
 {
   "propertyId": "123",              // Property ID
   "params": {
-    "from": "2024-03-01",          // Start date (ISO date-time or YYYY-MM-DD)
-    "to": "2024-03-31"             // End date (ISO date-time or YYYY-MM-DD)
+    "from": "2024-03-01",          // Start date (YYYY-MM-DD)
+    "to": "2024-03-31"             // End date (YYYY-MM-DD)
   }
 }`,
         inputSchema: {
           propertyId: z.string().min(1).describe('Property ID'),
           params: z
             .object({
-              from: z.string().optional().describe('Start date (ISO date-time or YYYY-MM-DD)'),
-              to: z.string().optional().describe('End date (ISO date-time or YYYY-MM-DD)'),
+              from: z.string().optional().describe('Start date (YYYY-MM-DD)'),
+              to: z.string().optional().describe('End date (YYYY-MM-DD)'),
             })
             .optional(),
         },

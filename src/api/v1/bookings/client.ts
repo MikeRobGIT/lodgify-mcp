@@ -258,13 +258,13 @@ export class BookingsV1Client extends BaseApiModule {
       if (!updates.room_type_id && currentBooking.room_type_id) {
         mergedUpdates.room_type_id = currentBooking.room_type_id
       }
-      if (!updates.adults && currentBooking.adults) {
+      if (updates.adults === undefined && currentBooking.adults !== undefined) {
         mergedUpdates.adults = currentBooking.adults
       }
-      if (!updates.children && currentBooking.children !== undefined) {
+      if (updates.children === undefined && currentBooking.children !== undefined) {
         mergedUpdates.children = currentBooking.children
       }
-      if (!updates.infants && currentBooking.infants !== undefined) {
+      if (updates.infants === undefined && currentBooking.infants !== undefined) {
         mergedUpdates.infants = currentBooking.infants
       }
     }

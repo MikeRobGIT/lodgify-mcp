@@ -111,40 +111,20 @@ When implementing new Lodgify tools, follow this modular pattern:
 
 ## MCP Tool Catalog
 
-The server implements these Lodgify v2 endpoints as MCP tools:
+For a complete reference of all available Lodgify MCP tools with detailed parameters and examples, see:
+**[@docs/TOOL_CATALOG.md](./docs/TOOL_CATALOG.md)**
 
-### Properties
+### Tool Categories Summary
 
-- `lodgify.list_properties` - GET /v2/properties
-- `lodgify.get_property` - GET /v2/properties/{id}
-- `lodgify.list_property_rooms` - GET /v2/properties/{id}/rooms
-- `lodgify.list_deleted_properties` - GET /v2/deletedProperties
+The server implements 30+ MCP tools across these categories:
 
-### Rates
-
-- `lodgify.daily_rates` - GET /v2/rates/calendar
-- `lodgify.rate_settings` - GET /v2/rates/settings
-
-### Bookings
-
-- `lodgify.list_bookings` - GET /v2/reservations/bookings
-- `lodgify.get_booking` - GET /v2/reservations/bookings/{id}
-- `lodgify.get_booking_payment_link` - GET /v2/reservations/bookings/{id}/quote/paymentLink
-- `lodgify.create_booking_payment_link` - POST /v2/reservations/bookings/{id}/quote/paymentLink
-- `lodgify.update_key_codes` - PUT /v2/reservations/bookings/{id}/keyCodes
-
-### Availability
-
-- `lodgify.get_property_availability` - GET /v2/availability/{propertyId}
-
-### Quotes & Messaging
-
-- `lodgify.get_quote` - GET /v2/quote/{propertyId}
-- `lodgify.get_thread` - GET /v2/messaging/{threadGuid}
-
-### Resources
-
-- `lodgify://health` - Health check resource
+- **Property Management** - List, get, search properties and rooms
+- **Booking & Reservation** - Full CRUD operations for bookings, check-in/out, payment links
+- **Rates & Pricing** - View and update rates, get pricing quotes
+- **Availability** - Check property availability for date ranges
+- **Messaging** - Thread management for guest communications
+- **Webhooks** - Event subscription management
+- **Resources** - Health check and system status
 
 ## Query Parameter Handling
 
