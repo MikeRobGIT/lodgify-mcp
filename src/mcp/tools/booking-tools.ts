@@ -29,16 +29,16 @@ export function getBookingTools(getClient: () => LodgifyOrchestrator): ToolRegis
       category: 'Booking & Reservation Management',
       config: {
         title: 'List Bookings & Reservations',
-        description: `[Booking & Reservation Management] Retrieve all bookings with comprehensive filtering options. Filter by dates, status, property, guest information, and more. Returns booking details including guest info, dates, pricing, and payment status. Essential for managing reservations and analyzing booking patterns.
+        description: `[Booking & Reservation Management] Retrieve bookings with comprehensive filtering options. Filter by dates, status, property, guest information, and more. Returns booking details including guest info, dates, pricing, and payment status. Essential for managing reservations and analyzing booking patterns.
 
-Note: Maximum page size is 50 items per request.
+Note: Maximum page size is 50 items per request. Default stay filter is "Upcoming" for performance and relevance. Avoid using "All" as it can return a very large dataset.
 
 **STAY FILTER OPTIONS - Use these to find bookings by their stay dates:**
 
-- **"Upcoming"** - Bookings with check-in dates in the future (most common for finding active reservations)
+- **"Upcoming"** - Bookings with check-in dates in the future (default and recommended)
 - **"Current"** - Bookings that are currently active (guests are checked in)
 - **"Historic"** - Past bookings where guests have already checked out
-- **"All"** - All bookings regardless of date (default behavior)
+- **"All"** - All bookings regardless of date (not recommended; can return excessive results)
 - **"ArrivalDate"** - Bookings arriving on a specific date (requires stayFilterDate)
 - **"DepartureDate"** - Bookings departing on a specific date (requires stayFilterDate)
 
@@ -108,9 +108,9 @@ Example response:
           includeCount: z.boolean().default(false).describe('Include total number of results'),
           stayFilter: z
             .enum(['Upcoming', 'Current', 'Historic', 'All', 'ArrivalDate', 'DepartureDate'])
-            .optional()
+            .default('Upcoming')
             .describe(
-              'Filter bookings by their stay dates. Use "Upcoming" to find future reservations (most common), "Current" for active guests, "Historic" for past bookings, "ArrivalDate"/"DepartureDate" for specific dates (requires stayFilterDate), or "All" for everything.',
+              'Filter by stay dates. Default is "Upcoming". Avoid "All" unless absolutely necessary (can return too many items). Use "Current" for active guests, "Historic" for past bookings, and "ArrivalDate"/"DepartureDate" with stayFilterDate for specific dates.',
             ),
           stayFilterDate: z
             .string()
