@@ -158,25 +158,29 @@ export class BookingsV1Client extends BaseApiModule {
       apiRequest.guest = guest
     }
 
-    // Handle room information if any room-related field is provided
+    // Handle room information; avoid defaults that can unintentionally alter state
+    // Only include rooms when we have both adults and room_type_id available
     if (
-      updates.room_type_id !== undefined ||
       updates.adults !== undefined ||
+      updates.room_type_id !== undefined ||
       updates.children !== undefined ||
       updates.infants !== undefined
     ) {
-      const guestBreakdown: GuestBreakdown = {
-        adults: updates.adults || 1, // Default to 1 if not specified
-        children: updates.children || 0,
-        infants: updates.infants || 0,
-      }
+      if (updates.adults !== undefined && updates.room_type_id !== undefined) {
+        const guestBreakdown: GuestBreakdown = {
+          adults: updates.adults,
+        }
+        if (updates.children !== undefined) guestBreakdown.children = updates.children
+        if (updates.infants !== undefined) guestBreakdown.infants = updates.infants
 
-      const room: Room = {
-        room_type_id: updates.room_type_id || 0, // Default to 0 if not specified
-        guest_breakdown: guestBreakdown,
-      }
+        const room: Room = {
+          room_type_id: updates.room_type_id,
+          guest_breakdown: guestBreakdown,
+        }
 
-      apiRequest.rooms = [room]
+        apiRequest.rooms = [room]
+      }
+      // If either adults or room_type_id is missing, skip rooms payload for safety
     }
 
     // Handle status mapping
@@ -214,12 +218,15 @@ export class BookingsV1Client extends BaseApiModule {
       throw new Error('Update data is required')
     }
 
-    // Validate date formats if provided
+    // Validate date formats if provided (treat empty string as invalid)
     const datePattern = /^\d{4}-\d{2}-\d{2}$/
-    if (updates.arrival && !datePattern.test(updates.arrival)) {
+    if (updates.arrival !== undefined && (!updates.arrival || !datePattern.test(updates.arrival))) {
       throw new Error('Arrival date must be in YYYY-MM-DD format')
     }
-    if (updates.departure && !datePattern.test(updates.departure)) {
+    if (
+      updates.departure !== undefined &&
+      (!updates.departure || !datePattern.test(updates.departure))
+    ) {
       throw new Error('Departure date must be in YYYY-MM-DD format')
     }
 
@@ -232,30 +239,48 @@ export class BookingsV1Client extends BaseApiModule {
     // This is necessary because Lodgify v1 API requires complete data for certain updates
     let currentBooking: BookingV1Response | null = null
 
-    // Only fetch current data if we're updating dates (which require complete structure)
-    if (updates.arrival || updates.departure) {
+    // Prefetch when dates or room/occupancy change (v1 often needs full structure)
+    const needsPrefetch =
+      updates.arrival !== undefined ||
+      updates.departure !== undefined ||
+      updates.room_type_id !== undefined ||
+      updates.adults !== undefined ||
+      updates.children !== undefined ||
+      updates.infants !== undefined
+
+    if (needsPrefetch) {
       try {
         currentBooking = await this.getBookingV1(id)
       } catch (error) {
-        console.warn(`Could not fetch current booking data for update: ${error}`)
+        console.warn('Could not fetch current booking data for update', {
+          bookingId: id,
+          error: error instanceof Error ? error.message : String(error),
+        })
         // Continue with partial update if fetch fails
       }
     }
 
-    // If we have current booking and are updating dates, ensure both dates are included
+    // If we have current booking and are updating dates or room/occupancy, ensure required fields are included
     const mergedUpdates = { ...updates }
-    if (currentBooking && (updates.arrival || updates.departure)) {
+    const updatingDates = updates.arrival !== undefined || updates.departure !== undefined
+    const updatingRoom =
+      updates.room_type_id !== undefined ||
+      updates.adults !== undefined ||
+      updates.children !== undefined ||
+      updates.infants !== undefined
+
+    if (currentBooking && (updatingDates || updatingRoom)) {
       // When updating dates, include both arrival and departure
-      if (!updates.arrival && updates.departure) {
+      if (updates.arrival === undefined && updates.departure !== undefined) {
         mergedUpdates.arrival = currentBooking.arrival
       }
-      if (updates.arrival && !updates.departure) {
+      if (updates.arrival !== undefined && updates.departure === undefined) {
         mergedUpdates.departure = currentBooking.departure
       }
 
       // Also include room and guest information for date updates
       // The API may need this for availability/pricing recalculation
-      if (!updates.room_type_id && currentBooking.room_type_id) {
+      if (updates.room_type_id === undefined && currentBooking.room_type_id !== undefined) {
         mergedUpdates.room_type_id = currentBooking.room_type_id
       }
       if (updates.adults === undefined && currentBooking.adults !== undefined) {

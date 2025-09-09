@@ -184,7 +184,7 @@ Retrieve properties that have been soft-deleted for auditing and recovery.
 
 ### `lodgify_list_bookings`
 
-Retrieve all bookings with comprehensive filtering options.
+Retrieve bookings with comprehensive filtering options. Default stay filter is "Upcoming" for performance and relevance. Avoid using "All" as it can return a very large dataset. Maximum page size is 50 items per request.
 
 **Parameters:**
 - `page` (number, optional) - Page number (default: 1)
@@ -193,11 +193,11 @@ Retrieve all bookings with comprehensive filtering options.
 - `includeTransactions` (boolean, optional) - Include payment details
 - `includeQuoteDetails` (boolean, optional) - Include pricing breakdown
 - `includeExternal` (boolean, optional) - Include external bookings
-- `stayFilter` (string, optional) - Filter by stay dates:
+- `stayFilter` (string, optional, default: `Upcoming`) - Filter by stay dates (prefer `Upcoming`; avoid `All` unless absolutely necessary):
   - `Upcoming` - Future bookings
   - `Current` - Active bookings
   - `Historic` - Past bookings
-  - `All` - All bookings
+  - `All` - All bookings (not recommended; can return excessive results)
   - `ArrivalDate` - Specific arrival date (requires `stayFilterDate`)
   - `DepartureDate` - Specific departure date (requires `stayFilterDate`)
 - `stayFilterDate` (string, optional) - ISO datetime for arrival/departure filtering
@@ -821,4 +821,3 @@ Parameters:
 - `propertyId` (string, required)
 - `params.from` (string, optional)
 - `params.to` (string, optional)
-
