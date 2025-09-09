@@ -228,15 +228,70 @@ export class BookingsV1Client extends BaseApiModule {
       throw new Error('At least one adult guest is required')
     }
 
+    // Fetch current booking data to ensure complete update structure
+    // This is necessary because Lodgify v1 API requires complete data for certain updates
+    let currentBooking: BookingV1Response | null = null
+
+    // Only fetch current data if we're updating dates (which require complete structure)
+    if (updates.arrival || updates.departure) {
+      try {
+        currentBooking = await this.getBookingV1(id)
+      } catch (error) {
+        console.warn(`Could not fetch current booking data for update: ${error}`)
+        // Continue with partial update if fetch fails
+      }
+    }
+
+    // If we have current booking and are updating dates, ensure both dates are included
+    const mergedUpdates = { ...updates }
+    if (currentBooking && (updates.arrival || updates.departure)) {
+      // When updating dates, include both arrival and departure
+      if (!updates.arrival && updates.departure) {
+        mergedUpdates.arrival = currentBooking.arrival
+      }
+      if (updates.arrival && !updates.departure) {
+        mergedUpdates.departure = currentBooking.departure
+      }
+
+      // Also include room and guest information for date updates
+      // The API may need this for availability/pricing recalculation
+      if (!updates.room_type_id && currentBooking.room_type_id) {
+        mergedUpdates.room_type_id = currentBooking.room_type_id
+      }
+      if (!updates.adults && currentBooking.adults) {
+        mergedUpdates.adults = currentBooking.adults
+      }
+      if (!updates.children && currentBooking.children !== undefined) {
+        mergedUpdates.children = currentBooking.children
+      }
+      if (!updates.infants && currentBooking.infants !== undefined) {
+        mergedUpdates.infants = currentBooking.infants
+      }
+    }
+
     // Transform flat structure to API's nested structure
-    const apiRequest = this.transformToUpdateApiRequest(updates)
+    const apiRequest = this.transformToUpdateApiRequest(mergedUpdates)
 
     // For update operations, use the singular path structure
     const updatePath = `reservation/booking/${id}`
-    return this.client.request<BookingV1Response>('PUT', updatePath, {
+    const result = await this.client.request<BookingV1Response>('PUT', updatePath, {
       apiVersion: 'v1',
       body: apiRequest,
     })
+
+    // If the API returns an empty response (which it often does for successful updates),
+    // fetch the updated booking to return complete data
+    if (!result || (typeof result === 'object' && Object.keys(result).length === 0)) {
+      try {
+        return await this.getBookingV1(id)
+      } catch (error) {
+        console.warn(`Could not fetch updated booking after update: ${error}`)
+        // Return the empty result if fetch fails
+        return result
+      }
+    }
+
+    return result
   }
 
   /**

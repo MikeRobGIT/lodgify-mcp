@@ -640,7 +640,7 @@ export class DateValidator {
       const startDateObj = new Date(`${startResult.validatedDate}T12:00:00Z`)
       const endDateObj = new Date(`${endResult.validatedDate}T12:00:00Z`)
 
-      rangeValid = endDateObj > startDateObj
+      rangeValid = endDateObj >= startDateObj
 
       if (!rangeValid) {
         rangeFeedback = FeedbackTemplates.invalidRange(startDate, endDate)

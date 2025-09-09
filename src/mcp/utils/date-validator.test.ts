@@ -428,8 +428,12 @@ describe('DateValidator', () => {
       const validator = new DateValidator()
       const result = validator.validateDateRange('2025-09-15', '2025-09-15')
 
-      // Same day should be invalid for a range
-      expect(result.rangeValid).toBe(false)
+      // Same day should be valid for a range (e.g., single-day rate queries)
+      expect(result.rangeValid).toBe(true)
+      expect(result.start.isValid).toBe(true)
+      expect(result.end.isValid).toBe(true)
+      expect(result.rangeError).toBeUndefined()
+      expect(result.rangeFeedback).toBeUndefined()
     })
 
     test('should handle year boundaries', () => {

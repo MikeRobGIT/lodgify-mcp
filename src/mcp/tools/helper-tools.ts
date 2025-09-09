@@ -7,14 +7,12 @@ import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 
 // Type definitions for API responses
 interface PropertyItem {
-  id: string
+  id: string | number
   name?: string
+  internal_name?: string
   title?: string
 }
 
-interface PropertiesResponse {
-  items?: PropertyItem[]
-}
 
 interface BookingItem {
   id?: string
@@ -83,16 +81,42 @@ export async function findProperties(
   try {
     // Get properties from property list API
     try {
-      const propertiesData = (await client.properties.listProperties()) as
-        | PropertiesResponse
-        | PropertyItem[]
-      const propertyList = Array.isArray(propertiesData)
-        ? propertiesData
-        : propertiesData?.items || []
+      const propertiesData = await client.properties.listProperties()
+      let propertyList: PropertyItem[] = []
+      
+      // Debug logging to understand the structure
+      console.log('[findProperties] Raw response type check:', {
+        hasData: 'data' in propertiesData,
+        hasItems: 'items' in propertiesData,
+        hasCount: 'count' in propertiesData,
+      })
+      
+      // The actual response from Lodgify v2 API has structure: { data: [{ count: null, items: [...] }] }
+      if (propertiesData && 'data' in propertiesData && Array.isArray(propertiesData.data)) {
+        if (propertiesData.data.length > 0) {
+          const firstDataItem = propertiesData.data[0]
+          // Check if the first data item has an items array
+          if (firstDataItem && 'items' in firstDataItem && Array.isArray(firstDataItem.items)) {
+            propertyList = firstDataItem.items
+            console.log(`[findProperties] Found ${propertyList.length} properties in data[0].items`)
+          }
+        }
+      } else if (Array.isArray(propertiesData)) {
+        // Fallback: Direct array of properties
+        propertyList = propertiesData as PropertyItem[]
+      } else if (propertiesData && 'items' in propertiesData && Array.isArray(propertiesData.items)) {
+        // Fallback: Direct items array
+        propertyList = propertiesData.items
+      }
 
-      for (const property of propertyList.slice(0, limit)) {
+      // Process found properties
+      let matchCount = 0
+      for (const property of propertyList) {
+        if (matchCount >= limit) break
+        
         if (property.id) {
-          const propertyName = property.name || property.title || ''
+          // Use name, internal_name, or fallback to ID
+          const propertyName = property.name || property.internal_name || property.title || `Property ${property.id}`
           const matchesSearch =
             !searchTerm || propertyName.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -100,13 +124,17 @@ export async function findProperties(
             properties.push({
               id: property.id.toString(),
               name: propertyName,
-              source: 'property_list',
+              source: 'properties',
             })
             propertyIds.add(property.id.toString())
+            matchCount++
           }
         }
       }
-    } catch (_error) {
+      
+      console.log(`[findProperties] Processed ${matchCount} matching properties from API`)
+    } catch (error) {
+      console.error('[findProperties] Error fetching properties:', error)
       suggestions.push('Property list API may not be available or accessible')
     }
 
