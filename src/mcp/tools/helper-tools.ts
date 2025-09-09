@@ -13,7 +13,6 @@ interface PropertyItem {
   title?: string
 }
 
-
 interface BookingItem {
   id?: string
   property_id?: string | number
@@ -83,14 +82,14 @@ export async function findProperties(
     try {
       const propertiesData = await client.properties.listProperties()
       let propertyList: PropertyItem[] = []
-      
+
       // Debug logging to understand the structure
       console.log('[findProperties] Raw response type check:', {
         hasData: 'data' in propertiesData,
         hasItems: 'items' in propertiesData,
         hasCount: 'count' in propertiesData,
       })
-      
+
       // The actual response from Lodgify v2 API has structure: { data: [{ count: null, items: [...] }] }
       if (propertiesData && 'data' in propertiesData && Array.isArray(propertiesData.data)) {
         if (propertiesData.data.length > 0) {
@@ -104,7 +103,11 @@ export async function findProperties(
       } else if (Array.isArray(propertiesData)) {
         // Fallback: Direct array of properties
         propertyList = propertiesData as PropertyItem[]
-      } else if (propertiesData && 'items' in propertiesData && Array.isArray(propertiesData.items)) {
+      } else if (
+        propertiesData &&
+        'items' in propertiesData &&
+        Array.isArray(propertiesData.items)
+      ) {
         // Fallback: Direct items array
         propertyList = propertiesData.items
       }
@@ -113,10 +116,11 @@ export async function findProperties(
       let matchCount = 0
       for (const property of propertyList) {
         if (matchCount >= limit) break
-        
+
         if (property.id) {
           // Use name, internal_name, or fallback to ID
-          const propertyName = property.name || property.internal_name || property.title || `Property ${property.id}`
+          const propertyName =
+            property.name || property.internal_name || property.title || `Property ${property.id}`
           const matchesSearch =
             !searchTerm || propertyName.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -131,7 +135,7 @@ export async function findProperties(
           }
         }
       }
-      
+
       console.log(`[findProperties] Processed ${matchCount} matching properties from API`)
     } catch (error) {
       console.error('[findProperties] Error fetching properties:', error)
