@@ -10,12 +10,12 @@ List all properties with optional filtering and pagination.
 
 **Parameters:**
 
-- `wid` (optional): Website ID
-- `updatedSince` (optional): Return only properties modified since this datetime
-- `includeCount` (optional): Return the total number of results (default: false)
-- `includeInOut` (optional): Include available dates for arrival or departure (default: false)
-- `page` (optional): Page number to retrieve (default: 1)
-- `size` (optional): Number of items per page (max 50, default: 50)
+- `wid` (optional, number): Website ID
+- `updatedSince` (optional, string): Return only properties modified since this datetime (ISO 8601)
+- `includeCount` (optional, boolean): Return the total number of results (default: false)
+- `includeInOut` (optional, boolean): Include available dates for arrival or departure (default: false)
+- `page` (optional, number): Page number to retrieve (default: 1)
+- `size` (optional, number): Number of items per page (max 50, default: 50)
 
 **Example:**
 
@@ -36,9 +36,9 @@ Get detailed information about a specific property.
 
 **Parameters:**
 
-- `id` (required): Property ID
-- `wid` (optional): Website ID
-- `includeInOut` (optional): Include available dates for arrival or departure (default: false)
+- `id` (required, number): Property ID
+- `wid` (optional, number): Website ID
+- `includeInOut` (optional, boolean): Include available dates for arrival or departure (default: false)
 
 **Example:**
 
@@ -55,7 +55,7 @@ List all rooms for a specific property.
 
 **Parameters:**
 
-- `propertyId` (required): Property ID to list room types for
+- `propertyId` (required, string): Property ID to list room types for
 
 **Example:**
 
@@ -71,8 +71,8 @@ List properties that have been deleted.
 
 **Parameters:**
 
-- `params` (optional): Query parameters for filtering
-  - `deletedSince`: Filter properties deleted after this date
+- `params` (optional, object): Query parameters for filtering
+  - `deletedSince` (optional, string): Filter properties deleted after this date (ISO 8601)
 
 **Example:**
 
@@ -92,16 +92,16 @@ List bookings with comprehensive filtering options. Maximum page size is 50 item
 
 **Parameters:**
 
-- `page` (optional): Page number to retrieve (default: 1)
-- `size` (optional): Number of items per page (max: 50, default: 50)
-- `includeCount` (optional): Include total number of results (default: false)
-- `includeExternal` (optional): Include external bookings (default: false)
-- `includeQuoteDetails` (optional): Include quote details (default: false)
-- `includeTransactions` (optional): Include details about transactions and schedule (default: false)
-- `stayFilter` (optional, default: `Upcoming`): Filter bookings by stay dates (Upcoming, Current, Historic, All, ArrivalDate, DepartureDate). Prefer `Upcoming`; avoid `All` unless absolutely necessary.
-- `stayFilterDate` (optional): Date to filter when using `ArrivalDate` or `DepartureDate` in `stayFilter`
-- `updatedSince` (optional): Include only bookings updated since this date
-- `trash` (optional): Query bookings that are in trash (False, True, All)
+- `page` (optional, number): Page number to retrieve (default: 1)
+- `size` (optional, number): Number of items per page (max: 50, default: 50)
+- `includeCount` (optional, boolean): Include total number of results (default: false)
+- `includeExternal` (optional, boolean): Include external bookings (default: false)
+- `includeQuoteDetails` (optional, boolean): Include quote details (default: false)
+- `includeTransactions` (optional, boolean): Include details about transactions and schedule (default: false)
+- `stayFilter` (optional, string): Filter bookings by stay dates (Upcoming, Current, Historic, All, ArrivalDate, DepartureDate). Prefer `Upcoming`; avoid `All` unless absolutely necessary. (default: `Upcoming`)
+- `stayFilterDate` (optional, string): Date (YYYY-MM-DD) required when using `ArrivalDate` or `DepartureDate` in `stayFilter`
+- `updatedSince` (optional, string): Include only bookings updated since this date (ISO 8601)
+- `trash` (optional, string): Query bookings that are in trash (enum: False, True, All)
 
 **Example:**
 
@@ -121,7 +121,7 @@ Get detailed information about a specific booking.
 
 **Parameters:**
 
-- `id` (required): Unique booking/reservation ID to retrieve
+- `id` (required, string): Unique booking/reservation ID to retrieve
 
 **Example:**
 
@@ -137,7 +137,7 @@ Get existing payment link for a booking including payment status, amount due, an
 
 **Parameters:**
 
-- `id` (required): Booking ID to get payment link for
+- `id` (required, string): Booking ID to get payment link for
 
 **Example:**
 
@@ -153,11 +153,11 @@ Generate a secure payment link for a booking allowing guests to pay outstanding 
 
 **Parameters:**
 
-- `id` (required): Booking ID to create payment link for
-- `payload` (required): Payment link configuration
-  - `amount` (optional): Payment amount (defaults to booking balance)
-  - `currency` (optional): Currency code (e.g., USD, EUR)
-  - `description` (optional): Payment description for guest (max 500 chars)
+- `id` (required, string): Booking ID to create payment link for
+- `payload` (required, object): Payment link configuration
+  - `amount` (optional, number): Payment amount (defaults to booking balance)
+  - `currency` (optional, string): Currency code (e.g., USD, EUR)
+  - `description` (optional, string): Payment description for guest (max 500 chars)
 
 **Example:**
 
@@ -178,9 +178,9 @@ Update access key codes for a booking to provide guests with property entry info
 
 **Parameters:**
 
-- `id` (required): Booking ID to update key codes for
-- `payload` (required): Access key codes and entry information
-  - `keyCodes` (required): Array of access codes/keys for the property
+- `id` (required, number): Booking ID to update key codes for
+- `payload` (required, object): Access key codes and entry information
+  - `keyCodes` (required, string[]): Array of access codes/keys for the property
 
 **Example:**
 
@@ -199,8 +199,8 @@ Mark a booking as checked in. Updates the booking status to reflect that the gue
 
 **Parameters:**
 
-- `id` (required): Booking ID to check in
-- `time` (required): Check-in time in ISO 8601 date-time format
+- `id` (required, number): Booking ID to check in
+- `time` (required, string): Check-in time in ISO 8601 date-time format
 
 **Example:**
 
@@ -217,8 +217,8 @@ Mark a booking as checked out. Updates the booking status to reflect that the gu
 
 **Parameters:**
 
-- `id` (required): Booking ID to check out
-- `time` (required): Check-out time in ISO 8601 date-time format
+- `id` (required, number): Booking ID to check out
+- `time` (required, string): Check-out time in ISO 8601 date-time format
 
 **Example:**
 
@@ -235,7 +235,7 @@ Retrieve external bookings associated with a property. These are bookings made t
 
 **Parameters:**
 
-- `id` (required): Property ID to get external bookings for
+- `id` (required, string): Property ID to get external bookings for
 
 **Example:**
 
@@ -251,19 +251,19 @@ Create a new booking in the system. This v1 endpoint provides direct booking cre
 
 **Parameters:**
 
-- `property_id` (required): Property ID for the booking
-- `room_type_id` (required): Room type ID
-- `arrival` (required): Arrival date (YYYY-MM-DD)
-- `departure` (required): Departure date (YYYY-MM-DD)
-- `guest_name` (required): Primary guest name
-- `adults` (required): Number of adult guests (minimum 1)
-- `guest_email` (optional): Guest email address
-- `guest_phone` (optional): Guest phone number
-- `children` (optional): Number of children (default: 0)
-- `infants` (optional): Number of infants
-- `status` (optional): Booking status (booked, tentative, declined, confirmed)
-- `source` (optional): Booking source or channel
-- `notes` (optional): Internal notes or special requests
+- `property_id` (required, number): Property ID for the booking
+- `room_type_id` (required, number): Room type ID
+- `arrival` (required, string): Arrival date (YYYY-MM-DD)
+- `departure` (required, string): Departure date (YYYY-MM-DD)
+- `guest_name` (required, string): Primary guest name
+- `adults` (required, number): Number of adult guests (minimum 1)
+- `guest_email` (optional, string): Guest email address
+- `guest_phone` (optional, string): Guest phone number
+- `children` (optional, number): Number of children (default: 0)
+- `infants` (optional, number): Number of infants
+- `status` (optional, string): Booking status (booked, tentative, declined, confirmed)
+- `source` (optional, string): Booking source or channel
+- `notes` (optional, string): Internal notes or special requests
 
 **Example:**
 
@@ -288,20 +288,20 @@ Update an existing booking's details. This v1 endpoint provides comprehensive bo
 
 **Parameters:**
 
-- `id` (required): Booking ID to update
-- `arrival` (optional): New arrival date (YYYY-MM-DD)
-- `departure` (optional): New departure date (YYYY-MM-DD)
-- `guest_name` (optional): Updated guest name
-- `guest_email` (optional): Updated guest email
-- `guest_phone` (optional): Updated guest phone
-- `adults` (optional): Updated number of adults (minimum 1)
-- `children` (optional): Updated number of children
-- `infants` (optional): Updated number of infants
-- `property_id` (optional): New property ID
-- `room_type_id` (optional): New room type ID
-- `status` (optional): Updated booking status
-- `source` (optional): Updated booking source
-- `notes` (optional): Updated notes
+- `id` (required, number): Booking ID to update
+- `arrival` (optional, string): New arrival date (YYYY-MM-DD)
+- `departure` (optional, string): New departure date (YYYY-MM-DD)
+- `guest_name` (optional, string): Updated guest name
+- `guest_email` (optional, string): Updated guest email
+- `guest_phone` (optional, string): Updated guest phone
+- `adults` (optional, number): Updated number of adults (minimum 1)
+- `children` (optional, number): Updated number of children
+- `infants` (optional, number): Updated number of infants
+- `property_id` (optional, number): New property ID
+- `room_type_id` (optional, number): New room type ID
+- `status` (optional, string): Updated booking status
+- `source` (optional, string): Updated booking source
+- `notes` (optional, string): Updated notes
 
 **Example:**
 
@@ -322,7 +322,7 @@ Permanently delete a booking from the system. Use with caution as this action ca
 
 **Parameters:**
 
-- `id` (required): Booking ID to delete permanently
+- `id` (required, number): Booking ID to delete permanently
 
 **Example:**
 
@@ -340,10 +340,10 @@ View daily pricing rates for properties across date ranges. Shows the actual nig
 
 **Parameters:**
 
-- `roomTypeId` (required): Room Type ID
-- `houseId` (required): House/Property ID
-- `startDate` (required): Start date for rates calendar (YYYY-MM-DD)
-- `endDate` (required): End date for rates calendar (YYYY-MM-DD)
+- `roomTypeId` (required, number): Room Type ID
+- `houseId` (required, number): House/Property ID
+- `startDate` (required, string): Start date for rates calendar (YYYY-MM-DD)
+- `endDate` (required, string): End date for rates calendar (YYYY-MM-DD)
 
 **Example:**
 
@@ -362,8 +362,8 @@ Retrieve rate configuration settings including pricing rules, modifiers, seasona
 
 **Parameters:**
 
-- `params` (required): Query parameters for rate settings
-  - `houseId` (optional): Property ID
+- `params` (optional, object): Query parameters for rate settings
+  - `houseId` (optional, number): Property ID
 
 **Example:**
 
@@ -381,14 +381,14 @@ Update rates for properties and room types. This v1 endpoint provides direct rat
 
 **Parameters:**
 
-- `property_id` (required): Property ID to update rates for
-- `rates` (required): Array of rate updates to apply
-  - `room_type_id` (required): Room type ID
-  - `start_date` (required): Start date for rate period (YYYY-MM-DD)
-  - `end_date` (required): End date for rate period (YYYY-MM-DD)
-  - `price_per_day` (required): Rate amount per day
-  - `min_stay` (optional): Minimum stay requirement
-  - `currency` (optional): Currency code (e.g., USD, EUR)
+- `property_id` (required, number): Property ID to update rates for
+- `rates` (required, array): Array of rate updates to apply
+  - `room_type_id` (required, number): Room type ID
+  - `start_date` (required, string): Start date for rate period (YYYY-MM-DD)
+  - `end_date` (required, string): End date for rate period (YYYY-MM-DD)
+  - `price_per_day` (required, number): Rate amount per day
+  - `min_stay` (optional, number): Minimum stay requirement
+  - `currency` (optional, string): Currency code (e.g., USD, EUR)
 
 **Example:**
 
@@ -414,29 +414,29 @@ Create a custom quote for an existing booking with pricing adjustments. This all
 
 **Parameters:**
 
-- `bookingId` (required): Booking ID to create quote for
-- `payload` (required): Quote creation payload with pricing and terms
-  - `totalPrice` (optional): Total quote amount
-  - `currency` (optional): Currency code (e.g., USD, EUR)
-  - `subtotal` (optional): Subtotal before taxes/fees
-  - `breakdown` (optional): Price breakdown details
-    - `accommodation` (optional): Accommodation cost
-    - `taxes` (optional): Tax amount
-    - `fees` (optional): Service fees
-    - `extras` (optional): Extra services cost
-    - `discount` (optional): Discount amount
-  - `adjustments` (optional): Custom pricing adjustments array
-    - `type` (required): Type of adjustment (discount, fee, tax, extra)
-    - `description` (required): Description of adjustment
-    - `amount` (required): Adjustment amount
-    - `isPercentage` (optional): Is this a percentage?
-  - `validUntil` (optional): Quote expiration date (ISO 8601)
-  - `sendToGuest` (optional): Send quote to guest via email
-  - `replaceExisting` (optional): Replace existing quote if any
-  - `notes` (optional): Internal notes about the quote
-  - `customTerms` (optional): Custom terms and conditions
-  - `policyId` (optional): Cancellation policy ID
-  - `rentalAgreementId` (optional): Rental agreement ID
+- `bookingId` (required, string): Booking ID to create quote for
+- `payload` (required, object): Quote creation payload with pricing and terms
+  - `totalPrice` (optional, number): Total quote amount
+  - `currency` (optional, string): Currency code (e.g., USD, EUR)
+  - `subtotal` (optional, number): Subtotal before taxes/fees
+  - `breakdown` (optional, object): Price breakdown details
+    - `accommodation` (optional, number): Accommodation cost
+    - `taxes` (optional, number): Tax amount
+    - `fees` (optional, number): Service fees
+    - `extras` (optional, number): Extra services cost
+    - `discount` (optional, number): Discount amount
+  - `adjustments` (optional, array): Custom pricing adjustments array
+    - `type` (required, string): Type of adjustment (discount, fee, tax, extra)
+    - `description` (required, string): Description of adjustment
+    - `amount` (required, number): Adjustment amount
+    - `isPercentage` (optional, boolean): Is this a percentage?
+  - `validUntil` (optional, string): Quote expiration date (ISO 8601)
+  - `sendToGuest` (optional, boolean): Send quote to guest via email
+  - `replaceExisting` (optional, boolean): Replace existing quote if any
+  - `notes` (optional, string): Internal notes about the quote
+  - `customTerms` (optional, string): Custom terms and conditions
+  - `policyId` (optional, string): Cancellation policy ID
+  - `rentalAgreementId` (optional, string): Rental agreement ID
 
 **Example:**
 
@@ -475,11 +475,11 @@ Retrieve an existing quote that was created when a booking was made. This does N
 
 **Parameters:**
 
-- `propertyId` (required): Property ID with existing booking/quote
-- `params` (required): Quote retrieval parameters
-  - Dates (from/to) that match the booking
-  - Room types (roomTypes[0].Id)  
-  - Guest breakdown (guest_breakdown[adults])
+- `propertyId` (required, string): Property ID with existing booking/quote
+- `params` (required, object): Quote retrieval parameters
+  - Dates (from/to) that match the booking (string)
+  - Room types (roomTypes[0].Id) (number)
+  - Guest breakdown (guest_breakdown[adults]) (number)
   - Uses bracket notation for complex parameters
 
 **Example:**
@@ -501,11 +501,11 @@ List conversation threads with optional filtering. Useful for inbox views, triag
 
 **Parameters:**
 
-- `params` (optional): Query parameters for filtering
-  - `includeMessages` (optional): Include messages in response
-  - `includeParticipants` (optional): Include participant details
-  - `messageLimit` (optional): Maximum messages per thread, 1-200
-  - `since` (optional): ISO date-time to filter threads since
+- `params` (optional, object): Query parameters for filtering
+  - `includeMessages` (optional, boolean): Include messages in response
+  - `includeParticipants` (optional, boolean): Include participant details
+  - `messageLimit` (optional, number): Maximum messages per thread, 1-200
+  - `since` (optional, string): ISO date-time to filter threads since
 
 **Example:**
 
@@ -526,7 +526,7 @@ Retrieve a messaging conversation thread including all messages, participants, a
 
 **Parameters:**
 
-- `threadGuid` (required): Unique thread identifier (GUID) for the conversation
+- `threadGuid` (required, string): Unique thread identifier (GUID) for the conversation
 
 **Example:**
 
@@ -542,13 +542,13 @@ Send a message to a specific conversation thread. Respects read-only mode and wi
 
 **Parameters:**
 
-- `threadGuid` (required): Thread GUID
-- `message` (required): Message payload
-  - `content` (required): Message content
-  - `attachments` (optional): Array of attachment objects
-    - `fileName` (required): File name
-    - `fileUrl` (required): File URL
-    - `fileType` (optional): File MIME type
+- `threadGuid` (required, string): Thread GUID
+- `message` (required, object): Message payload
+  - `content` (required, string): Message content
+  - `attachments` (optional, array): Array of attachment objects
+    - `fileName` (required, string): File name
+    - `fileUrl` (required, string): File URL
+    - `fileType` (optional, string): File MIME type
 
 **Example:**
 
@@ -574,7 +574,7 @@ Mark a conversation thread as read to clear unread indicators. Respects read-onl
 
 **Parameters:**
 
-- `threadGuid` (required): Thread GUID
+- `threadGuid` (required, string): Thread GUID
 
 **Example:**
 
@@ -590,7 +590,7 @@ Archive a conversation thread to remove it from active views. Respects read-only
 
 **Parameters:**
 
-- `threadGuid` (required): Thread GUID
+- `threadGuid` (required, string): Thread GUID
 
 **Example:**
 
@@ -608,9 +608,9 @@ Find properties in the system when you don't know the exact property ID. Searche
 
 **Parameters:**
 
-- `searchTerm` (optional): Search term to filter properties by name (case-insensitive)
-- `includePropertyIds` (optional): Include property IDs found in recent bookings (default: true)
-- `limit` (optional): Maximum number of properties to return (default: 10, max: 50)
+- `searchTerm` (optional, string): Search term to filter properties by name (case-insensitive)
+- `includePropertyIds` (optional, boolean): Include property IDs found in recent bookings (default: true)
+- `limit` (optional, number): Maximum number of properties to return (default: 10, max: 50)
 
 **Example:**
 
@@ -630,10 +630,10 @@ Get availability for a specific property over a period. This is the most accurat
 
 **Parameters:**
 
-- `propertyId` (required): Property ID
-- `params` (optional): Query parameters
-  - `from` (optional): Start date (YYYY-MM-DD or ISO date-time format)
-  - `to` (optional): End date (YYYY-MM-DD or ISO date-time format)
+- `propertyId` (required, string): Property ID
+- `params` (optional, object): Query parameters
+  - `from` (optional, string): Start date (YYYY-MM-DD or ISO date-time format)
+  - `to` (optional, string): End date (YYYY-MM-DD or ISO date-time format)
 
 **Example:**
 
@@ -668,8 +668,8 @@ Subscribe to webhook events to receive real-time notifications when specific eve
 
 **Parameters:**
 
-- `event` (required): Event type to subscribe to (rate_change, availability_change, booking_new_any_status, booking_new_status_booked, booking_change, booking_status_change_booked, booking_status_change_tentative, booking_status_change_open, booking_status_change_declined, guest_message_received)
-- `target_url` (required): HTTPS URL endpoint to receive webhook notifications
+- `event` (required, string): Event type to subscribe to (rate_change, availability_change, booking_new_any_status, booking_new_status_booked, booking_change, booking_status_change_booked, booking_status_change_tentative, booking_status_change_open, booking_status_change_declined, guest_message_received)
+- `target_url` (required, string): HTTPS URL endpoint to receive webhook notifications
 
 **Example:**
 
@@ -686,7 +686,7 @@ Remove a webhook subscription to stop receiving event notifications. This is a p
 
 **Parameters:**
 
-- `id` (required): Webhook subscription ID to remove
+- `id` (required, string): Webhook subscription ID to remove
 
 **Example:**
 

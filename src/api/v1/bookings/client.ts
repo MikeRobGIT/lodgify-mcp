@@ -235,63 +235,60 @@ export class BookingsV1Client extends BaseApiModule {
       throw new Error('At least one adult guest is required')
     }
 
-    // Fetch current booking data to ensure complete update structure
-    // This is necessary because Lodgify v1 API requires complete data for certain updates
+    // Fetch current booking data; v1 updates typically require a complete structure
     let currentBooking: BookingV1Response | null = null
-
-    // Prefetch when dates or room/occupancy change (v1 often needs full structure)
-    const needsPrefetch =
-      updates.arrival !== undefined ||
-      updates.departure !== undefined ||
-      updates.room_type_id !== undefined ||
-      updates.adults !== undefined ||
-      updates.children !== undefined ||
-      updates.infants !== undefined
-
-    if (needsPrefetch) {
-      try {
-        currentBooking = await this.getBookingV1(id)
-      } catch (error) {
-        console.warn('Could not fetch current booking data for update', {
-          bookingId: id,
-          error: error instanceof Error ? error.message : String(error),
-        })
-        // Continue with partial update if fetch fails
-      }
+    try {
+      currentBooking = await this.getBookingV1(id)
+    } catch (error) {
+      console.warn('Could not fetch current booking data for update', {
+        bookingId: id,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      // Continue with partial update if fetch fails
     }
 
-    // If we have current booking and are updating dates or room/occupancy, ensure required fields are included
+    // Build a complete update payload by merging current values with updates
     const mergedUpdates = { ...updates }
-    const updatingDates = updates.arrival !== undefined || updates.departure !== undefined
-    const updatingRoom =
-      updates.room_type_id !== undefined ||
-      updates.adults !== undefined ||
-      updates.children !== undefined ||
-      updates.infants !== undefined
 
-    if (currentBooking && (updatingDates || updatingRoom)) {
-      // When updating dates, include both arrival and departure
-      if (updates.arrival === undefined && updates.departure !== undefined) {
+    if (currentBooking) {
+      // Ensure both arrival and departure are present
+      if (mergedUpdates.arrival === undefined) {
         mergedUpdates.arrival = currentBooking.arrival
       }
-      if (updates.arrival !== undefined && updates.departure === undefined) {
+      if (mergedUpdates.departure === undefined) {
         mergedUpdates.departure = currentBooking.departure
       }
 
-      // Also include room and guest information for date updates
-      // The API may need this for availability/pricing recalculation
-      if (updates.room_type_id === undefined && currentBooking.room_type_id !== undefined) {
+      // Property
+      if (mergedUpdates.property_id === undefined) {
+        mergedUpdates.property_id = currentBooking.property_id
+      }
+
+      // Room and occupancy
+      if (mergedUpdates.room_type_id === undefined && currentBooking.room_type_id !== undefined) {
         mergedUpdates.room_type_id = currentBooking.room_type_id
       }
-      if (updates.adults === undefined && currentBooking.adults !== undefined) {
+      if (mergedUpdates.adults === undefined && currentBooking.adults !== undefined) {
         mergedUpdates.adults = currentBooking.adults
       }
-      if (updates.children === undefined && currentBooking.children !== undefined) {
+      if (mergedUpdates.children === undefined && currentBooking.children !== undefined) {
         mergedUpdates.children = currentBooking.children
       }
-      if (updates.infants === undefined && currentBooking.infants !== undefined) {
+      if (mergedUpdates.infants === undefined && currentBooking.infants !== undefined) {
         mergedUpdates.infants = currentBooking.infants
       }
+
+      // Guest info
+      if (mergedUpdates.guest_name === undefined && currentBooking.guest_name) {
+        mergedUpdates.guest_name = currentBooking.guest_name
+      }
+      if (mergedUpdates.guest_email === undefined && currentBooking.guest_email !== undefined) {
+        mergedUpdates.guest_email = currentBooking.guest_email
+      }
+      if (mergedUpdates.guest_phone === undefined && currentBooking.guest_phone !== undefined) {
+        mergedUpdates.guest_phone = currentBooking.guest_phone
+      }
+      // Intentionally do not copy status/source to avoid unintended changes
     }
 
     // Transform flat structure to API's nested structure
