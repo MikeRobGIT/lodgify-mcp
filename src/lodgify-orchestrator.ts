@@ -25,13 +25,7 @@ import type {
   WebhookUnsubscribeRequest,
 } from './api/v1/webhooks/types.js'
 import { AvailabilityClient } from './api/v2/availability/index.js'
-import type {
-  AvailabilityCalendarResult,
-  AvailabilityQueryParams,
-  BookingPeriod,
-  DateRangeAvailabilityResult,
-  NextAvailabilityResult,
-} from './api/v2/availability/types.js'
+import type { AvailabilityQueryParams, BookingPeriod } from './api/v2/availability/types.js'
 import { BookingsClient } from './api/v2/bookings/index.js'
 import type {
   Booking,
@@ -293,28 +287,11 @@ export class LodgifyOrchestrator {
   }
 
   // Availability backward compatibility
-  async getNextAvailableDate(
+  async getPropertyAvailability(
     propertyId: string,
-    fromDate?: string,
-    daysToCheck = 90,
-  ): Promise<NextAvailabilityResult> {
-    return this.availability.getNextAvailableDate(propertyId, fromDate, daysToCheck)
-  }
-
-  async checkDateRangeAvailability(
-    propertyId: string,
-    checkInDate: string,
-    checkOutDate: string,
-  ): Promise<DateRangeAvailabilityResult> {
-    return this.availability.checkDateRangeAvailability(propertyId, checkInDate, checkOutDate)
-  }
-
-  async getAvailabilityCalendar(
-    propertyId: string,
-    fromDate?: string,
-    daysToShow = 30,
-  ): Promise<AvailabilityCalendarResult> {
-    return this.availability.getAvailabilityCalendar(propertyId, fromDate, daysToShow)
+    params?: AvailabilityQueryParams,
+  ): Promise<unknown> {
+    return this.availability.getAvailabilityForProperty(propertyId, params)
   }
 
   // Payment Links backward compatibility
@@ -429,7 +406,6 @@ export class LodgifyOrchestrator {
 
 // Export types for external use
 export type {
-  AvailabilityCalendarResult,
   // Availability
   AvailabilityQueryParams,
   // Bookings
@@ -444,13 +420,11 @@ export type {
   // Rates
   DailyRatesParams,
   DailyRatesResponse,
-  DateRangeAvailabilityResult,
   DeleteBookingV1Response,
   KeyCodesRequest,
   Message,
   // Messaging
   MessageThread,
-  NextAvailabilityResult,
   Participant,
   PaymentLink,
   PaymentLinkRequest,

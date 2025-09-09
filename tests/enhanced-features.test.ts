@@ -160,12 +160,7 @@ describe('Enhanced McpServer Features', () => {
     })
 
     test('should provide all enhanced tool functionality', () => {
-      const enhancedToolNames = [
-        'lodgify_find_properties',
-        'lodgify_check_next_availability',
-        'lodgify_check_date_range_availability',
-        'lodgify_get_availability_calendar',
-      ]
+      const enhancedToolNames = ['lodgify_find_properties', 'lodgify_get_property_availability']
 
       // All enhanced tools should be available
       enhancedToolNames.forEach((toolName) => {
@@ -175,7 +170,7 @@ describe('Enhanced McpServer Features', () => {
 
       // Should have both original and enhanced tools
       const totalExpectedTools = new Set([...originalToolNames, ...enhancedToolNames]).size
-      expect(totalExpectedTools).toBe(17) // We should have about 17 tools total
+      expect(totalExpectedTools).toBe(15) // We should have about 15 tools total
     })
   })
 })

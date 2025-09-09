@@ -122,42 +122,6 @@ export function createTestServer(mockClient: unknown): TestServer {
     },
 
     // Availability Tools
-    {
-      name: 'lodgify_availability_all',
-      description: 'Get all availability',
-      inputSchema: { type: 'object' },
-    },
-    {
-      name: 'lodgify_check_next_availability',
-      description: 'Check next availability',
-      inputSchema: {
-        type: 'object',
-        properties: { propertyId: { type: 'string' } },
-        required: ['propertyId'],
-      },
-    },
-    {
-      name: 'lodgify_check_date_range_availability',
-      description: 'Check date range availability',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          propertyId: { type: 'string' },
-          checkInDate: { type: 'string' },
-          checkOutDate: { type: 'string' },
-        },
-        required: ['propertyId', 'checkInDate', 'checkOutDate'],
-      },
-    },
-    {
-      name: 'lodgify_get_availability_calendar',
-      description: 'Get availability calendar',
-      inputSchema: {
-        type: 'object',
-        properties: { propertyId: { type: 'string' } },
-        required: ['propertyId'],
-      },
-    },
 
     // New Availability fetch tools
     {
@@ -167,19 +131,6 @@ export function createTestServer(mockClient: unknown): TestServer {
         type: 'object',
         properties: { propertyId: { type: 'string' }, params: { type: 'object' } },
         required: ['propertyId'],
-      },
-    },
-    {
-      name: 'lodgify_get_room_availability',
-      description: 'Get room availability',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          propertyId: { type: 'string' },
-          roomTypeId: { type: 'string' },
-          params: { type: 'object' },
-        },
-        required: ['propertyId', 'roomTypeId'],
       },
     },
 
@@ -402,30 +353,6 @@ export function createTestServer(mockClient: unknown): TestServer {
             break
 
           // Availability Tools
-          case 'lodgify_availability_all':
-            result = await mockClient.availabilityAll(args.params || args)
-            break
-          case 'lodgify_check_next_availability':
-            result = await mockClient.getNextAvailableDate(
-              args.propertyId,
-              args.fromDate,
-              args.daysToCheck,
-            )
-            break
-          case 'lodgify_check_date_range_availability':
-            result = await mockClient.checkDateRangeAvailability(
-              args.propertyId,
-              args.checkInDate,
-              args.checkOutDate,
-            )
-            break
-          case 'lodgify_get_availability_calendar':
-            result = await mockClient.getAvailabilityCalendar(
-              args.propertyId,
-              args.fromDate,
-              args.daysToShow,
-            )
-            break
 
           // Quote and Messaging Tools
           case 'lodgify_get_quote':

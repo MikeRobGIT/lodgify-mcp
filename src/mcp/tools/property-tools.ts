@@ -251,7 +251,7 @@ Example response:
   ],
   "message": "Found 3 property(ies) matching "beach"",
   "suggestions": [
-    "Use one of these property IDs with availability tools like lodgify_check_next_availability",
+    "Use one of these property IDs with availability tools like lodgify_get_property_availability",
     "Property names are case-insensitive. Try partial matches for better results."
   ]
 }`,

@@ -1,6 +1,10 @@
 # Bump Version Command
 
-Bump the package version and prepare for release. Usage: `/bump-version [patch|minor|major]`
+Bump the package version and prepare for release.
+
+Usage:
+- Stable: `/bump-version [patch|minor|major]`
+- Pre-release: `/bump-version pre <alpha|beta> [prerelease|prepatch|preminor|premajor]`
 
 ## Release Process Overview
 
@@ -10,7 +14,7 @@ Bump the package version and prepare for release. Usage: `/bump-version [patch|m
 
 **IMPORTANT**: The actual npm package publishing to `@mikerob/lodgify-mcp` is handled automatically by GitHub Actions CI/CD when version tags (e.g., v0.1.11) are pushed.
 
-## Steps
+## Steps (Stable Release)
 
 1. **Validate Input**
    - If no argument provided, default to `patch`
@@ -57,11 +61,73 @@ Bump the package version and prepare for release. Usage: `/bump-version [patch|m
    - Remind that CI/CD will handle npm publishing automatically
    - **DO NOT run `npm publish` or `bun publish` manually**
 
-## Example Usage
+## Example Usage (Stable)
 
 - `/bump-version` → patches version (0.2.7 → 0.2.8)
 - `/bump-version minor` → minor bump (0.2.7 → 0.3.0)
 - `/bump-version major` → major bump (0.2.7 → 1.0.0)
+
+---
+
+## Pre-Release (alpha/beta)
+
+Create an npm pre-release (alpha or beta) without modifying the stable version line. This uses the dedicated GitHub Actions workflow `.github/workflows/npm-beta.yml` to compute the next version, update `package.json`, publish to npm with the appropriate tag, and create a GitHub pre-release.
+
+Key points:
+- Do not update `package.json` or create git tags locally for pre-releases.
+- The workflow determines the version and handles publishing and tagging.
+- Tag selection logic:
+  - `develop` branch → defaults to `beta`
+  - `feature/*` branch → defaults to `alpha`
+  - You can override via inputs (preferred method below).
+
+### Inputs
+- `<alpha|beta>`: npm dist-tag to publish under.
+- `[prerelease|prepatch|preminor|premajor]`:
+  - `prerelease` → increments the pre-release number (e.g., 0.1.16-beta.2 → 0.1.16-beta.3)
+  - `prepatch` → bumps base patch then starts pre-release (e.g., 0.1.16 → 0.1.17-beta.0)
+  - `preminor` → bumps base minor then starts pre-release (e.g., 0.1.16 → 0.2.0-beta.0)
+  - `premajor` → bumps base major then starts pre-release (e.g., 0.1.16 → 1.0.0-beta.0)
+
+### Pre-Release Workflow
+1. Validate command
+   - Command format: `/bump-version pre <alpha|beta> [prerelease|prepatch|preminor|premajor]`
+   - Defaults: `<beta>` and `prerelease` when omitted
+
+2. Run safety checks
+   - `bun test` and `bun run build` should pass
+   - Abort if checks fail
+
+3. Trigger the pre-release workflow (preferred)
+   - Use GitHub Actions workflow dispatch to run `NPM Beta Release` with inputs:
+     - `prerelease`: `alpha` or `beta`
+     - `version`: one of `prerelease|prepatch|preminor|premajor`
+   - Recommended command (if `gh` is available and you have permissions):
+     - `gh workflow run .github/workflows/npm-beta.yml --ref <branch> -f prerelease=<alpha|beta> -f version=<type>`
+   - Otherwise, trigger from the Actions UI: select `NPM Beta Release` → Run workflow → choose branch and inputs.
+
+4. Do not modify version locally
+   - Do not run `npm version` for pre-releases
+   - Do not create tags locally
+   - Let the workflow compute the next version, update `package.json`, commit, tag, and publish
+
+5. Monitor and verify
+   - Track the workflow run in Actions; the summary shows the published version and tag
+   - Verify on npm: `npm view @mikerob/lodgify-mcp@<published-version> version`
+   - Install via tag: `npm install @mikerob/lodgify-mcp@alpha` or `@beta`
+
+### Example Usage (Pre-Release)
+- `/bump-version pre beta` → next `-beta.N` on current base
+- `/bump-version pre beta prepatch` → bump patch then `-beta.0`
+- `/bump-version pre alpha` → next `-alpha.N` on current base
+- `/bump-version pre alpha preminor` → bump minor then `-alpha.0`
+
+### Notes
+- Pre-releases are for testing and early validation; they do not affect the stable line.
+- The workflow creates an annotated tag `v<version>` and a GitHub pre-release automatically.
+- If the package hasn’t been published before, the first publish uses the current `package.json` version.
+
+---
 
 ## Error Handling
 
@@ -72,6 +138,10 @@ Bump the package version and prepare for release. Usage: `/bump-version [patch|m
 - If no commits since last version, warn but allow manual changelog entry
 - Always verify the working directory is clean before starting
 - Never attempt to publish to npm directly - this is handled by CI/CD
+
+For pre-releases specifically:
+- If workflow dispatch is not permitted, request a maintainer to run the workflow from the Actions UI.
+- Avoid local version/tag creation for pre-releases to prevent conflicts with the workflow’s versioning.
 
 ## Changelog Analysis Guidelines
 

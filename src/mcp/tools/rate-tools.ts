@@ -185,18 +185,18 @@ Example request:
       name: 'lodgify_get_quote',
       category: CATEGORY,
       config: {
-        title: 'Get Existing Booking Quote',
-        description: `Retrieve an existing quote that was created when a booking was made. Quotes are associated with bookings and contain the pricing details that were calculated at booking time.
+        title: 'Calculate Pricing Quote',
+        description: `Calculate pricing for a potential booking. This tool checks availability and calculates total pricing for specified dates, room types, and guest counts. Use this to get a price quote BEFORE creating a booking.
 
-⚠️ Important: This does NOT calculate new pricing. Use lodgify_daily_rates to view current pricing before creating a booking.
+⚠️ Important: This calculates NEW pricing for available dates. It does NOT retrieve existing quotes from bookings. For existing booking quotes, use lodgify_create_booking_quote.
 
-Workflow: Check prices with lodgify_daily_rates → Create booking → Use this tool to retrieve the quote from that booking.
+Workflow: Use this tool to check prices → If acceptable, create booking → Use lodgify_create_booking_quote to modify existing booking quotes.
 
 Required parameters: dates (use either "from"/"to" or "arrival"/"departure" in YYYY-MM-DD format), plus room type and guest information.
 
 Example request:
 {
-  "propertyId": "123",                   // Property ID with existing booking/quote
+  "propertyId": "123",                   // Property ID to check pricing for
   "params": {
     "from": "2025-09-01",                // Check-in date (or use "arrival")
     "to": "2025-09-03",                  // Check-out date (or use "departure")
@@ -206,11 +206,11 @@ Example request:
   }
 }`,
         inputSchema: {
-          propertyId: z.string().min(1).describe('Property ID with existing booking/quote'),
+          propertyId: z.string().min(1).describe('Property ID to calculate pricing for'),
           params: z
             .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
             .describe(
-              'Quote retrieval parameters: dates (from/to) that match the booking, room types (roomTypes[0].Id), guest breakdown (guest_breakdown[adults]). Uses bracket notation for complex parameters.',
+              'Pricing calculation parameters: dates (from/to or arrival/departure), room types (roomTypes[0].Id), guest breakdown (guest_breakdown[adults]). Uses bracket notation for complex parameters.',
             ),
         },
       },
