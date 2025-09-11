@@ -3,10 +3,12 @@
  * Contains all messaging and communication-related MCP tool registrations
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 // Types from messaging API (imported for reference but not used in declarations)
 import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { sanitizeInput } from '../utils/input-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Messaging & Communication'
@@ -35,7 +37,19 @@ Example request:
             .describe('Unique thread identifier (GUID) for the conversation'),
         },
       },
-      handler: wrapToolHandler(async ({ threadGuid }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { threadGuid } = sanitizeInput(input)
+
+        // Validate GUID format
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!guidRegex.test(threadGuid)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid thread GUID format. Must be a valid UUID/GUID.',
+          )
+        }
+
         const result = await getClient().messaging.getThread(threadGuid)
         return {
           content: [
@@ -76,7 +90,21 @@ Example request:
             .optional(),
         },
       },
-      handler: wrapToolHandler(async ({ params }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { params } = sanitizeInput(input)
+
+        // Additional validation for date parameter if present
+        if (params?.since) {
+          const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/
+          if (!isoDateRegex.test(params.since)) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              'Invalid date format for since parameter. Use ISO 8601 format (e.g., 2024-03-01T00:00:00Z)',
+            )
+          }
+        }
+
         const result = await getClient().listThreads(params)
         return {
           content: [
@@ -129,7 +157,24 @@ Example request:
             .describe('Message payload'),
         },
       },
-      handler: wrapToolHandler(async ({ threadGuid, message }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { threadGuid, message } = sanitizeInput(input)
+
+        // Validate GUID format
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!guidRegex.test(threadGuid)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid thread GUID format. Must be a valid UUID/GUID.',
+          )
+        }
+
+        // Validate message content is not empty
+        if (!message.content || message.content.trim().length === 0) {
+          throw new McpError(ErrorCode.InvalidParams, 'Message content cannot be empty')
+        }
+
         const result = await getClient().sendMessage(threadGuid, message)
         return {
           content: [
@@ -158,7 +203,19 @@ Example request:
           threadGuid: z.string().min(1).describe('Thread GUID'),
         },
       },
-      handler: wrapToolHandler(async ({ threadGuid }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { threadGuid } = sanitizeInput(input)
+
+        // Validate GUID format
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!guidRegex.test(threadGuid)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid thread GUID format. Must be a valid UUID/GUID.',
+          )
+        }
+
         const result = await getClient().markThreadAsRead(threadGuid)
         return {
           content: [
@@ -187,7 +244,19 @@ Example request:
           threadGuid: z.string().min(1).describe('Thread GUID'),
         },
       },
-      handler: wrapToolHandler(async ({ threadGuid }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { threadGuid } = sanitizeInput(input)
+
+        // Validate GUID format
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!guidRegex.test(threadGuid)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid thread GUID format. Must be a valid UUID/GUID.',
+          )
+        }
+
         const result = await getClient().archiveThread(threadGuid)
         return {
           content: [

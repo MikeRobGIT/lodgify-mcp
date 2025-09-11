@@ -9,6 +9,7 @@ import type { RateUpdateV1Request } from '../../api/v1/rates/types.js'
 import type { QuoteParams } from '../../api/v2/quotes/types.js'
 import type { DailyRatesParams } from '../../api/v2/rates/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { isISODateTime, isYYYYMMDD } from '../utils/date-format.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported DateStringSchema from '../schemas/common.js'
 import {
@@ -17,6 +18,7 @@ import {
   type DateValidationInfo,
 } from '../utils/date-validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
@@ -40,7 +42,7 @@ export function getRateTools(getClient: () => LodgifyOrchestrator): ToolRegistra
 ❌ Don't use lodgify_get_quote for new pricing - that's only for existing booking quotes
 
 Essential for pricing analysis, revenue optimization, and understanding seasonal rate variations. Returns detailed rate information including base rates, modifiers, and availability-based pricing.
-      
+
 Example request:
 {
   "roomTypeId": 123,           // Room Type ID (required)
@@ -53,15 +55,18 @@ Example request:
           houseId: z.number().int().describe('House/Property ID (required)'),
           startDate: z
             .string()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .refine(isYYYYMMDD, 'Date must be in YYYY-MM-DD format')
             .describe('Start date for rates calendar (YYYY-MM-DD)'),
           endDate: z
             .string()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+            .refine(isYYYYMMDD, 'Date must be in YYYY-MM-DD format')
             .describe('End date for rates calendar (YYYY-MM-DD)'),
         },
       },
-      handler: wrapToolHandler(async ({ roomTypeId, houseId, startDate, endDate }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { roomTypeId, houseId, startDate, endDate } = sanitizeInput(input)
+
         // Validate date range for rates
         const validator = createValidator(DateToolCategory.RATE)
         const rangeValidation = validator.validateDateRange(startDate, endDate)
@@ -161,7 +166,9 @@ Example request:
             .describe('Query parameters for rate settings'),
         },
       },
-      handler: wrapToolHandler(async ({ params }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { params } = sanitizeInput(input)
         // Pass params directly to the API (expecting houseId)
         const rateParams = params?.houseId ? { houseId: params.houseId.toString() } : {}
         const result = await getClient().rates.getRateSettings(rateParams)
@@ -214,7 +221,10 @@ Example request:
             ),
         },
       },
-      handler: wrapToolHandler(async ({ propertyId, params }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { propertyId, params } = sanitizeInput(input)
+
         try {
           // First, validate dates using the comprehensive date validation system
           const validator = createValidator(DateToolCategory.QUOTE)
@@ -244,8 +254,8 @@ Example request:
             throw new McpError(
               ErrorCode.InvalidParams,
               rangeValidation.rangeError ||
-                rangeValidation.rangeFeedback?.message ||
-                'Invalid date range',
+              rangeValidation.rangeFeedback?.message ||
+              'Invalid date range',
             )
           }
 
@@ -281,8 +291,8 @@ Example request:
                 rangeFeedback: rangeValidation.rangeFeedback,
                 message:
                   rangeValidation.start.feedback ||
-                  rangeValidation.end.feedback ||
-                  rangeValidation.rangeFeedback
+                    rangeValidation.end.feedback ||
+                    rangeValidation.rangeFeedback
                     ? '⚠️ Date validation feedback available'
                     : '✅ Dates validated',
               },
@@ -354,7 +364,7 @@ Example request:
       config: {
         title: 'Update Property Rates',
         description: `[${CATEGORY}] Update rates for properties and room types. This v1 endpoint provides direct rate modification capability not available in v2. Essential for dynamic pricing strategies and rate management across seasons.
-      
+
 Example request:
 {
   "property_id": 123,           // Property ID to update rates for
@@ -399,7 +409,39 @@ Example request:
         },
       },
       handler: wrapToolHandler(async (params) => {
-        const result = await getClient().updateRatesV1(params as RateUpdateV1Request)
+        // Sanitize input and validate rates
+        const sanitized = sanitizeInput(params)
+
+        // Additional validation for rate dates
+        if (sanitized.rates) {
+          for (const rate of sanitized.rates) {
+            // Validate date format
+            if (!isYYYYMMDD(rate.start_date)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                `Invalid start_date format: ${rate.start_date}. Use YYYY-MM-DD format.`,
+              )
+            }
+            if (!isYYYYMMDD(rate.end_date)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                `Invalid end_date format: ${rate.end_date}. Use YYYY-MM-DD format.`,
+              )
+            }
+
+            // Validate date range
+            const startDate = new Date(rate.start_date)
+            const endDate = new Date(rate.end_date)
+            if (endDate <= startDate) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                `Invalid date range: end_date (${rate.end_date}) must be after start_date (${rate.start_date})`,
+              )
+            }
+          }
+        }
+
+        const result = await getClient().updateRatesV1(sanitized as RateUpdateV1Request)
 
         // Debug logging
         debugLogResponse('Update rates API response', result)
@@ -522,7 +564,25 @@ Example response:
             .describe('Quote creation payload with pricing and terms'),
         },
       },
-      handler: wrapToolHandler(async ({ bookingId, payload }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { bookingId, payload } = sanitizeInput(input)
+
+        // Additional validation for quote payload
+        if (payload.totalPrice !== undefined && payload.totalPrice <= 0) {
+          throw new McpError(ErrorCode.InvalidParams, 'Total price must be a positive number')
+        }
+
+        if (payload.validUntil) {
+          // Validate ISO date-time format
+          if (!isISODateTime(payload.validUntil)) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              'Invalid validUntil format. Use ISO 8601 format (e.g., 2024-03-31T23:59:59Z)',
+            )
+          }
+        }
+
         // Use the orchestrator's createBookingQuote method which handles read-only mode
         const result = await getClient().createBookingQuote(bookingId, payload)
 

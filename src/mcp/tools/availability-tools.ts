@@ -7,6 +7,7 @@ import { z } from 'zod'
 import type { AvailabilityQueryParams } from '../../api/v2/availability/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { sanitizeInput, validateDateRange } from '../utils/input-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -40,7 +41,19 @@ Example request:
             .optional(),
         },
       },
-      handler: wrapToolHandler(async ({ propertyId, params }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const sanitized = sanitizeInput(input)
+        const { propertyId, params } = sanitized
+
+        // Validate date range if provided
+        if (params?.from && params?.to) {
+          const validation = validateDateRange(params.from, params.to)
+          if (!validation.valid) {
+            throw new Error(validation.error || 'Invalid date range')
+          }
+        }
+
         const queryParams: AvailabilityQueryParams = {
           from: params?.from,
           to: params?.to,

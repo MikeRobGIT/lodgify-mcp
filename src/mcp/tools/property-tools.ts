@@ -7,6 +7,7 @@ import { z } from 'zod'
 import type { PropertySearchParams } from '../../api/v2/properties/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { sanitizeInput } from '../utils/input-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
 import { findProperties } from './helper-tools.js'
 
@@ -78,24 +79,28 @@ Example response:
         },
       },
       handler: wrapToolHandler(async (params) => {
+        // Sanitize all input parameters
+        const sanitized = sanitizeInput(params)
+
         // Map MCP parameters to API parameters
         const mappedParams: PropertySearchParams = {}
-        if (params.size !== undefined) mappedParams.limit = params.size
-        if (params.page !== undefined) mappedParams.offset = (params.page - 1) * (params.size || 50)
+        if (sanitized.size !== undefined) mappedParams.limit = sanitized.size
+        if (sanitized.page !== undefined)
+          mappedParams.offset = (sanitized.page - 1) * (sanitized.size || 50)
 
         // Validate wid parameter - warn if suspiciously low but still allow the request
-        if (params.wid !== undefined) {
-          if (params.wid < 100) {
+        if (sanitized.wid !== undefined) {
+          if (sanitized.wid < 100) {
             console.warn(
-              `Warning: Website ID (wid) ${params.wid} seems unusually low. Valid website IDs are typically 3+ digit numbers (e.g., 12345). This may cause an error if the website ID doesn't exist in Lodgify.`,
+              `Warning: Website ID (wid) ${sanitized.wid} seems unusually low. Valid website IDs are typically 3+ digit numbers (e.g., 12345). This may cause an error if the website ID doesn't exist in Lodgify.`,
             )
           }
-          mappedParams.wid = params.wid
+          mappedParams.wid = sanitized.wid
         }
 
-        if (params.updatedSince !== undefined) mappedParams.updatedSince = params.updatedSince
-        if (params.includeCount !== undefined) mappedParams.includeCount = params.includeCount
-        if (params.includeInOut !== undefined) mappedParams.includeInOut = params.includeInOut
+        if (sanitized.updatedSince !== undefined) mappedParams.updatedSince = sanitized.updatedSince
+        if (sanitized.includeCount !== undefined) mappedParams.includeCount = sanitized.includeCount
+        if (sanitized.includeInOut !== undefined) mappedParams.includeInOut = sanitized.includeInOut
 
         const result = await getClient().properties.listProperties(mappedParams)
         return {
@@ -158,7 +163,11 @@ Example response:
             .describe('Include available dates for arrival or departure'),
         },
       },
-      handler: wrapToolHandler(async ({ id, wid, includeInOut }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize all input parameters
+        const sanitized = sanitizeInput(input)
+        const { id, wid, includeInOut } = sanitized
+
         // Build params object for the API call
         const params: { wid?: number; includeInOut?: boolean } = {}
         if (wid !== undefined) params.wid = wid
@@ -196,7 +205,9 @@ Example request:
           propertyId: z.string().min(1).describe('Property ID to list room types for'),
         },
       },
-      handler: wrapToolHandler(async ({ propertyId }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { propertyId } = sanitizeInput(input)
         const result = await getClient().properties.listPropertyRooms(propertyId)
         return {
           content: [
@@ -274,7 +285,9 @@ Example response:
             .describe('Maximum number of properties to return (default: 10)'),
         },
       },
-      handler: wrapToolHandler(async ({ searchTerm, includePropertyIds, limit }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { searchTerm, includePropertyIds, limit } = sanitizeInput(input)
         const result = await findProperties(getClient(), searchTerm, includePropertyIds, limit)
         return {
           content: [
@@ -310,7 +323,21 @@ Example request:
             ),
         },
       },
-      handler: wrapToolHandler(async ({ params }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { params } = sanitizeInput(input)
+
+        // Additional validation for date parameter if present
+        if (params?.deletedSince && typeof params.deletedSince === 'string') {
+          // Validate ISO date format
+          const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/
+          if (!dateRegex.test(params.deletedSince)) {
+            throw new Error(
+              'Invalid date format for deletedSince. Use ISO 8601 format (e.g., 2024-01-01T00:00:00Z)',
+            )
+          }
+        }
+
         const result = await getClient().properties.listDeletedProperties(params)
         return {
           content: [

@@ -15,6 +15,7 @@ import {
   type DateValidationFeedback,
 } from '../utils/date-validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
 
@@ -141,21 +142,37 @@ Example response:
         },
       },
       handler: wrapToolHandler(async (params) => {
+        // Sanitize input parameters
+        const sanitized = sanitizeInput(params)
+
+        // Additional validation for date-based stay filters
+        if (
+          (sanitized.stayFilter === 'ArrivalDate' || sanitized.stayFilter === 'DepartureDate') &&
+          !sanitized.stayFilterDate
+        ) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `stayFilterDate is required when using ${sanitized.stayFilter} filter`,
+          )
+        }
+
         // Map MCP parameters to API parameters
         const mappedParams: BookingSearchParams = {}
-        if (params.size !== undefined) mappedParams.limit = params.size
-        if (params.page !== undefined) mappedParams.offset = (params.page - 1) * (params.size || 50)
-        if (params.includeCount !== undefined) mappedParams.includeCount = params.includeCount
-        if (params.stayFilter !== undefined) mappedParams.stayFilter = params.stayFilter
-        if (params.stayFilterDate !== undefined) mappedParams.stayFilterDate = params.stayFilterDate
-        if (params.updatedSince !== undefined) mappedParams.updatedSince = params.updatedSince
-        if (params.includeTransactions !== undefined)
-          mappedParams.includeTransactions = params.includeTransactions
-        if (params.includeExternal !== undefined)
-          mappedParams.includeExternal = params.includeExternal
-        if (params.includeQuoteDetails !== undefined)
-          mappedParams.includeQuoteDetails = params.includeQuoteDetails
-        if (params.trash !== undefined) mappedParams.trash = params.trash
+        if (sanitized.size !== undefined) mappedParams.limit = sanitized.size
+        if (sanitized.page !== undefined)
+          mappedParams.offset = (sanitized.page - 1) * (sanitized.size || 50)
+        if (sanitized.includeCount !== undefined) mappedParams.includeCount = sanitized.includeCount
+        if (sanitized.stayFilter !== undefined) mappedParams.stayFilter = sanitized.stayFilter
+        if (sanitized.stayFilterDate !== undefined)
+          mappedParams.stayFilterDate = sanitized.stayFilterDate
+        if (sanitized.updatedSince !== undefined) mappedParams.updatedSince = sanitized.updatedSince
+        if (sanitized.includeTransactions !== undefined)
+          mappedParams.includeTransactions = sanitized.includeTransactions
+        if (sanitized.includeExternal !== undefined)
+          mappedParams.includeExternal = sanitized.includeExternal
+        if (sanitized.includeQuoteDetails !== undefined)
+          mappedParams.includeQuoteDetails = sanitized.includeQuoteDetails
+        if (sanitized.trash !== undefined) mappedParams.trash = sanitized.trash
 
         const result = await getClient().bookings.listBookings(mappedParams)
         return {
@@ -185,7 +202,8 @@ Example request:
           id: z.string().min(1).describe('Unique booking/reservation ID to retrieve'),
         },
       },
-      handler: wrapToolHandler(async ({ id }) => {
+      handler: wrapToolHandler(async (input) => {
+        const { id } = sanitizeInput(input)
         const result = await getClient().bookings.getBooking(id)
         return {
           content: [
@@ -214,7 +232,8 @@ Example request:
           id: z.string().min(1).describe('Booking ID to get payment link for'),
         },
       },
-      handler: wrapToolHandler(async ({ id }) => {
+      handler: wrapToolHandler(async (input) => {
+        const { id } = sanitizeInput(input)
         const result = await getClient().getBookingPaymentLink(id)
 
         // Debug logging
@@ -263,7 +282,9 @@ Example request:
             .describe('Payment link configuration - amount, currency, and description'),
         },
       },
-      handler: wrapToolHandler(async ({ id, payload }) => {
+      handler: wrapToolHandler(async (input) => {
+        const sanitized = sanitizeInput(input)
+        const { id, payload } = sanitized
         const result = await getClient().createBookingPaymentLink(id, payload)
 
         // Debug logging
@@ -304,7 +325,15 @@ Example request:
             .describe('Access key codes and entry information'),
         },
       },
-      handler: wrapToolHandler(async ({ id, payload }) => {
+      handler: wrapToolHandler(async (input) => {
+        const sanitized = sanitizeInput(input)
+        const { id, payload } = sanitized
+
+        // Additional validation for key codes
+        if (payload.keyCodes && payload.keyCodes.length === 0) {
+          throw new McpError(ErrorCode.InvalidParams, 'At least one key code must be provided')
+        }
+
         const result = await getClient().updateKeyCodes(id.toString(), payload)
         return {
           content: [
@@ -338,7 +367,9 @@ Example request:
             .describe('Check-in time in ISO 8601 date-time format (required)'),
         },
       },
-      handler: wrapToolHandler(async ({ id, time }) => {
+      handler: wrapToolHandler(async (input) => {
+        const sanitized = sanitizeInput(input)
+        const { id, time } = sanitized
         const result = await getClient().checkinBooking(id.toString(), time)
         return {
           content: [
@@ -372,7 +403,9 @@ Example request:
             .describe('Check-out time in ISO 8601 date-time format (required)'),
         },
       },
-      handler: wrapToolHandler(async ({ id, time }) => {
+      handler: wrapToolHandler(async (input) => {
+        const sanitized = sanitizeInput(input)
+        const { id, time } = sanitized
         const result = await getClient().checkoutBooking(id.toString(), time)
         return {
           content: [
@@ -401,7 +434,8 @@ Example request:
           id: z.string().min(1).describe('Property ID to get external bookings for'),
         },
       },
-      handler: wrapToolHandler(async ({ id }) => {
+      handler: wrapToolHandler(async (input) => {
+        const { id } = sanitizeInput(input)
         const result = await getClient().bookings.getExternalBookings(id)
         return {
           content: [
@@ -496,9 +530,12 @@ The transformation handles: guest name splitting, room structuring, status capit
         },
       },
       handler: wrapToolHandler(async (params) => {
+        // Sanitize input parameters
+        const sanitized = sanitizeInput(params)
+
         // Validate arrival and departure dates
         const validator = createValidator(DateToolCategory.BOOKING)
-        const rangeValidation = validator.validateDateRange(params.arrival, params.departure)
+        const rangeValidation = validator.validateDateRange(sanitized.arrival, sanitized.departure)
 
         // Check if dates are valid
         if (!rangeValidation.start.isValid) {
@@ -537,19 +574,19 @@ The transformation handles: guest name splitting, room structuring, status capit
 
         // Pass flat structure - the V1 client will transform it to nested API structure
         const apiRequest = {
-          property_id: params.property_id,
-          room_type_id: params.room_type_id,
+          property_id: sanitized.property_id,
+          room_type_id: sanitized.room_type_id,
           arrival: rangeValidation.start.validatedDate,
           departure: rangeValidation.end.validatedDate,
-          guest_name: params.guest_name,
-          ...(params.guest_email && { guest_email: params.guest_email }),
-          ...(params.guest_phone && { guest_phone: params.guest_phone }),
-          adults: params.adults,
-          children: params.children,
-          ...(params.infants !== undefined && { infants: params.infants }),
-          ...(params.status && { status: params.status }),
-          ...(params.source && { source: params.source }),
-          ...(params.notes && { notes: params.notes }),
+          guest_name: sanitized.guest_name,
+          ...(sanitized.guest_email && { guest_email: sanitized.guest_email }),
+          ...(sanitized.guest_phone && { guest_phone: sanitized.guest_phone }),
+          adults: sanitized.adults,
+          children: sanitized.children,
+          ...(sanitized.infants !== undefined && { infants: sanitized.infants }),
+          ...(sanitized.status && { status: sanitized.status }),
+          ...(sanitized.source && { source: sanitized.source }),
+          ...(sanitized.notes && { notes: sanitized.notes }),
         }
 
         const result = await getClient().createBookingV1(apiRequest)
@@ -563,8 +600,8 @@ The transformation handles: guest name splitting, room structuring, status capit
                   feedback: feedbackMessages.map((fm) => fm.feedback),
                   messages: feedbackMessages.map((fm) => fm.message),
                   originalDates: {
-                    arrival: params.arrival,
-                    departure: params.departure,
+                    arrival: sanitized.arrival,
+                    departure: sanitized.departure,
                   },
                   validatedDates: {
                     arrival: rangeValidation.start.validatedDate,
@@ -629,7 +666,9 @@ This gets automatically transformed to the nested API structure with guest objec
         },
       },
       handler: wrapToolHandler(async (params) => {
-        const { id, ...updates } = params
+        // Sanitize input parameters
+        const sanitized = sanitizeInput(params)
+        const { id, ...updates } = sanitized
         // Validate/sanitize dates if both are present on update (keep single-date updates as-is)
         const sanitizedUpdates = { ...updates }
         if (updates.arrival !== undefined && updates.departure !== undefined) {
@@ -685,7 +724,8 @@ Example request:
           id: z.number().int().describe('Booking ID to delete permanently'),
         },
       },
-      handler: wrapToolHandler(async ({ id }) => {
+      handler: wrapToolHandler(async (input) => {
+        const { id } = sanitizeInput(input)
         const result = await getClient().deleteBookingV1(id)
         return {
           content: [
