@@ -3,9 +3,11 @@
  * MCP tools for managing Lodgify properties
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { PropertySearchParams } from '../../api/v2/properties/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { isISODateTime } from '../utils/date-format.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
@@ -329,10 +331,9 @@ Example request:
 
         // Additional validation for date parameter if present
         if (params?.deletedSince && typeof params.deletedSince === 'string') {
-          // Validate ISO date format
-          const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/
-          if (!dateRegex.test(params.deletedSince)) {
-            throw new Error(
+          if (!isISODateTime(params.deletedSince)) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
               'Invalid date format for deletedSince. Use ISO 8601 format (e.g., 2024-01-01T00:00:00Z)',
             )
           }

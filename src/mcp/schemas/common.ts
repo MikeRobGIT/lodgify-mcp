@@ -3,13 +3,12 @@
  */
 
 import { z } from 'zod'
+import { isYYYYMMDD } from '../utils/date-format.js'
 
 /**
  * Date format validation for YYYY-MM-DD format
  */
-export const DateStringSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+export const DateStringSchema = z.string().refine(isYYYYMMDD, 'Date must be in YYYY-MM-DD format')
 
 /**
  * DateTime format validation for ISO 8601

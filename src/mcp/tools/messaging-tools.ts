@@ -6,6 +6,7 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { isISODateTime } from '../utils/date-format.js'
 // Types from messaging API (imported for reference but not used in declarations)
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
@@ -96,8 +97,7 @@ Example request:
 
         // Additional validation for date parameter if present
         if (params?.since) {
-          const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/
-          if (!isoDateRegex.test(params.since)) {
+          if (!isISODateTime(params.since)) {
             throw new McpError(
               ErrorCode.InvalidParams,
               'Invalid date format for since parameter. Use ISO 8601 format (e.g., 2024-03-01T00:00:00Z)',

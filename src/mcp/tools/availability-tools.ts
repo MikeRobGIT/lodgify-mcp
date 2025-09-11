@@ -3,11 +3,13 @@
  * MCP tools for managing property availability and calendars
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { AvailabilityQueryParams } from '../../api/v2/availability/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { createValidator, DateToolCategory } from '../utils/date-validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
-import { sanitizeInput, validateDateRange } from '../utils/input-sanitizer.js'
+import { sanitizeInput } from '../utils/input-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -46,18 +48,49 @@ Example request:
         const sanitized = sanitizeInput(input)
         const { propertyId, params } = sanitized
 
-        // Validate date range if provided
-        if (params?.from && params?.to) {
-          const validation = validateDateRange(params.from, params.to)
-          if (!validation.valid) {
-            throw new Error(validation.error || 'Invalid date range')
+        // Normalize and validate dates using the centralized date validator
+        const validator = createValidator(DateToolCategory.AVAILABILITY)
+        const fromNorm = params?.from ? params.from.split('T')[0] : undefined
+        const toNorm = params?.to ? params.to.split('T')[0] : undefined
+        if (fromNorm && toNorm) {
+          const rv = validator.validateDateRange(fromNorm, toNorm)
+          if (!rv.start.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid from date: ${rv.start.error || rv.start.warning || 'invalid date'}`,
+            )
+          }
+          if (!rv.end.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid to date: ${rv.end.error || rv.end.warning || 'invalid date'}`,
+            )
+          }
+          if (!rv.rangeValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              rv.rangeError || 'Invalid date range: end date must be on/after start date',
+            )
+          }
+        } else if (fromNorm) {
+          const res = validator.validateDate(fromNorm)
+          if (!res.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid from date: ${res.error || res.warning || 'invalid date'}`,
+            )
+          }
+        } else if (toNorm) {
+          const res = validator.validateDate(toNorm)
+          if (!res.isValid) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid to date: ${res.error || res.warning || 'invalid date'}`,
+            )
           }
         }
 
-        const queryParams: AvailabilityQueryParams = {
-          from: params?.from,
-          to: params?.to,
-        }
+        const queryParams: AvailabilityQueryParams = { from: fromNorm, to: toNorm }
         const result = await getClient().availability.getAvailabilityForProperty(
           propertyId,
           queryParams,

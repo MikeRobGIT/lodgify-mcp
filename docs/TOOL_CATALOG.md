@@ -632,8 +632,10 @@ Get availability for a specific property over a period. This is the most accurat
 
 - `propertyId` (required, string): Property ID
 - `params` (optional, object): Query parameters
-  - `from` (optional, string): Start date (YYYY-MM-DD or ISO date-time format)
-  - `to` (optional, string): End date (YYYY-MM-DD or ISO date-time format)
+  - `from` (optional, string): Start date (accepts YYYY-MM-DD or ISO 8601 date-time)
+  - `to` (optional, string): End date (accepts YYYY-MM-DD or ISO 8601 date-time)
+
+Note: When ISO 8601 date-time values are provided for `from`/`to`, the server normalizes them to `YYYY-MM-DD` for validation and request processing.
 
 **Example:**
 

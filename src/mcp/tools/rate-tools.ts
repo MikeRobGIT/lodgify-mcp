@@ -254,8 +254,8 @@ Example request:
             throw new McpError(
               ErrorCode.InvalidParams,
               rangeValidation.rangeError ||
-              rangeValidation.rangeFeedback?.message ||
-              'Invalid date range',
+                rangeValidation.rangeFeedback?.message ||
+                'Invalid date range',
             )
           }
 
@@ -291,8 +291,8 @@ Example request:
                 rangeFeedback: rangeValidation.rangeFeedback,
                 message:
                   rangeValidation.start.feedback ||
-                    rangeValidation.end.feedback ||
-                    rangeValidation.rangeFeedback
+                  rangeValidation.end.feedback ||
+                  rangeValidation.rangeFeedback
                     ? '⚠️ Date validation feedback available'
                     : '✅ Dates validated',
               },
