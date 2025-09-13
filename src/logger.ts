@@ -47,11 +47,43 @@ function getLogLevel(): LogLevel {
 }
 
 /**
+ * Check if running in HTTP mode
+ */
+function isHttpMode(): boolean {
+  // Check if we're running server-http.js or if HTTP_MODE env is set
+  return process.argv.some(arg => arg.includes('server-http')) || 
+         process.env.HTTP_MODE === 'true' ||
+         process.env.HTTP_HOST !== undefined ||
+         process.env.HTTP_PORT !== undefined
+}
+
+/**
  * Create and configure the file-based logger
  */
 function createLogger() {
-  const logDir = ensureLogDirectory()
   const logLevel = getLogLevel()
+
+  // For HTTP mode, use console output
+  if (isHttpMode()) {
+    return pino(
+      {
+        level: logLevel,
+        timestamp: pino.stdTimeFunctions.isoTime,
+        formatters: {
+          level: (label) => {
+            return { level: label }
+          },
+        },
+      },
+      pino.destination({
+        dest: process.stdout.fd,
+        sync: true,
+      }),
+    )
+  }
+
+  // For STDIO mode, use file-based logging to avoid interfering with MCP protocol
+  const logDir = ensureLogDirectory()
 
   // Log file path with timestamp for rotation
   const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD
@@ -99,7 +131,18 @@ export class SafeLogger {
    */
   error(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
-      this.pino.error({ extra: args }, message)
+      // Better error serialization for Error objects
+      const extra = args.map(arg => {
+        if (arg instanceof Error) {
+          return {
+            message: arg.message,
+            stack: arg.stack,
+            name: arg.name,
+          }
+        }
+        return arg
+      })
+      this.pino.error({ extra }, message)
     } else {
       this.pino.error(message)
     }

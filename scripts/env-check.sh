@@ -51,6 +51,10 @@ check_enum() {
     shift
     VALID_VALUES="$@"
     
+    # Strip quotes and everything after # (comments)
+    # Using simpler approach to avoid shell parsing issues
+    VAR_VALUE=$(echo "$VAR_VALUE" | cut -d'#' -f1 | sed 's/^"//' | sed 's/"$//' | sed "s/^'//" | sed "s/'$//" | sed 's/[[:space:]]*$//')
+    
     if [ -z "$VAR_VALUE" ]; then
         echo "${YELLOW}⚠️  WARNING: $VAR_NAME is not set${NC}"
         WARNINGS=$((WARNINGS + 1))
@@ -81,10 +85,41 @@ echo "=========================================="
 check_required "LODGIFY_API_KEY"
 
 # Check for HTTP mode requirements
-if [ "$1" = "http" ] || [ -n "$MCP_TOKEN" ]; then
+if [ "$1" = "http" ]; then
     echo ""
     echo "HTTP transport mode detected..."
-    check_required "MCP_TOKEN"
+    AUTH_MODE_EFFECTIVE=${AUTH_MODE:-}
+    case "$AUTH_MODE_EFFECTIVE" in
+        bearer)
+            # In bearer mode, require a token (either MCP_TOKEN or AUTH_BEARER_TOKEN)
+            if [ -z "$MCP_TOKEN" ] && [ -z "$AUTH_BEARER_TOKEN" ]; then
+                echo "${RED}❌ ERROR: In AUTH_MODE=bearer, MCP_TOKEN or AUTH_BEARER_TOKEN must be set${NC}"
+                ERRORS=$((ERRORS + 1))
+            else
+                echo "${GREEN}✅ Bearer token present for HTTP mode${NC}"
+            fi
+            ;;
+        oauth|dual)
+            echo "${GREEN}✅ Running HTTP mode with AUTH_MODE=$AUTH_MODE_EFFECTIVE${NC}"
+            echo "${YELLOW}⚠️  OAuth configuration will be validated by the server${NC}"
+            WARNINGS=$((WARNINGS + 1))
+            ;;
+        none)
+            echo "${YELLOW}⚠️  WARNING: Authentication disabled (AUTH_MODE=none)${NC}"
+            echo "${YELLOW}⚠️  This mode should NEVER be used in production!${NC}"
+            echo "${YELLOW}⚠️  FOR DEVELOPMENT/TESTING ONLY${NC}"
+            WARNINGS=$((WARNINGS + 3))
+            ;;
+        "")
+            # Legacy default: require MCP_TOKEN if no AUTH_MODE specified
+            if [ -z "$MCP_TOKEN" ]; then
+                echo "${RED}❌ ERROR: MCP_TOKEN is required for HTTP mode when AUTH_MODE is not set${NC}"
+                ERRORS=$((ERRORS + 1))
+            else
+                echo "${GREEN}✅ MCP_TOKEN present (legacy mode)${NC}"
+            fi
+            ;;
+    esac
 fi
 
 echo ""

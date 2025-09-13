@@ -30,11 +30,9 @@ fi
 # Run environment validation if script exists
 if [ -f "/app/scripts/env-check.sh" ]; then
     log "Running environment validation for $MODE mode..."
-    if /app/scripts/env-check.sh $MODE; then
-        log "${GREEN}Environment validation passed${NC}"
-    else
-        log "${YELLOW}Environment validation completed with warnings${NC}"
-    fi
+    # Don't fail on validation errors - just log them
+    /app/scripts/env-check.sh $MODE || true
+    log "${GREEN}Environment validation completed${NC}"
 else
     log "${YELLOW}Environment validation script not found, skipping...${NC}"
 fi
@@ -74,11 +72,30 @@ fi
 
 # Additional check for HTTP mode
 if [ "$MODE" = "http" ]; then
-    if [ -z "$MCP_TOKEN" ] || [ "$MCP_TOKEN" = "your-secret-token-here" ] || [ "$MCP_TOKEN" = "test-token-123" ]; then
-        log "${RED}ERROR: MCP_TOKEN is not set or contains default/test value${NC}"
-        log "${RED}Please set MCP_TOKEN environment variable for HTTP mode${NC}"
-        exit 1
-    fi
+    case "$AUTH_MODE" in
+        bearer)
+            if [ -z "$MCP_TOKEN" ] && [ -z "$AUTH_BEARER_TOKEN" ]; then
+                log "${RED}ERROR: In AUTH_MODE=bearer, set MCP_TOKEN or AUTH_BEARER_TOKEN${NC}"
+                exit 1
+            fi
+            ;;
+        oauth|dual)
+            # OAuth configuration will be validated by the server
+            log "${GREEN}Using AUTH_MODE=$AUTH_MODE${NC}"
+            ;;
+        none)
+            log "${YELLOW}WARNING: Authentication disabled (AUTH_MODE=none) - FOR DEVELOPMENT ONLY${NC}"
+            log "${YELLOW}This mode should never be used in production!${NC}"
+            ;;
+        "")
+            # Legacy behavior: require MCP_TOKEN if AUTH_MODE not set
+            if [ -z "$MCP_TOKEN" ] || [ "$MCP_TOKEN" = "your-secret-token-here" ] || [ "$MCP_TOKEN" = "test-token-123" ]; then
+                log "${RED}ERROR: MCP_TOKEN is not set or contains default/test value${NC}"
+                log "${RED}Set AUTH_MODE or MCP_TOKEN for HTTP mode${NC}"
+                exit 1
+            fi
+            ;;
+    esac
 fi
 
 # Log startup configuration (without sensitive data)
@@ -89,7 +106,14 @@ log "  PORT: ${PORT:-3000}"
 log "  LOG_LEVEL: ${LOG_LEVEL:-info}"
 log "  DEBUG_HTTP: ${DEBUG_HTTP:-0}"
 if [ "$MODE" = "http" ]; then
-    log "  MCP_TOKEN: [SET]"
+    log "  AUTH_MODE: ${AUTH_MODE:-bearer}"
+    if [ "$AUTH_MODE" != "none" ]; then
+        if [ -n "$MCP_TOKEN" ] || [ -n "$AUTH_BEARER_TOKEN" ]; then
+            log "  MCP_TOKEN/AUTH_BEARER_TOKEN: [SET]"
+        else
+            log "  MCP_TOKEN/AUTH_BEARER_TOKEN: [NOT SET]"
+        fi
+    fi
 fi
 
 # Start MCP server directly in foreground

@@ -1,0 +1,151 @@
+# Docker Compose override for different authentication modes
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.auth.yml --profile <profile> up
+
+services:
+  # OAuth-only configuration
+  lodgify-mcp-oauth:
+    extends:
+      file: docker-compose.yml
+      service: lodgify-mcp-http
+    
+    container_name: lodgify-mcp-oauth
+    
+    environment:
+      - AUTH_MODE=oauth
+      # OAuth must be configured in .env
+      - OAUTH_PROVIDER=${OAUTH_PROVIDER:?OAuth provider is required for oauth profile}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID:?OAuth client ID is required}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET:?OAuth client secret is required}
+      - SESSION_SECRET=${SESSION_SECRET:?Session secret is required for OAuth}
+    
+    profiles:
+      - oauth
+
+  # Dual authentication mode (both bearer and OAuth)
+  lodgify-mcp-dual:
+    extends:
+      file: docker-compose.yml
+      service: lodgify-mcp-http
+    
+    container_name: lodgify-mcp-dual
+    
+    environment:
+      - AUTH_MODE=dual
+      # Both bearer and OAuth must be configured
+      - MCP_TOKEN=${MCP_TOKEN:?Bearer token is required for dual mode}
+      - OAUTH_PROVIDER=${OAUTH_PROVIDER:?OAuth provider is required for dual mode}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID:?OAuth client ID is required}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET:?OAuth client secret is required}
+      - SESSION_SECRET=${SESSION_SECRET:?Session secret is required for dual mode}
+    
+    profiles:
+      - dual
+
+  # Google OAuth specific configuration
+  lodgify-mcp-google:
+    extends:
+      file: docker-compose.yml
+      service: lodgify-mcp-http
+    
+    container_name: lodgify-mcp-google
+    
+    environment:
+      - AUTH_MODE=oauth
+      - OAUTH_PROVIDER=google
+      - OAUTH_CLIENT_ID=${GOOGLE_CLIENT_ID:?Google client ID is required}
+      - OAUTH_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:?Google client secret is required}
+      - OAUTH_SCOPES=${OAUTH_SCOPES:-openid profile email}
+      - SESSION_SECRET=${SESSION_SECRET:?Session secret is required}
+    
+    profiles:
+      - google
+
+  # GitHub OAuth specific configuration
+  lodgify-mcp-github:
+    extends:
+      file: docker-compose.yml
+      service: lodgify-mcp-http
+    
+    container_name: lodgify-mcp-github
+    
+    environment:
+      - AUTH_MODE=oauth
+      - OAUTH_PROVIDER=github
+      - OAUTH_CLIENT_ID=${GITHUB_CLIENT_ID:?GitHub client ID is required}
+      - OAUTH_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:?GitHub client secret is required}
+      - OAUTH_SCOPES=${OAUTH_SCOPES:-read:user user:email}
+      - SESSION_SECRET=${SESSION_SECRET:?Session secret is required}
+    
+    profiles:
+      - github
+
+  # Auth0 specific configuration
+  lodgify-mcp-auth0:
+    extends:
+      file: docker-compose.yml
+      service: lodgify-mcp-http
+    
+    container_name: lodgify-mcp-auth0
+    
+    environment:
+      - AUTH_MODE=oauth
+      - OAUTH_PROVIDER=auth0
+      - OAUTH_CLIENT_ID=${AUTH0_CLIENT_ID:?Auth0 client ID is required}
+      - OAUTH_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:?Auth0 client secret is required}
+      - OAUTH_DOMAIN=${AUTH0_DOMAIN:?Auth0 domain is required}
+      - OAUTH_AUDIENCE=${AUTH0_AUDIENCE}
+      - OAUTH_SCOPES=${OAUTH_SCOPES:-openid profile email offline_access}
+      - SESSION_SECRET=${SESSION_SECRET:?Session secret is required}
+    
+    profiles:
+      - auth0
+
+  # Keycloak specific configuration
+  lodgify-mcp-keycloak:
+    extends:
+      file: docker-compose.yml
+      service: lodgify-mcp-http
+    
+    container_name: lodgify-mcp-keycloak
+    
+    environment:
+      - AUTH_MODE=oauth
+      - OAUTH_PROVIDER=keycloak
+      - OAUTH_CLIENT_ID=${KEYCLOAK_CLIENT_ID:?Keycloak client ID is required}
+      - OAUTH_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:?Keycloak client secret is required}
+      - OAUTH_BASE_URL=${KEYCLOAK_BASE_URL:?Keycloak base URL is required}
+      - OAUTH_REALM=${KEYCLOAK_REALM:?Keycloak realm is required}
+      - OAUTH_SCOPES=${OAUTH_SCOPES:-openid profile email offline_access}
+      - SESSION_SECRET=${SESSION_SECRET:?Session secret is required}
+    
+    profiles:
+      - keycloak
+
+  # Development Keycloak server (for testing)
+  keycloak-dev:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak-dev
+    
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_HTTPS=false
+    
+    ports:
+      - "8080:8080"
+    
+    command: start-dev
+    
+    networks:
+      - mcp-network
+    
+    profiles:
+      - keycloak-dev
+
+# Networks
+networks:
+  mcp-network:
+    external: true
+    name: lodgify-mcp-network

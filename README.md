@@ -72,7 +72,10 @@ npm run start:http
 This launches an Express server using the Streamable HTTP transport (modern replacement for SSE).
 
 - Endpoint: `POST /mcp`
-- Auth: send `Authorization: Bearer <MCP_TOKEN>` header
+- Auth: default is bearer. You can either:
+  - send `Authorization: Bearer <MCP_TOKEN>` header, or
+  - set `AUTH_MODE=oauth` for OAuth, or
+  - set `AUTH_MODE=none` to disable auth (development only)
 - Configure port with the `PORT` environment variable (defaults to `3000`).
 
 Clients such as Claude Desktop or the Anthropic Messages API can connect using this endpoint.
@@ -83,9 +86,19 @@ Build and run the HTTP server in a container:
 
 ```bash
 npm run docker:http:build
+
+# Bearer token
 docker run --rm \
   -p 3000:3000 \
+  -e AUTH_MODE=bearer \
   -e MCP_TOKEN=your_token \
+  -e LODGIFY_API_KEY=your_lodgify_api_key_here \
+  lodgify-mcp:http
+
+# No authentication (development only)
+docker run --rm \
+  -p 3000:3000 \
+  -e AUTH_MODE=none \
   -e LODGIFY_API_KEY=your_lodgify_api_key_here \
   lodgify-mcp:http
 ```

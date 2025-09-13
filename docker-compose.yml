@@ -71,7 +71,24 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - PORT=${DOCKER_PORT:-3000}
-      - MCP_TOKEN=${MCP_TOKEN}
+      - HTTP_PORT=${HTTP_PORT:-3000}
+      - HTTP_HOST=${HTTP_HOST:-0.0.0.0}
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+      # Authentication
+      - AUTH_MODE=${AUTH_MODE:-bearer}
+      - MCP_TOKEN=${MCP_TOKEN:-}
+      - AUTH_BEARER_TOKEN=${AUTH_BEARER_TOKEN:-}
+      # OAuth (if configured)
+      - OAUTH_PROVIDER=${OAUTH_PROVIDER:-}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID:-}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET:-}
+      - OAUTH_SCOPES=${OAUTH_SCOPES:-}
+      - OAUTH_DOMAIN=${OAUTH_DOMAIN:-}
+      - OAUTH_REALM=${OAUTH_REALM:-}
+      - OAUTH_BASE_URL=${OAUTH_BASE_URL:-}
+      - OAUTH_AUDIENCE=${OAUTH_AUDIENCE:-}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - TRUST_PROXY=${TRUST_PROXY:-false}
 
     ports:
       - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
@@ -157,5 +174,5 @@ services:
 
 networks:
   mcp-network:
-    driver: bridge
+    external: true
     name: lodgify-mcp-network

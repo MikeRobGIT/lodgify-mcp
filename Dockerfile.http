@@ -37,6 +37,9 @@ COPY --chown=mcpuser:mcpuser docker-entrypoint.sh /app/
 COPY --chown=mcpuser:mcpuser scripts/env-check.sh /app/scripts/
 RUN chmod +x /app/docker-entrypoint.sh /app/scripts/env-check.sh
 
+# Create logs directory with proper permissions
+RUN mkdir -p /app/logs && chown -R mcpuser:mcpuser /app/logs && chmod 755 /app/logs
+
 USER mcpuser
 
 ARG PORT=3000
