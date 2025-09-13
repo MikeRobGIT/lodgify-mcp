@@ -156,26 +156,29 @@ async function main() {
     const oauthRoutes = createOAuthRoutes(authManager)
     app.use('/auth', oauthRoutes)
     safeLogger.info('OAuth endpoints available at /auth/*')
-    
+
     // Add well-known OAuth discovery endpoint for ChatGPT compatibility
-    app.get('/.well-known/oauth-authorization-server', (_req: express.Request, res: express.Response) => {
-      const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`
-      
-      res.json({
-        issuer: baseUrl,
-        authorization_endpoint: `${baseUrl}/auth/authorize`,
-        token_endpoint: `${baseUrl}/auth/token`,
-        userinfo_endpoint: `${baseUrl}/auth/userinfo`,
-        revocation_endpoint: `${baseUrl}/auth/revoke`,
-        response_types_supported: ['code'],
-        grant_types_supported: ['authorization_code', 'refresh_token'],
-        code_challenge_methods_supported: ['S256'],
-        scopes_supported: ['openid', 'profile', 'email'],
-        token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
-        claims_supported: ['sub', 'email', 'name', 'picture'],
-        subject_types_supported: ['public']
-      })
-    })
+    app.get(
+      '/.well-known/oauth-authorization-server',
+      (_req: express.Request, res: express.Response) => {
+        const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`
+
+        res.json({
+          issuer: baseUrl,
+          authorization_endpoint: `${baseUrl}/auth/authorize`,
+          token_endpoint: `${baseUrl}/auth/token`,
+          userinfo_endpoint: `${baseUrl}/auth/userinfo`,
+          revocation_endpoint: `${baseUrl}/auth/revoke`,
+          response_types_supported: ['code'],
+          grant_types_supported: ['authorization_code', 'refresh_token'],
+          code_challenge_methods_supported: ['S256'],
+          scopes_supported: ['openid', 'profile', 'email'],
+          token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
+          claims_supported: ['sub', 'email', 'name', 'picture'],
+          subject_types_supported: ['public'],
+        })
+      },
+    )
   }
 
   // Create authentication middleware

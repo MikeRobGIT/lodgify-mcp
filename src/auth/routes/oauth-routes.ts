@@ -42,7 +42,7 @@ export function createOAuthRoutes(authManager: AuthManager): Router {
    */
   router.get('/config', (_req: Request, res: Response) => {
     const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.HTTP_PORT || 3000}`
-    
+
     res.json({
       issuer: baseUrl,
       authorization_endpoint: `${baseUrl}/auth/authorize`,
@@ -55,7 +55,7 @@ export function createOAuthRoutes(authManager: AuthManager): Router {
       scopes_supported: ['openid', 'profile', 'email'],
       token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
       claims_supported: ['sub', 'email', 'name', 'picture'],
-      subject_types_supported: ['public']
+      subject_types_supported: ['public'],
     })
   })
 

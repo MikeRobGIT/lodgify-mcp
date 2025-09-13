@@ -51,10 +51,12 @@ function getLogLevel(): LogLevel {
  */
 function isHttpMode(): boolean {
   // Check if we're running server-http.js or if HTTP_MODE env is set
-  return process.argv.some(arg => arg.includes('server-http')) || 
-         process.env.HTTP_MODE === 'true' ||
-         process.env.HTTP_HOST !== undefined ||
-         process.env.HTTP_PORT !== undefined
+  return (
+    process.argv.some((arg) => arg.includes('server-http')) ||
+    process.env.HTTP_MODE === 'true' ||
+    process.env.HTTP_HOST !== undefined ||
+    process.env.HTTP_PORT !== undefined
+  )
 }
 
 /**
@@ -132,7 +134,7 @@ export class SafeLogger {
   error(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
       // Better error serialization for Error objects
-      const extra = args.map(arg => {
+      const extra = args.map((arg) => {
         if (arg instanceof Error) {
           return {
             message: arg.message,

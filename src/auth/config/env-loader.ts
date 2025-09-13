@@ -105,9 +105,7 @@ function getAuthMode(): AuthMode | null {
   }
 
   if (!['bearer', 'oauth', 'dual', 'none'].includes(mode)) {
-    throw new Error(
-      `Invalid AUTH_MODE: ${mode}. Must be "bearer", "oauth", "dual", or "none"`,
-    )
+    throw new Error(`Invalid AUTH_MODE: ${mode}. Must be "bearer", "oauth", "dual", or "none"`)
   }
 
   return mode as AuthMode
