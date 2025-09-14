@@ -18,7 +18,7 @@ import {
   type DateValidationInfo,
 } from '../utils/date-validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
-import { sanitizeInput } from '../utils/input-sanitizer.js'
+import { sanitizeInput, validateDatePair } from '../utils/input-sanitizer.js'
 import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
@@ -415,28 +415,16 @@ Example request:
         // Additional validation for rate dates
         if (sanitized.rates) {
           for (const rate of sanitized.rates) {
-            // Validate date format
-            if (!isYYYYMMDD(rate.start_date)) {
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                `Invalid start_date format: ${rate.start_date}. Use YYYY-MM-DD format.`,
-              )
-            }
-            if (!isYYYYMMDD(rate.end_date)) {
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                `Invalid end_date format: ${rate.end_date}. Use YYYY-MM-DD format.`,
-              )
-            }
+            // Use consolidated date validation helper
+            const validation = validateDatePair(
+              rate.start_date,
+              rate.end_date,
+              'start_date',
+              'end_date',
+            )
 
-            // Validate date range
-            const startDate = new Date(rate.start_date)
-            const endDate = new Date(rate.end_date)
-            if (endDate <= startDate) {
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                `Invalid date range: end_date (${rate.end_date}) must be after start_date (${rate.start_date})`,
-              )
+            if (!validation.isValid) {
+              throw new McpError(ErrorCode.InvalidParams, validation.errors.join(' '))
             }
           }
         }

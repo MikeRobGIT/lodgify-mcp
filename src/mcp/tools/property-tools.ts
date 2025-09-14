@@ -7,6 +7,7 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { PropertySearchParams } from '../../api/v2/properties/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { safeLogger } from '../../logger.js'
 import { isISODateTime } from '../utils/date-format.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
@@ -93,7 +94,7 @@ Example response:
         // Validate wid parameter - warn if suspiciously low but still allow the request
         if (sanitized.wid !== undefined) {
           if (sanitized.wid < 100) {
-            console.warn(
+            safeLogger.warn(
               `Warning: Website ID (wid) ${sanitized.wid} seems unusually low. Valid website IDs are typically 3+ digit numbers (e.g., 12345). This may cause an error if the website ID doesn't exist in Lodgify.`,
             )
           }

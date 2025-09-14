@@ -9,7 +9,7 @@ import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { isISODateTime } from '../utils/date-format.js'
 // Types from messaging API (imported for reference but not used in declarations)
 import { wrapToolHandler } from '../utils/error-wrapper.js'
-import { sanitizeInput } from '../utils/input-sanitizer.js'
+import { sanitizeInput, validateGuid } from '../utils/input-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Messaging & Communication'
@@ -43,8 +43,7 @@ Example request:
         const { threadGuid } = sanitizeInput(input)
 
         // Validate GUID format
-        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (!guidRegex.test(threadGuid)) {
+        if (!validateGuid(threadGuid)) {
           throw new McpError(
             ErrorCode.InvalidParams,
             'Invalid thread GUID format. Must be a valid UUID/GUID.',
@@ -162,8 +161,7 @@ Example request:
         const { threadGuid, message } = sanitizeInput(input)
 
         // Validate GUID format
-        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (!guidRegex.test(threadGuid)) {
+        if (!validateGuid(threadGuid)) {
           throw new McpError(
             ErrorCode.InvalidParams,
             'Invalid thread GUID format. Must be a valid UUID/GUID.',
@@ -208,8 +206,7 @@ Example request:
         const { threadGuid } = sanitizeInput(input)
 
         // Validate GUID format
-        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (!guidRegex.test(threadGuid)) {
+        if (!validateGuid(threadGuid)) {
           throw new McpError(
             ErrorCode.InvalidParams,
             'Invalid thread GUID format. Must be a valid UUID/GUID.',
@@ -249,8 +246,7 @@ Example request:
         const { threadGuid } = sanitizeInput(input)
 
         // Validate GUID format
-        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (!guidRegex.test(threadGuid)) {
+        if (!validateGuid(threadGuid)) {
           throw new McpError(
             ErrorCode.InvalidParams,
             'Invalid thread GUID format. Must be a valid UUID/GUID.',

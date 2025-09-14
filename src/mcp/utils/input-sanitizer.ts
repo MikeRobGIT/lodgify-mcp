@@ -5,6 +5,32 @@
 
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 
+// Module-level constants for configuration
+/**
+ * Maximum allowed string length to prevent DoS attacks
+ * Can be adjusted based on application requirements
+ */
+export const DEFAULT_MAX_STRING_LENGTH = 10000
+
+/**
+ * Maximum allowed date range in days (5 years by default)
+ * Prevents excessive date ranges that could cause performance issues
+ */
+export const MAX_DATE_RANGE_DAYS = 365 * 5 // 5 years
+
+/**
+ * Valid booking statuses recognized by the system
+ */
+export const VALID_BOOKING_STATUSES = [
+  'booked',
+  'tentative',
+  'declined',
+  'confirmed',
+  'open',
+] as const
+
+export type ValidBookingStatus = (typeof VALID_BOOKING_STATUSES)[number]
+
 /**
  * Sanitize input by removing potentially dangerous content
  * and normalizing data types
@@ -55,19 +81,38 @@ export function sanitizeInput<T extends Record<string, unknown>>(input: T): T {
 function sanitizeValue(value: unknown): unknown {
   // Handle strings
   if (typeof value === 'string') {
-    // Remove potential script injection attempts
+    // Enhanced XSS protection with more comprehensive patterns
     let sanitized = value
+      // Remove script tags with any attributes or content
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      // Remove javascript: protocol in any case variation
       .replace(/javascript:/gi, '')
-      .replace(/on\w+\s*=/gi, '')
+      // Remove data: URLs that could contain scripts
+      .replace(/data:text\/html[^,]*,/gi, '')
+      // Remove vbscript: protocol
+      .replace(/vbscript:/gi, '')
+      // Remove on* event handlers with various spacing patterns
+      .replace(/on\w+\s*=\s*(["']).*?\1/gi, '')
+      .replace(/on\w+\s*=\s*[^\s>]+/gi, '')
+      // Remove iframe tags
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      // Remove object tags
+      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+      // Remove embed tags
+      .replace(/<embed\b[^>]*>/gi, '')
+      // Remove meta refresh tags
+      .replace(/<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '')
+      // Remove base tags that could hijack URLs
+      .replace(/<base\b[^>]*>/gi, '')
+      // Remove link tags with javascript
+      .replace(/<link[^>]+href\s*=\s*["']?javascript:[^>]*>/gi, '')
 
     // Trim whitespace
     sanitized = sanitized.trim()
 
     // Limit string length to prevent DoS
-    const MAX_STRING_LENGTH = 10000
-    if (sanitized.length > MAX_STRING_LENGTH) {
-      sanitized = sanitized.substring(0, MAX_STRING_LENGTH)
+    if (sanitized.length > DEFAULT_MAX_STRING_LENGTH) {
+      sanitized = sanitized.substring(0, DEFAULT_MAX_STRING_LENGTH)
     }
 
     return sanitized
@@ -113,6 +158,64 @@ function sanitizeValue(value: unknown): unknown {
 }
 
 /**
+ * Validate date pair (start and end dates)
+ * Returns specific error messages for each validation failure
+ */
+export function validateDatePair(
+  startDate: string | undefined,
+  endDate: string | undefined,
+  startFieldName = 'start_date',
+  endFieldName = 'end_date',
+): { isValid: boolean; errors: string[] } {
+  const errors: string[] = []
+
+  // Check if dates are provided
+  if (!startDate) {
+    errors.push(`${startFieldName} is required`)
+    return { isValid: false, errors }
+  }
+
+  if (!endDate) {
+    errors.push(`${endFieldName} is required`)
+    return { isValid: false, errors }
+  }
+
+  // Validate date formats (assuming YYYY-MM-DD format)
+  const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/
+  if (!dateFormatRegex.test(startDate)) {
+    errors.push(`Invalid ${startFieldName} format: ${startDate}. Use YYYY-MM-DD format.`)
+  }
+
+  if (!dateFormatRegex.test(endDate)) {
+    errors.push(`Invalid ${endFieldName} format: ${endDate}. Use YYYY-MM-DD format.`)
+  }
+
+  if (errors.length > 0) {
+    return { isValid: false, errors }
+  }
+
+  // Validate date range
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+
+  if (Number.isNaN(start.getTime())) {
+    errors.push(`Invalid ${startFieldName}: ${startDate}`)
+  }
+
+  if (Number.isNaN(end.getTime())) {
+    errors.push(`Invalid ${endFieldName}: ${endDate}`)
+  }
+
+  if (errors.length === 0 && end <= start) {
+    errors.push(
+      `Invalid date range: ${endFieldName} (${endDate}) must be after ${startFieldName} (${startDate})`,
+    )
+  }
+
+  return { isValid: errors.length === 0, errors }
+}
+
+/**
  * Validate date range
  */
 export function validateDateRange(
@@ -139,12 +242,11 @@ export function validateDateRange(
     }
 
     // Check for reasonable date range (prevent DoS)
-    const MAX_DAYS = 365 * 5 // 5 years
     const diffTime = Math.abs(end.getTime() - start.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-    if (diffDays > MAX_DAYS) {
-      return { valid: false, error: `Date range exceeds maximum of ${MAX_DAYS} days` }
+    if (diffDays > MAX_DATE_RANGE_DAYS) {
+      return { valid: false, error: `Date range exceeds maximum of ${MAX_DATE_RANGE_DAYS} days` }
     }
 
     return { valid: true }
@@ -171,6 +273,15 @@ export function validateUrl(url: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * Validate GUID/UUID format
+ * Validates standard UUID v4 format (8-4-4-4-12 hexadecimal characters)
+ */
+export function validateGuid(guid: string): boolean {
+  const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return guidRegex.test(guid)
 }
 
 /**
@@ -221,8 +332,7 @@ export function validatePropertyId(id: string | number): string {
  * Validate booking status
  */
 export function validateBookingStatus(status: string): boolean {
-  const validStatuses = ['booked', 'tentative', 'declined', 'confirmed', 'open']
-  return validStatuses.includes(status.toLowerCase())
+  return VALID_BOOKING_STATUSES.includes(status.toLowerCase() as ValidBookingStatus)
 }
 
 /**

@@ -4,6 +4,7 @@
  */
 
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { validateDatePair } from '../utils/input-sanitizer.js'
 
 // Type definitions for API responses
 interface PropertyItem {
@@ -240,14 +241,17 @@ export function validateQuoteParams(
     )
   }
 
-  // Validate date format (basic check) - skip if dates are pre-validated
+  // Validate date format and range - skip if dates are pre-validated
   if (!skipDateValidation) {
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-    if (!dateRegex.test(String(validatedParams.arrival))) {
-      throw new Error('Invalid "arrival" date format. Use YYYY-MM-DD format')
-    }
-    if (!dateRegex.test(String(validatedParams.departure))) {
-      throw new Error('Invalid "departure" date format. Use YYYY-MM-DD format')
+    const validation = validateDatePair(
+      String(validatedParams.arrival),
+      String(validatedParams.departure),
+      'arrival',
+      'departure',
+    )
+
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(' '))
     }
   }
 

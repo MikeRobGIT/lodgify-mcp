@@ -3,6 +3,7 @@
  * Handles v1 booking operations that are not available in v2
  */
 
+import { safeLogger } from '../../../logger.js'
 import type { BaseApiClient } from '../../base-client.js'
 import { BaseApiModule, type ModuleConfig } from '../../base-module.js'
 import type {
@@ -240,7 +241,7 @@ export class BookingsV1Client extends BaseApiModule {
     try {
       currentBooking = await this.getBookingV1(id)
     } catch (error) {
-      console.warn('Could not fetch current booking data for update', {
+      safeLogger.warn('Could not fetch current booking data for update', {
         bookingId: id,
         error: error instanceof Error ? error.message : String(error),
       })
@@ -307,7 +308,7 @@ export class BookingsV1Client extends BaseApiModule {
       try {
         return await this.getBookingV1(id)
       } catch (error) {
-        console.warn(`Could not fetch updated booking after update: ${error}`)
+        safeLogger.warn(`Could not fetch updated booking after update: ${error}`)
         // Return the empty result if fetch fails
         return result
       }
