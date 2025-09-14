@@ -14,6 +14,103 @@ import { sanitizeInput } from '../utils/input-sanitizer.js'
 import type { ToolRegistration } from '../utils/types.js'
 import { findProperties } from './helper-tools.js'
 
+// Type definition for listProperties input
+type ListPropertiesInput = {
+  wid?: number
+  updatedSince?: string
+  includeCount?: boolean
+  includeInOut?: boolean
+  page?: number
+  size?: number
+} & Record<string, unknown>
+
+// Type definitions for findProperties input
+type FindPropertiesInput = {
+  searchTerm?: string
+  includePropertyIds?: boolean | string[] | string
+  limit?: number | string
+} & Record<string, unknown>
+
+// Type for the sanitized and normalized input
+interface NormalizedFindPropertiesInput {
+  searchTerm?: string
+  includePropertyIds?: boolean
+  limit: number
+}
+
+// Return type from findProperties function
+interface FindPropertiesResult {
+  properties: Array<{
+    id: string
+    name?: string
+    source?: string
+  }>
+  message: string
+  suggestions: string[]
+}
+
+// Type definition for getProperty input
+type GetPropertyInput = {
+  id: number
+  wid?: number
+  includeInOut?: boolean
+} & Record<string, unknown>
+
+// Type definition for listPropertyRooms input
+type ListPropertyRoomsInput = {
+  propertyId: string | number
+} & Record<string, unknown>
+
+/**
+ * Helper function to normalize includePropertyIds parameter
+ * Handles boolean, string array, or string values
+ */
+function normalizeIncludePropertyIds(value?: boolean | string[] | string): boolean {
+  if (value === undefined) {
+    return true // Default value
+  }
+
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  // Handle string array (should be treated as true if array exists)
+  if (Array.isArray(value)) {
+    return value.length > 0
+  }
+
+  // Handle string value
+  if (typeof value === 'string') {
+    return value.toLowerCase() !== 'false' && value !== '0'
+  }
+
+  return true // Default to true for any other case
+}
+
+/**
+ * Helper function to normalize limit parameter
+ * Handles number or string values
+ */
+function normalizeLimit(value?: number | string): number {
+  if (value === undefined) {
+    return 10 // Default value
+  }
+
+  if (typeof value === 'number') {
+    // Ensure it's within valid range
+    return Math.min(Math.max(1, value), 50)
+  }
+
+  if (typeof value === 'string') {
+    const parsed = parseInt(value, 10)
+    if (!Number.isNaN(parsed)) {
+      return Math.min(Math.max(1, parsed), 50)
+    }
+  }
+
+  return 10 // Default value for invalid input
+}
+
 /**
  * Register all property management tools
  */
@@ -82,10 +179,10 @@ Example response:
         },
       },
       handler: wrapToolHandler(async (params) => {
-        // Sanitize all input parameters
-        const sanitized = sanitizeInput(params)
+        // Sanitize all input parameters with explicit typing
+        const sanitized = sanitizeInput<ListPropertiesInput>(params) as ListPropertiesInput
 
-        // Map MCP parameters to API parameters
+        // Map MCP parameters to API parameters with type safety
         const mappedParams: PropertySearchParams = {}
         if (sanitized.size !== undefined) mappedParams.limit = sanitized.size
         if (sanitized.page !== undefined)
@@ -109,7 +206,7 @@ Example response:
         return {
           content: [
             {
-              type: 'text',
+              type: 'text' as const,
               text: JSON.stringify(result, null, 2),
             },
           ],
@@ -167,11 +264,18 @@ Example response:
         },
       },
       handler: wrapToolHandler(async (input) => {
-        // Sanitize all input parameters
-        const sanitized = sanitizeInput(input)
+        // Sanitize all input parameters with explicit typing
+        const sanitized = sanitizeInput(input) as GetPropertyInput
+
+        // Validate required id parameter
+        if (!sanitized.id) {
+          throw new McpError(ErrorCode.InvalidParams, 'Property ID is required')
+        }
+
+        // Extract strongly typed parameters
         const { id, wid, includeInOut } = sanitized
 
-        // Build params object for the API call
+        // Build params object for the API call with explicit types
         const params: { wid?: number; includeInOut?: boolean } = {}
         if (wid !== undefined) params.wid = wid
         if (includeInOut !== undefined) params.includeInOut = includeInOut
@@ -184,7 +288,7 @@ Example response:
         return {
           content: [
             {
-              type: 'text',
+              type: 'text' as const,
               text: JSON.stringify(result, null, 2),
             },
           ],
@@ -209,13 +313,24 @@ Example request:
         },
       },
       handler: wrapToolHandler(async (input) => {
-        // Sanitize input
-        const { propertyId } = sanitizeInput(input)
+        // Sanitize input and assert type
+        const sanitized = sanitizeInput(input) as ListPropertyRoomsInput
+
+        // Validate and normalize propertyId to string
+        if (!sanitized.propertyId) {
+          throw new McpError(ErrorCode.InvalidParams, 'Property ID is required')
+        }
+
+        // Ensure propertyId is a string (type-safe conversion)
+        const propertyId: string = String(sanitized.propertyId)
+
+        // Call the API with type-safe propertyId
         const result = await getClient().properties.listPropertyRooms(propertyId)
+
         return {
           content: [
             {
-              type: 'text',
+              type: 'text' as const,
               text: JSON.stringify(result, null, 2),
             },
           ],
@@ -288,14 +403,29 @@ Example response:
             .describe('Maximum number of properties to return (default: 10)'),
         },
       },
-      handler: wrapToolHandler(async (input) => {
-        // Sanitize input
-        const { searchTerm, includePropertyIds, limit } = sanitizeInput(input)
-        const result = await findProperties(getClient(), searchTerm, includePropertyIds, limit)
+      handler: wrapToolHandler(async (input: FindPropertiesInput) => {
+        // Sanitize input with explicit type
+        const sanitized = sanitizeInput<FindPropertiesInput>(input)
+
+        // Normalize and validate the input parameters with type safety
+        const normalizedInput: NormalizedFindPropertiesInput = {
+          searchTerm: sanitized.searchTerm,
+          includePropertyIds: normalizeIncludePropertyIds(sanitized.includePropertyIds),
+          limit: normalizeLimit(sanitized.limit),
+        }
+
+        // Call findProperties with properly typed parameters
+        const result: FindPropertiesResult = await findProperties(
+          getClient(),
+          normalizedInput.searchTerm,
+          normalizedInput.includePropertyIds,
+          normalizedInput.limit,
+        )
+
         return {
           content: [
             {
-              type: 'text',
+              type: 'text' as const,
               text: JSON.stringify(result, null, 2),
             },
           ],
