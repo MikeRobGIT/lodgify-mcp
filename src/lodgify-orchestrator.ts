@@ -410,10 +410,19 @@ export class LodgifyOrchestrator {
         }
         if (Array.isArray(pr.bookings)) {
           for (const b of pr.bookings) {
-            const bStart =
-              (b as any).arrival || (b as any).checkIn || (b as any).start || (b as any).from
-            const bEnd =
-              (b as any).departure || (b as any).checkOut || (b as any).end || (b as any).to
+            // Handle flexible booking date fields from different API versions
+            const booking = b as {
+              arrival?: string
+              checkIn?: string
+              start?: string
+              from?: string
+              departure?: string
+              checkOut?: string
+              end?: string
+              to?: string
+            }
+            const bStart = booking.arrival || booking.checkIn || booking.start || booking.from
+            const bEnd = booking.departure || booking.checkOut || booking.end || booking.to
             if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
               hasOverlapBooking = true
               break
@@ -466,11 +475,16 @@ export class LodgifyOrchestrator {
         // If the property is unavailable at the property level, all rooms are unavailable
         if (!propertyAvailable) {
           for (const r of rooms) {
-            const roomId = String((r as any).id ?? r)
+            // Handle room data that could be just an ID or a full object
+            const room =
+              typeof r === 'object'
+                ? (r as { id?: string | number; name?: string; maxOccupancy?: number })
+                : { id: r }
+            const roomId = String(room.id ?? r)
             roomResults.push({
               id: roomId,
-              name: (r as any).name,
-              maxOccupancy: (r as any)?.maxOccupancy,
+              name: room.name,
+              maxOccupancy: room.maxOccupancy,
               available: false,
             })
           }
@@ -479,7 +493,12 @@ export class LodgifyOrchestrator {
         } else {
           // Property is available at the property level, check individual rooms
           for (const r of rooms) {
-            const roomId = String((r as any).id ?? r)
+            // Handle room data that could be just an ID or a full object
+            const room =
+              typeof r === 'object'
+                ? (r as { id?: string | number; name?: string; maxOccupancy?: number })
+                : { id: r }
+            const roomId = String(room.id ?? r)
             // Fetch per-room availability to avoid over-reporting
             const roomAvailability = (await this.availability.getAvailabilityForRoom(
               propertyId,
@@ -516,8 +535,15 @@ export class LodgifyOrchestrator {
               }
               if (Array.isArray(pr.bookings)) {
                 for (const b of pr.bookings) {
-                  const bStart = (b as any).arrival || (b as any).checkIn
-                  const bEnd = (b as any).departure || (b as any).checkOut
+                  // Handle flexible booking date fields from different API versions
+                  const booking = b as {
+                    arrival?: string
+                    checkIn?: string
+                    departure?: string
+                    checkOut?: string
+                  }
+                  const bStart = booking.arrival || booking.checkIn
+                  const bEnd = booking.departure || booking.checkOut
                   if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
                     roomUnavailable = true
                     break
@@ -531,8 +557,8 @@ export class LodgifyOrchestrator {
             if (roomAvailable) anyRoomAvailable = true
             roomResults.push({
               id: roomId,
-              name: (r as any).name,
-              maxOccupancy: (r as any)?.maxOccupancy,
+              name: room.name,
+              maxOccupancy: room.maxOccupancy,
               available: roomAvailable,
             })
           }

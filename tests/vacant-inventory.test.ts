@@ -22,7 +22,10 @@ describe('findVacantInventory', () => {
         ],
       }),
       getProperty: vi.fn().mockImplementation((id) => {
-        const properties: Record<string, any> = {
+        const properties: Record<
+          string,
+          { id: number; name: string; rooms: Array<{ id: number; name: string }> }
+        > = {
           '435705': {
             id: 435705,
             name: "MeMe's Place Villa #1",
@@ -44,9 +47,14 @@ describe('findVacantInventory', () => {
       readOnly: false,
     })
 
-    // Replace clients with mocks
-    ;(orchestrator as any).availability = mockAvailabilityClient
-    ;(orchestrator as any).properties = mockPropertiesClient
+    // Replace clients with mocks using type assertion for testing
+    const testOrchestrator = orchestrator as unknown as {
+      availability: typeof mockAvailabilityClient
+      properties: typeof mockPropertiesClient
+      findVacantInventory: typeof orchestrator.findVacantInventory
+    }
+    testOrchestrator.availability = mockAvailabilityClient
+    testOrchestrator.properties = mockPropertiesClient
 
     // Mock API responses - API returns an array with periods containing available: 0
     mockAvailabilityClient.getAvailabilityForProperty.mockImplementation((propertyId) => {
@@ -54,7 +62,7 @@ describe('findVacantInventory', () => {
       return Promise.resolve([
         {
           user_id: 527350,
-          property_id: parseInt(propertyId),
+          property_id: parseInt(propertyId, 10),
           room_type_id: 501845,
           periods: [
             {
@@ -114,8 +122,14 @@ describe('findVacantInventory', () => {
       readOnly: false,
     })
 
-    ;(orchestrator as any).availability = mockAvailabilityClient
-    ;(orchestrator as any).properties = mockPropertiesClient
+    // Replace clients with mocks using type assertion for testing
+    const testOrchestrator = orchestrator as unknown as {
+      availability: typeof mockAvailabilityClient
+      properties: typeof mockPropertiesClient
+      findVacantInventory: typeof orchestrator.findVacantInventory
+    }
+    testOrchestrator.availability = mockAvailabilityClient
+    testOrchestrator.properties = mockPropertiesClient
 
     // Test that we handle both array and object responses correctly
     mockAvailabilityClient.getAvailabilityForProperty.mockResolvedValueOnce([
@@ -170,8 +184,14 @@ describe('findVacantInventory', () => {
       readOnly: false,
     })
 
-    ;(orchestrator as any).availability = mockAvailabilityClient
-    ;(orchestrator as any).properties = mockPropertiesClient
+    // Replace clients with mocks using type assertion for testing
+    const testOrchestrator = orchestrator as unknown as {
+      availability: typeof mockAvailabilityClient
+      properties: typeof mockPropertiesClient
+      findVacantInventory: typeof orchestrator.findVacantInventory
+    }
+    testOrchestrator.availability = mockAvailabilityClient
+    testOrchestrator.properties = mockPropertiesClient
 
     // Property is unavailable
     mockAvailabilityClient.getAvailabilityForProperty.mockResolvedValueOnce([
@@ -200,6 +220,6 @@ describe('findVacantInventory', () => {
     // Property and rooms should be marked as unavailable
     expect(result.properties[0].available).toBe(false)
     expect(result.properties[0].rooms).toBeDefined()
-    expect(result.properties[0].rooms![0].available).toBe(false)
+    expect(result.properties[0].rooms?.[0].available).toBe(false)
   })
 })

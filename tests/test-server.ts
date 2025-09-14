@@ -372,13 +372,19 @@ export function createTestServer(mockClient: unknown): TestServer {
             break
 
           // Availability Tools
-          case 'lodgify_list_vacant_inventory':
+          case 'lodgify_list_vacant_inventory': {
             // Pass through to a mock aggregator if provided
-            if (typeof (mockClient as any).findVacantInventory === 'function') {
-              result = await (mockClient as any).findVacantInventory(args)
+            const mockWithVacant = mockClient as unknown as {
+              findVacantInventory?: (args: unknown) => Promise<unknown>
+              listProperties?: (args: {
+                limit: number
+              }) => Promise<{ items?: unknown[]; data?: unknown[] }>
+            }
+            if (typeof mockWithVacant.findVacantInventory === 'function') {
+              result = await mockWithVacant.findVacantInventory(args)
             } else {
               // Fallback: compose from listProperties if available
-              const propertiesData = await (mockClient as any).listProperties?.({
+              const propertiesData = await mockWithVacant.listProperties?.({
                 limit: args.limit || 10,
               })
               const items = propertiesData?.items || propertiesData?.data || []
@@ -389,7 +395,7 @@ export function createTestServer(mockClient: unknown): TestServer {
                   propertiesChecked: items.length || 0,
                   availableProperties: items.length || 0,
                 },
-                properties: (items || []).map((p: any) => ({
+                properties: (items || []).map((p: { id: unknown; name?: string }) => ({
                   id: String(p.id),
                   name: p.name || `Property ${p.id}`,
                   available: true,
@@ -397,6 +403,7 @@ export function createTestServer(mockClient: unknown): TestServer {
               }
             }
             break
+          }
 
           // Quote and Messaging Tools
           case 'lodgify_get_quote':
