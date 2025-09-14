@@ -649,6 +649,37 @@ Note: When ISO 8601 date-time values are provided for `from`/`to`, the server no
 }
 ```
 
+### `lodgify_list_vacant_inventory`
+
+List all properties vacant for a date range, optionally including room details. This aggregates availability across properties, so you can find inventory in one call.
+
+**Parameters:**
+
+- `from` (required, string): Start date (YYYY-MM-DD)
+- `to` (required, string): End date (YYYY-MM-DD)
+- `propertyIds` (optional, array of string/number): Only check these properties
+- `includeRooms` (optional, boolean): Include room types per property (default: true)
+- `limit` (optional, number): Max properties to check when `propertyIds` not provided (default: 25, max: 200)
+- `wid` (optional, number): Optional website ID filter
+
+**How Vacancy is Determined:**
+
+- The tool queries the Lodgify API which returns an array response with availability periods
+- Properties are marked as unavailable when the API returns `available: 0` for the requested date range
+- When a property is unavailable at the property level, all its rooms are automatically marked as unavailable without additional API calls
+- Only rooms in available properties are individually checked for their specific availability
+
+**Example:**
+
+```javascript
+{
+  "from": "2025-11-20",
+  "to": "2025-11-25",
+  "includeRooms": true,
+  "limit": 25
+}
+```
+
 ## Webhooks & Notifications
 
 ### `lodgify_list_webhooks`

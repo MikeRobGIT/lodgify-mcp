@@ -133,6 +133,25 @@ export function createTestServer(mockClient: unknown): TestServer {
         required: ['propertyId'],
       },
     },
+    {
+      name: 'lodgify_list_vacant_inventory',
+      description: 'List vacant properties and rooms for a date range',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          from: { type: 'string' },
+          to: { type: 'string' },
+          propertyIds: {
+            type: 'array',
+            items: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+          },
+          includeRooms: { type: 'boolean' },
+          limit: { type: 'number' },
+          wid: { type: 'number' },
+        },
+        required: ['from', 'to'],
+      },
+    },
 
     // Quote and Messaging Tools
     {
@@ -353,6 +372,31 @@ export function createTestServer(mockClient: unknown): TestServer {
             break
 
           // Availability Tools
+          case 'lodgify_list_vacant_inventory':
+            // Pass through to a mock aggregator if provided
+            if (typeof (mockClient as any).findVacantInventory === 'function') {
+              result = await (mockClient as any).findVacantInventory(args)
+            } else {
+              // Fallback: compose from listProperties if available
+              const propertiesData = await (mockClient as any).listProperties?.({
+                limit: args.limit || 10,
+              })
+              const items = propertiesData?.items || propertiesData?.data || []
+              result = {
+                from: args.from,
+                to: args.to,
+                counts: {
+                  propertiesChecked: items.length || 0,
+                  availableProperties: items.length || 0,
+                },
+                properties: (items || []).map((p: any) => ({
+                  id: String(p.id),
+                  name: p.name || `Property ${p.id}`,
+                  available: true,
+                })),
+              }
+            }
+            break
 
           // Quote and Messaging Tools
           case 'lodgify_get_quote':

@@ -26,7 +26,17 @@ export class AvailabilityClient extends BaseApiModule {
    * GET /v2/availability
    */
   async getAvailabilityAll<T = unknown>(params?: AvailabilityQueryParams): Promise<T> {
-    return this.request<T>('GET', '', params ? { params: params as Record<string, unknown> } : {})
+    // Map from/to to start/end if provided
+    const apiParams: Record<string, unknown> = {}
+    if (params?.from)
+      apiParams.start = params.from.includes('T') ? params.from : `${params.from}T00:00:00Z`
+    if (params?.to) apiParams.end = params.to.includes('T') ? params.to : `${params.to}T23:59:59Z`
+    if (params?.from && params?.to) apiParams.includeDetails = true
+    if (params?.propertyId) apiParams.propertyId = params.propertyId
+    if (params?.roomTypeId) apiParams.roomTypeId = params.roomTypeId
+
+    const hasParams = Object.keys(apiParams).length > 0
+    return this.request<T>('GET', '', hasParams ? { params: apiParams } : {})
   }
 
   /**
@@ -74,11 +84,16 @@ export class AvailabilityClient extends BaseApiModule {
     if (!propertyId || !roomTypeId) {
       throw new Error('Property ID and Room Type ID are required')
     }
-    return this.request<T>(
-      'GET',
-      `${propertyId}/${roomTypeId}`,
-      params ? { params: params as Record<string, unknown> } : {},
-    )
+
+    const apiParams: Record<string, unknown> = {}
+    if (params?.from)
+      apiParams.start = params.from.includes('T') ? params.from : `${params.from}T00:00:00Z`
+    if (params?.to) apiParams.end = params.to.includes('T') ? params.to : `${params.to}T23:59:59Z`
+    if (params?.from && params?.to) apiParams.includeDetails = true
+
+    return this.request<T>('GET', `${propertyId}/${roomTypeId}`, {
+      params: apiParams,
+    })
   }
 
   /**

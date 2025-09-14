@@ -105,5 +105,88 @@ Example request:
         }
       }, 'lodgify_get_property_availability'),
     },
+
+    // Aggregate Vacant Inventory Tool
+    {
+      name: 'lodgify_list_vacant_inventory',
+      category: 'Availability & Calendar',
+      config: {
+        title: 'List Vacant Inventory (Properties & Rooms)',
+        description: `List all properties that are vacant for a date range, optionally including room details.
+
+Use this to find available inventory in one call instead of checking each property separately.
+
+Example request:
+{
+  "from": "2025-11-20",
+  "to": "2025-11-25",
+  "propertyIds": ["435705", "435706"],  // Optional: filter to these properties
+  "includeRooms": true,                    // Include room types in the result (default: true)
+  "limit": 25                              // Max number of properties when propertyIds not provided (default: 25)
+}`,
+        inputSchema: {
+          from: z.string().min(1).describe('Start date (YYYY-MM-DD)'),
+          to: z.string().min(1).describe('End date (YYYY-MM-DD)'),
+          propertyIds: z
+            .array(z.union([z.string(), z.number()]))
+            .optional()
+            .describe('Optional list of property IDs to filter'),
+          includeRooms: z.boolean().default(true).describe('Include room types for each property'),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(200)
+            .default(25)
+            .describe('Max number of properties when propertyIds not provided'),
+          wid: z.number().int().optional().describe('Website ID filter (if supported)'),
+        },
+      },
+      handler: wrapToolHandler(async (input) => {
+        const { from, to, propertyIds, includeRooms, limit, wid } = sanitizeInput(input)
+
+        // Validate and normalize dates
+        const validator = createValidator(DateToolCategory.AVAILABILITY)
+        const fromNorm = from?.split('T')[0]
+        const toNorm = to?.split('T')[0]
+        const rv = validator.validateDateRange(fromNorm, toNorm)
+        if (!rv.start.isValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Invalid from date: ${rv.start.error || rv.start.warning || 'invalid date'}`,
+          )
+        }
+        if (!rv.end.isValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Invalid to date: ${rv.end.error || rv.end.warning || 'invalid date'}`,
+          )
+        }
+        if (!rv.rangeValid) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            rv.rangeError || 'Invalid date range: end date must be on/after start date',
+          )
+        }
+
+        const result = await getClient().findVacantInventory({
+          from: fromNorm,
+          to: toNorm,
+          propertyIds,
+          includeRooms,
+          limit,
+          wid,
+        })
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        }
+      }, 'lodgify_list_vacant_inventory'),
+    },
   ]
 }
