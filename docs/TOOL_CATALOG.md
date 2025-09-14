@@ -568,7 +568,7 @@ Send a message to a specific conversation thread. Respects read-only mode and wi
 }
 ```
 
-### `lodgify_mark_thread_read`
+### `lodgify_mark_thread_as_read`
 
 Mark a conversation thread as read to clear unread indicators. Respects read-only mode and will be blocked when enabled.
 

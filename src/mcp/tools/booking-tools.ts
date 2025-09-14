@@ -6,6 +6,7 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
+import { BOOKING_CONFIG, PAGINATION, STRING_LIMITS } from '../../core/config/constants.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported from '../schemas/common.js'
@@ -105,11 +106,17 @@ Example response:
 }`,
         inputSchema: {
           page: z.number().int().min(1).default(1).describe('Page number to retrieve'),
-          size: z.number().int().min(1).max(50).default(50).describe('Number of items per page'),
+          size: z
+            .number()
+            .int()
+            .min(1)
+            .max(PAGINATION.MAX_PAGE_SIZE)
+            .default(PAGINATION.DEFAULT_PAGE_SIZE)
+            .describe('Number of items per page'),
           includeCount: z.boolean().default(false).describe('Include total number of results'),
           stayFilter: z
-            .enum(['Upcoming', 'Current', 'Historic', 'All', 'ArrivalDate', 'DepartureDate'])
-            .default('Upcoming')
+            .enum(BOOKING_CONFIG.VALID_STAY_FILTERS as unknown as readonly [string, ...string[]])
+            .default(BOOKING_CONFIG.DEFAULT_STAY_FILTER)
             .describe(
               'Filter by stay dates. Default is "Upcoming". Avoid "All" unless absolutely necessary (can return too many items). Use "Current" for active guests, "Historic" for past bookings, and "ArrivalDate"/"DepartureDate" with stayFilterDate for specific dates.',
             ),
@@ -277,7 +284,11 @@ Example request:
                 .optional()
                 .describe('Payment amount (defaults to booking balance)'),
               currency: z.string().length(3).optional().describe('Currency code (e.g., USD, EUR)'),
-              description: z.string().max(500).optional().describe('Payment description for guest'),
+              description: z
+                .string()
+                .max(STRING_LIMITS.MAX_PAYMENT_DESCRIPTION_LENGTH)
+                .optional()
+                .describe('Payment description for guest'),
             })
             .describe('Payment link configuration - amount, currency, and description'),
         },

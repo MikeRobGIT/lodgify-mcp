@@ -53,6 +53,7 @@ import type { QuoteParams, QuoteRequest, QuoteResponse } from './api/v2/quotes/t
 import { RatesClient } from './api/v2/rates/index.js'
 import type { DailyRatesResponse, RateSettingsResponse } from './api/v2/rates/schemas.js'
 import type { DailyRatesParams } from './api/v2/rates/types.js'
+import { PAGINATION } from './core/config/constants.js'
 import { ReadOnlyModeError } from './core/errors/read-only-error.js'
 import { safeLogger } from './logger.js'
 
@@ -331,7 +332,14 @@ export class LodgifyOrchestrator {
    * It determines vacancy by checking if any bookings overlap the range in the availability details.
    */
   async findVacantInventory(params: VacantInventoryParams): Promise<VacantInventoryResult> {
-    const { from, to, propertyIds, includeRooms = true, limit = 25, wid } = params
+    const {
+      from,
+      to,
+      propertyIds,
+      includeRooms = true,
+      limit = PAGINATION.DEFAULT_VACANT_INVENTORY_LIMIT,
+      wid,
+    } = params
 
     // Helper: exclusive-end overlap between [aStart, aEnd) and [bStart, bEnd)
     const toDateOnly = (s: string) => (s.includes('T') ? s.split('T')[0] : s)
@@ -441,7 +449,7 @@ export class LodgifyOrchestrator {
             status: ['booked', 'confirmed'],
             checkInTo: to,
             checkOutFrom: from,
-            limit: 25,
+            limit: PAGINATION.DEFAULT_VACANT_INVENTORY_LIMIT,
           })
           if (overlapBookings?.data && overlapBookings.data.length > 0) {
             for (const b of overlapBookings.data) {

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
+import { normalizeIncludePropertyIds, normalizeLimit } from '../src/mcp/tools/property-tools.js'
 
 // Import the types we defined
 type ListPropertiesInput = {
@@ -91,26 +92,7 @@ describe('Property Tools Type Safety', () => {
   })
 
   it('should properly normalize input values', () => {
-    // Test normalization functions behavior
-    const normalizeIncludePropertyIds = (value?: boolean | string[] | string): boolean => {
-      if (value === undefined) return true
-      if (typeof value === 'boolean') return value
-      if (Array.isArray(value)) return value.length > 0
-      if (typeof value === 'string') return value.toLowerCase() !== 'false' && value !== '0'
-      return true
-    }
-
-    const normalizeLimit = (value?: number | string): number => {
-      if (value === undefined) return 10
-      if (typeof value === 'number') return Math.min(Math.max(1, value), 50)
-      if (typeof value === 'string') {
-        const parsed = parseInt(value, 10)
-        if (!Number.isNaN(parsed)) return Math.min(Math.max(1, parsed), 50)
-      }
-      return 10
-    }
-
-    // Test includePropertyIds normalization
+    // Test includePropertyIds normalization using real implementation
     expect(normalizeIncludePropertyIds(undefined)).toBe(true)
     expect(normalizeIncludePropertyIds(true)).toBe(true)
     expect(normalizeIncludePropertyIds(false)).toBe(false)
@@ -151,7 +133,7 @@ describe('Property Tools Type Safety', () => {
     expect(mockResult.suggestions).toHaveLength(1)
   })
 
-  it('should ensure type safety for handler parameters', () => {
+  it('should ensure type safety for handler parameters', async () => {
     // This test verifies that our types work with the actual handler signature
     type HandlerInput = FindPropertiesInput
     type HandlerOutput = { content: Array<{ type: 'text'; text: string }> }
@@ -189,10 +171,11 @@ describe('Property Tools Type Safety', () => {
       { searchTerm: 'beach', includePropertyIds: ['123'], limit: '10' },
     ]
 
-    testInputs.forEach(async (input) => {
+    // Use for...of loop to properly await each async call
+    for (const input of testInputs) {
       const result = await mockHandler(input)
       expect(result.content).toHaveLength(1)
       expect(result.content[0].type).toBe('text')
-    })
+    }
   })
 })

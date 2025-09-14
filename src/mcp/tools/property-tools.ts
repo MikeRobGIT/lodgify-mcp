@@ -483,3 +483,6 @@ Example request:
     },
   ]
 }
+
+// Export normalization functions for testing
+export { normalizeIncludePropertyIds, normalizeLimit }

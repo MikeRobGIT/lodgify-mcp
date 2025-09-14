@@ -187,7 +187,7 @@ Example request:
 
     // Mark thread as read (WRITE)
     {
-      name: 'lodgify_mark_thread_read',
+      name: 'lodgify_mark_thread_as_read',
       category: CATEGORY,
       config: {
         title: 'Mark Thread As Read',
@@ -222,7 +222,7 @@ Example request:
             },
           ],
         }
-      }, 'lodgify_mark_thread_read'),
+      }, 'lodgify_mark_thread_as_read'),
     },
 
     // Archive thread (WRITE)

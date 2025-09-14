@@ -4,19 +4,17 @@
  */
 
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
+import {
+  DATE_LIMITS,
+  GUEST_LIMITS,
+  PAGINATION,
+  PRICE_LIMITS,
+  STRING_LIMITS,
+} from '../../core/config/constants.js'
 
-// Module-level constants for configuration
-/**
- * Maximum allowed string length to prevent DoS attacks
- * Can be adjusted based on application requirements
- */
-export const DEFAULT_MAX_STRING_LENGTH = 10000
-
-/**
- * Maximum allowed date range in days (5 years by default)
- * Prevents excessive date ranges that could cause performance issues
- */
-export const MAX_DATE_RANGE_DAYS = 365 * 5 // 5 years
+// Re-export for backward compatibility
+export const DEFAULT_MAX_STRING_LENGTH = STRING_LIMITS.MAX_STRING_LENGTH
+export const MAX_DATE_RANGE_DAYS = DATE_LIMITS.MAX_DATE_RANGE_DAYS
 
 /**
  * Valid booking statuses recognized by the system
@@ -111,8 +109,8 @@ function sanitizeValue(value: unknown): unknown {
     sanitized = sanitized.trim()
 
     // Limit string length to prevent DoS
-    if (sanitized.length > DEFAULT_MAX_STRING_LENGTH) {
-      sanitized = sanitized.substring(0, DEFAULT_MAX_STRING_LENGTH)
+    if (sanitized.length > STRING_LIMITS.MAX_STRING_LENGTH) {
+      sanitized = sanitized.substring(0, STRING_LIMITS.MAX_STRING_LENGTH)
     }
 
     return sanitized
@@ -245,8 +243,11 @@ export function validateDateRange(
     const diffTime = Math.abs(end.getTime() - start.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-    if (diffDays > MAX_DATE_RANGE_DAYS) {
-      return { valid: false, error: `Date range exceeds maximum of ${MAX_DATE_RANGE_DAYS} days` }
+    if (diffDays > DATE_LIMITS.MAX_DATE_RANGE_DAYS) {
+      return {
+        valid: false,
+        error: `Date range exceeds maximum of ${DATE_LIMITS.MAX_DATE_RANGE_DAYS} days`,
+      }
     }
 
     return { valid: true }
@@ -321,8 +322,11 @@ export function validatePropertyId(id: string | number): string {
   }
 
   // Limit ID length
-  if (idStr.length > 100) {
-    throw new McpError(ErrorCode.InvalidParams, 'Property ID too long: maximum 100 characters')
+  if (idStr.length > STRING_LIMITS.MAX_PROPERTY_ID_LENGTH) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Property ID too long: maximum ${STRING_LIMITS.MAX_PROPERTY_ID_LENGTH} characters`,
+    )
   }
 
   return idStr
@@ -339,33 +343,48 @@ export function validateBookingStatus(status: string): boolean {
  * Validate guest count
  */
 export function validateGuestCount(adults: number, children?: number, infants?: number): void {
-  if (adults < 1) {
-    throw new McpError(ErrorCode.InvalidParams, 'At least one adult guest is required')
+  if (adults < GUEST_LIMITS.MIN_ADULTS) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `At least ${GUEST_LIMITS.MIN_ADULTS} adult guest is required`,
+    )
   }
 
-  if (adults > 50) {
-    throw new McpError(ErrorCode.InvalidParams, 'Guest count exceeds maximum: 50 adults')
+  if (adults > GUEST_LIMITS.MAX_ADULTS) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Guest count exceeds maximum: ${GUEST_LIMITS.MAX_ADULTS} adults`,
+    )
   }
 
   if (children !== undefined && children < 0) {
     throw new McpError(ErrorCode.InvalidParams, 'Number of children cannot be negative')
   }
 
-  if (children !== undefined && children > 50) {
-    throw new McpError(ErrorCode.InvalidParams, 'Children count exceeds maximum: 50')
+  if (children !== undefined && children > GUEST_LIMITS.MAX_CHILDREN) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Children count exceeds maximum: ${GUEST_LIMITS.MAX_CHILDREN}`,
+    )
   }
 
   if (infants !== undefined && infants < 0) {
     throw new McpError(ErrorCode.InvalidParams, 'Number of infants cannot be negative')
   }
 
-  if (infants !== undefined && infants > 20) {
-    throw new McpError(ErrorCode.InvalidParams, 'Infants count exceeds maximum: 20')
+  if (infants !== undefined && infants > GUEST_LIMITS.MAX_INFANTS) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Infants count exceeds maximum: ${GUEST_LIMITS.MAX_INFANTS}`,
+    )
   }
 
   const totalGuests = adults + (children || 0) + (infants || 0)
-  if (totalGuests > 100) {
-    throw new McpError(ErrorCode.InvalidParams, 'Total guest count exceeds maximum: 100')
+  if (totalGuests > GUEST_LIMITS.MAX_TOTAL_GUESTS) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Total guest count exceeds maximum: ${GUEST_LIMITS.MAX_TOTAL_GUESTS}`,
+    )
   }
 }
 
@@ -373,20 +392,23 @@ export function validateGuestCount(adults: number, children?: number, infants?: 
  * Validate price/amount
  */
 export function validatePrice(price: number, fieldName: string = 'price'): void {
-  if (price < 0) {
+  if (price < PRICE_LIMITS.MIN_PRICE) {
     throw new McpError(ErrorCode.InvalidParams, `Invalid ${fieldName}: cannot be negative`)
   }
 
-  if (price > 1000000) {
-    throw new McpError(ErrorCode.InvalidParams, `${fieldName} exceeds maximum: 1,000,000`)
+  if (price > PRICE_LIMITS.MAX_PRICE) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `${fieldName} exceeds maximum: ${PRICE_LIMITS.MAX_PRICE.toLocaleString()}`,
+    )
   }
 
   // Check for reasonable decimal places (prevent precision issues)
   const decimalPlaces = (price.toString().split('.')[1] || '').length
-  if (decimalPlaces > 2) {
+  if (decimalPlaces > PRICE_LIMITS.MAX_PRICE_DECIMAL_PLACES) {
     throw new McpError(
       ErrorCode.InvalidParams,
-      `${fieldName} has too many decimal places: maximum 2`,
+      `${fieldName} has too many decimal places: maximum ${PRICE_LIMITS.MAX_PRICE_DECIMAL_PLACES}`,
     )
   }
 }
@@ -400,8 +422,11 @@ export function validatePagination(page?: number, size?: number): void {
       throw new McpError(ErrorCode.InvalidParams, 'Page number must be at least 1')
     }
 
-    if (page > 10000) {
-      throw new McpError(ErrorCode.InvalidParams, 'Page number exceeds maximum: 10000')
+    if (page > PAGINATION.MAX_PAGE_NUMBER) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Page number exceeds maximum: ${PAGINATION.MAX_PAGE_NUMBER}`,
+      )
     }
   }
 
@@ -410,8 +435,11 @@ export function validatePagination(page?: number, size?: number): void {
       throw new McpError(ErrorCode.InvalidParams, 'Page size must be at least 1')
     }
 
-    if (size > 100) {
-      throw new McpError(ErrorCode.InvalidParams, 'Page size exceeds maximum: 100')
+    if (size > PAGINATION.MAX_PAGE_SIZE) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Page size exceeds maximum: ${PAGINATION.MAX_PAGE_SIZE}`,
+      )
     }
   }
 }
