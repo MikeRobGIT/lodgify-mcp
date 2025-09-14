@@ -104,7 +104,7 @@ Example request:
           }
         }
 
-        const result = await getClient().listThreads(params)
+        const result = await getClient().messaging.listThreads(params)
         return {
           content: [
             {
@@ -173,7 +173,7 @@ Example request:
           throw new McpError(ErrorCode.InvalidParams, 'Message content cannot be empty')
         }
 
-        const result = await getClient().sendMessage(threadGuid, message)
+        const result = await getClient().messaging.sendMessage(threadGuid, message)
         return {
           content: [
             {
@@ -213,7 +213,7 @@ Example request:
           )
         }
 
-        const result = await getClient().markThreadAsRead(threadGuid)
+        const result = await getClient().messaging.markThreadAsRead(threadGuid)
         return {
           content: [
             {
@@ -253,7 +253,7 @@ Example request:
           )
         }
 
-        const result = await getClient().archiveThread(threadGuid)
+        const result = await getClient().messaging.archiveThread(threadGuid)
         return {
           content: [
             {

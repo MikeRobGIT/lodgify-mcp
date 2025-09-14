@@ -1,17 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, mock } from 'bun:test'
 import { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 
 describe('findVacantInventory', () => {
   it('should correctly identify unavailable properties when API returns available: 0', async () => {
     // Mock the availability client
     const mockAvailabilityClient = {
-      getAvailabilityForProperty: vi.fn(),
-      getAvailabilityForRoom: vi.fn(),
+      getAvailabilityForProperty: mock(),
+      getAvailabilityForRoom: mock(),
     }
 
     // Mock the properties client
     const mockPropertiesClient = {
-      listProperties: vi.fn().mockResolvedValue({
+      listProperties: mock().mockResolvedValue({
         data: [
           {
             id: 435705,
@@ -21,7 +21,7 @@ describe('findVacantInventory', () => {
           { id: 435706, name: "MeMe's Place Villas", room_types: [{ id: 501846, name: 'Villas' }] },
         ],
       }),
-      getProperty: vi.fn().mockImplementation((id) => {
+      getProperty: mock().mockImplementation((id) => {
         const properties: Record<
           string,
           { id: number; name: string; rooms: Array<{ id: number; name: string }> }
@@ -100,17 +100,17 @@ describe('findVacantInventory', () => {
 
   it('should correctly handle API response as array instead of object', async () => {
     const mockAvailabilityClient = {
-      getAvailabilityForProperty: vi.fn(),
-      getAvailabilityForRoom: vi.fn(),
+      getAvailabilityForProperty: mock(),
+      getAvailabilityForRoom: mock(),
     }
 
     const mockPropertiesClient = {
-      listProperties: vi.fn().mockResolvedValue({
+      listProperties: mock().mockResolvedValue({
         data: [
           { id: 684871, name: "MeMe's Place Estate", room_types: [{ id: 751918, name: 'Estate' }] },
         ],
       }),
-      getProperty: vi.fn().mockResolvedValue({
+      getProperty: mock().mockResolvedValue({
         id: 684871,
         name: "MeMe's Place Estate",
         room_types: [{ id: 751918, name: 'Estate' }],
@@ -157,12 +157,12 @@ describe('findVacantInventory', () => {
 
   it('should not check room availability when property is unavailable', async () => {
     const mockAvailabilityClient = {
-      getAvailabilityForProperty: vi.fn(),
-      getAvailabilityForRoom: vi.fn(),
+      getAvailabilityForProperty: mock(),
+      getAvailabilityForRoom: mock(),
     }
 
     const mockPropertiesClient = {
-      listProperties: vi.fn().mockResolvedValue({
+      listProperties: mock().mockResolvedValue({
         data: [
           {
             id: 435705,
@@ -171,12 +171,12 @@ describe('findVacantInventory', () => {
           },
         ],
       }),
-      getProperty: vi.fn().mockResolvedValue({
+      getProperty: mock().mockResolvedValue({
         id: 435705,
         name: "MeMe's Place Villa #1",
         room_types: [{ id: 501845, name: 'Room 1' }],
       }),
-      listPropertyRooms: vi.fn().mockResolvedValue([{ id: 501845, name: 'Room 1' }]),
+      listPropertyRooms: mock().mockResolvedValue([{ id: 501845, name: 'Room 1' }]),
     }
 
     const orchestrator = new LodgifyOrchestrator({

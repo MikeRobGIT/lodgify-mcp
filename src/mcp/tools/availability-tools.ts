@@ -45,7 +45,10 @@ Example request:
       },
       handler: wrapToolHandler(async (input) => {
         // Sanitize input
-        const sanitized = sanitizeInput(input)
+        const sanitized = sanitizeInput(input) as {
+          propertyId: string
+          params?: { from?: string; to?: string }
+        }
         const { propertyId, params } = sanitized
 
         // Normalize and validate dates using the centralized date validator
@@ -57,13 +60,13 @@ Example request:
           if (!rv.start.isValid) {
             throw new McpError(
               ErrorCode.InvalidParams,
-              `Invalid from date: ${rv.start.error || rv.start.warning || 'invalid date'}`,
+              `Invalid from date: ${rv.start.feedback?.message || 'invalid date'}`,
             )
           }
           if (!rv.end.isValid) {
             throw new McpError(
               ErrorCode.InvalidParams,
-              `Invalid to date: ${rv.end.error || rv.end.warning || 'invalid date'}`,
+              `Invalid to date: ${rv.end.feedback?.message || 'invalid date'}`,
             )
           }
           if (!rv.rangeValid) {
@@ -143,7 +146,15 @@ Example request:
         },
       },
       handler: wrapToolHandler(async (input) => {
-        const { from, to, propertyIds, includeRooms, limit, wid } = sanitizeInput(input)
+        const sanitized = sanitizeInput(input) as {
+          from: string
+          to: string
+          propertyIds?: Array<string | number>
+          includeRooms?: boolean
+          limit?: number
+          wid?: number
+        }
+        const { from, to, propertyIds, includeRooms, limit, wid } = sanitized
 
         // Validate and normalize dates
         const validator = createValidator(DateToolCategory.AVAILABILITY)
@@ -153,13 +164,13 @@ Example request:
         if (!rv.start.isValid) {
           throw new McpError(
             ErrorCode.InvalidParams,
-            `Invalid from date: ${rv.start.error || rv.start.warning || 'invalid date'}`,
+            `Invalid from date: ${rv.start.feedback?.message || 'invalid date'}`,
           )
         }
         if (!rv.end.isValid) {
           throw new McpError(
             ErrorCode.InvalidParams,
-            `Invalid to date: ${rv.end.error || rv.end.warning || 'invalid date'}`,
+            `Invalid to date: ${rv.end.feedback?.message || 'invalid date'}`,
           )
         }
         if (!rv.rangeValid) {

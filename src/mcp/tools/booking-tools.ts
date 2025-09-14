@@ -294,7 +294,14 @@ Example request:
         },
       },
       handler: wrapToolHandler(async (input) => {
-        const sanitized = sanitizeInput(input)
+        const sanitized = sanitizeInput(input) as {
+          id: string
+          payload: {
+            amount: number
+            currency: string
+            description?: string
+          }
+        }
         const { id, payload } = sanitized
         const result = await getClient().createBookingPaymentLink(id, payload)
 
@@ -337,7 +344,12 @@ Example request:
         },
       },
       handler: wrapToolHandler(async (input) => {
-        const sanitized = sanitizeInput(input)
+        const sanitized = sanitizeInput(input) as {
+          id: number
+          payload: {
+            keyCodes: string[]
+          }
+        }
         const { id, payload } = sanitized
 
         // Additional validation for key codes
@@ -379,7 +391,10 @@ Example request:
         },
       },
       handler: wrapToolHandler(async (input) => {
-        const sanitized = sanitizeInput(input)
+        const sanitized = sanitizeInput(input) as {
+          id: number
+          time: string
+        }
         const { id, time } = sanitized
         const result = await getClient().checkinBooking(id.toString(), time)
         return {
@@ -415,7 +430,10 @@ Example request:
         },
       },
       handler: wrapToolHandler(async (input) => {
-        const sanitized = sanitizeInput(input)
+        const sanitized = sanitizeInput(input) as {
+          id: number
+          time: string
+        }
         const { id, time } = sanitized
         const result = await getClient().checkoutBooking(id.toString(), time)
         return {
@@ -552,13 +570,13 @@ The transformation handles: guest name splitting, room structuring, status capit
         if (!rangeValidation.start.isValid) {
           throw new McpError(
             ErrorCode.InvalidParams,
-            `Arrival date validation failed: ${rangeValidation.start.error}`,
+            `Arrival date validation failed: ${rangeValidation.start.feedback?.message || 'invalid date'}`,
           )
         }
         if (!rangeValidation.end.isValid) {
           throw new McpError(
             ErrorCode.InvalidParams,
-            `Departure date validation failed: ${rangeValidation.end.error}`,
+            `Departure date validation failed: ${rangeValidation.end.feedback?.message || 'invalid date'}`,
           )
         }
         if (!rangeValidation.rangeValid) {
@@ -688,13 +706,13 @@ This gets automatically transformed to the nested API structure with guest objec
           if (!rv.start.isValid) {
             throw new McpError(
               ErrorCode.InvalidParams,
-              `Arrival date validation failed: ${rv.start.error}`,
+              `Arrival date validation failed: ${rv.start.feedback?.message || 'invalid date'}`,
             )
           }
           if (!rv.end.isValid) {
             throw new McpError(
               ErrorCode.InvalidParams,
-              `Departure date validation failed: ${rv.end.error}`,
+              `Departure date validation failed: ${rv.end.feedback?.message || 'invalid date'}`,
             )
           }
           if (!rv.rangeValid) {

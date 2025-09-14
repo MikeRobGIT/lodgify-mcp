@@ -386,23 +386,31 @@ export class LodgifyOrchestrator {
       const propertyId = String(prop.id)
 
       // Fetch availability with details for the given range
-      const availabilityResponse = (await this.availability.getAvailabilityForProperty(propertyId, {
+      const availabilityResponse = await this.availability.getAvailabilityForProperty(propertyId, {
         from,
         to,
-      })) as unknown as Array<{
+      })
+
+      // Handle both array and object response formats
+      let availability: {
         periods?: Array<{
           start: string
           end: string
           available?: number | boolean
           bookings?: Array<{ arrival: string; departure: string }>
         }>
-      }>
+      }
 
-      // The API returns an array, extract the first element's periods
-      const availability =
-        Array.isArray(availabilityResponse) && availabilityResponse.length > 0
-          ? availabilityResponse[0]
-          : { periods: [] }
+      if (Array.isArray(availabilityResponse)) {
+        // If response is an array, take the first element
+        availability = availabilityResponse.length > 0 ? availabilityResponse[0] : { periods: [] }
+      } else if (availabilityResponse && typeof availabilityResponse === 'object') {
+        // If response is already an object, use it directly
+        availability = availabilityResponse as typeof availability
+      } else {
+        // Fallback for unexpected response formats
+        availability = { periods: [] }
+      }
 
       // Determine if any booking overlaps the requested range
       const periods = availability?.periods ?? []
