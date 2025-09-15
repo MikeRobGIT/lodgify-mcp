@@ -1,6 +1,6 @@
 {
   "name": "@mikerob/lodgify-mcp",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Model Context Protocol server for Lodgify Public API - Expose Lodgify endpoints as MCP tools for AI assistants",
   "type": "module",
   "main": "dist/server.js",
@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "dev": "bun src/server.ts",
-    "build": "tsc --strict true && chmod +x dist/server.js",
+    "build": "tsc --strict && chmod +x dist/server.js",
     "start": "node dist/server.js",
     "start:http": "bun src/server-http.ts",
     "start:http:prod": "bun dist/server-http.js",

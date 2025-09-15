@@ -568,7 +568,7 @@ Send a message to a specific conversation thread. Respects read-only mode and wi
 }
 ```
 
-### `lodgify_mark_thread_read`
+### `lodgify_mark_thread_as_read`
 
 Mark a conversation thread as read to clear unread indicators. Respects read-only mode and will be blocked when enabled.
 
@@ -632,8 +632,10 @@ Get availability for a specific property over a period. This is the most accurat
 
 - `propertyId` (required, string): Property ID
 - `params` (optional, object): Query parameters
-  - `from` (optional, string): Start date (YYYY-MM-DD or ISO date-time format)
-  - `to` (optional, string): End date (YYYY-MM-DD or ISO date-time format)
+  - `from` (optional, string): Start date (accepts YYYY-MM-DD or ISO 8601 date-time)
+  - `to` (optional, string): End date (accepts YYYY-MM-DD or ISO 8601 date-time)
+
+Note: When ISO 8601 date-time values are provided for `from`/`to`, the server normalizes them to `YYYY-MM-DD` for validation and request processing.
 
 **Example:**
 
@@ -644,6 +646,37 @@ Get availability for a specific property over a period. This is the most accurat
     "from": "2024-03-01",
     "to": "2024-03-31"
   }
+}
+```
+
+### `lodgify_list_vacant_inventory`
+
+List all properties vacant for a date range, optionally including room details. This aggregates availability across properties, so you can find inventory in one call.
+
+**Parameters:**
+
+- `from` (required, string): Start date (YYYY-MM-DD)
+- `to` (required, string): End date (YYYY-MM-DD)
+- `propertyIds` (optional, array of string/number): Only check these properties
+- `includeRooms` (optional, boolean): Include room types per property (default: true)
+- `limit` (optional, number): Max properties to check when `propertyIds` not provided (default: 25, max: 200)
+- `wid` (optional, number): Optional website ID filter
+
+**How Vacancy is Determined:**
+
+- The tool queries the Lodgify API which returns an array response with availability periods
+- Properties are marked as unavailable when the API returns `available: 0` for the requested date range
+- When a property is unavailable at the property level, all its rooms are automatically marked as unavailable without additional API calls
+- Only rooms in available properties are individually checked for their specific availability
+
+**Example:**
+
+```javascript
+{
+  "from": "2025-11-20",
+  "to": "2025-11-25",
+  "includeRooms": true,
+  "limit": 25
 }
 ```
 

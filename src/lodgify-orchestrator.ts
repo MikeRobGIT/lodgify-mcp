@@ -53,8 +53,40 @@ import type { QuoteParams, QuoteRequest, QuoteResponse } from './api/v2/quotes/t
 import { RatesClient } from './api/v2/rates/index.js'
 import type { DailyRatesResponse, RateSettingsResponse } from './api/v2/rates/schemas.js'
 import type { DailyRatesParams } from './api/v2/rates/types.js'
+import { PAGINATION } from './core/config/constants.js'
 import { ReadOnlyModeError } from './core/errors/read-only-error.js'
 import { safeLogger } from './logger.js'
+
+// Aggregated vacant inventory types
+export interface VacantInventoryParams {
+  from: string
+  to: string
+  propertyIds?: Array<string | number>
+  includeRooms?: boolean
+  limit?: number
+  wid?: number
+}
+
+export interface VacantInventoryRoomResult {
+  id: string
+  name?: string
+  maxOccupancy?: number
+  available: boolean
+}
+
+export interface VacantInventoryPropertyResult {
+  id: string
+  name?: string
+  available: boolean
+  rooms?: VacantInventoryRoomResult[]
+}
+
+export interface VacantInventoryResult {
+  from: string
+  to: string
+  counts: { propertiesChecked: number; availableProperties: number }
+  properties: VacantInventoryPropertyResult[]
+}
 
 /**
  * Lodgify API Orchestrator Configuration
@@ -292,6 +324,362 @@ export class LodgifyOrchestrator {
     params?: AvailabilityQueryParams,
   ): Promise<unknown> {
     return this.availability.getAvailabilityForProperty(propertyId, params)
+  }
+
+  /**
+   * Aggregate: Find vacant inventory (properties and optionally rooms) for a date range
+   * Note: This performs multiple reads (list properties, availability per property, rooms optional).
+   * It determines vacancy by checking if any bookings overlap the range in the availability details.
+   */
+  async findVacantInventory(params: VacantInventoryParams): Promise<VacantInventoryResult> {
+    const {
+      from,
+      to,
+      propertyIds,
+      includeRooms = true,
+      limit = PAGINATION.DEFAULT_VACANT_INVENTORY_LIMIT,
+      wid,
+    } = params
+
+    // Helper: exclusive-end overlap between [aStart, aEnd) and [bStart, bEnd)
+    const toDateOnly = (s: string) => (s.includes('T') ? s.split('T')[0] : s)
+    const toExclusiveMs = (dateStr: string) => {
+      const d = new Date(`${toDateOnly(dateStr)}T00:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + 1)
+      return d.getTime()
+    }
+    const startMs = (dateStr: string) => new Date(`${toDateOnly(dateStr)}T00:00:00Z`).getTime()
+    const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) => {
+      const as = startMs(aStart)
+      const ae = toExclusiveMs(aEnd)
+      const bs = startMs(bStart)
+      const be = toExclusiveMs(bEnd)
+      return as < be && bs < ae
+    }
+
+    // Resolve properties to check
+    let propertiesToCheck: Property[] = []
+    if (propertyIds && propertyIds.length > 0) {
+      // Fetch properties individually
+      const fetched: Property[] = []
+      for (const pid of propertyIds.slice(0, limit)) {
+        try {
+          const p = await this.properties.getProperty(String(pid))
+          if (p) fetched.push(p)
+        } catch (e) {
+          safeLogger.warn('Skipping property due to fetch error', {
+            id: pid,
+            error: (e as Error)?.message,
+          })
+        }
+      }
+      propertiesToCheck = fetched
+    } else {
+      try {
+        const list = await this.properties.listProperties({ limit, ...(wid ? { wid } : {}) })
+
+        // Handle nested response structure from Lodgify API
+        if (list.data && Array.isArray(list.data) && list.data.length > 0) {
+          const firstItem = list.data[0] as unknown as Record<string, unknown>
+
+          // Check if properties are nested in data[0].items
+          if (
+            firstItem &&
+            typeof firstItem === 'object' &&
+            'items' in firstItem &&
+            Array.isArray(firstItem.items)
+          ) {
+            propertiesToCheck = firstItem.items as Property[]
+            safeLogger.debug('Properties extracted from nested structure', {
+              count: propertiesToCheck.length,
+            })
+          }
+          // Check if properties are directly in data array
+          else if (
+            list.data.every((item: unknown) => item && typeof item === 'object' && 'id' in item)
+          ) {
+            propertiesToCheck = list.data as Property[]
+            safeLogger.debug('Properties extracted from direct array', {
+              count: propertiesToCheck.length,
+            })
+          }
+        }
+
+        // If we still don't have properties, try using findProperties as fallback
+        if (!propertiesToCheck.length) {
+          safeLogger.warn('No properties found in list response, trying findProperties fallback')
+          const foundProps = await this.properties.findProperties(undefined, false, limit)
+          propertiesToCheck = []
+
+          // Convert found properties to Property objects
+          for (const prop of foundProps.properties.slice(0, limit)) {
+            try {
+              const fullProp = await this.properties.getProperty(prop.id)
+              if (fullProp) propertiesToCheck.push(fullProp)
+            } catch (e) {
+              safeLogger.warn('Could not fetch property details', {
+                id: prop.id,
+                error: (e as Error)?.message,
+              })
+            }
+          }
+        }
+      } catch (error) {
+        safeLogger.error('Failed to list properties', {
+          error: (error as Error)?.message,
+        })
+        propertiesToCheck = []
+      }
+    }
+
+    const results: VacantInventoryPropertyResult[] = []
+    let availableCount = 0
+
+    // If no properties to check, return early with empty results
+    if (!propertiesToCheck.length) {
+      safeLogger.warn('No properties found to check availability', {
+        from,
+        to,
+        limit,
+        wid,
+        hadPropertyIds: !!propertyIds && propertyIds.length > 0,
+      })
+      return {
+        from,
+        to,
+        counts: {
+          propertiesChecked: 0,
+          availableProperties: 0,
+        },
+        properties: [],
+      }
+    }
+
+    for (const prop of propertiesToCheck) {
+      const propertyId = String(prop.id)
+
+      try {
+        // Fetch availability with details for the given range
+        const availabilityResponse = await this.availability.getAvailabilityForProperty(
+          propertyId,
+          {
+            from,
+            to,
+          },
+        )
+
+        // Handle both array and object response formats
+        let availability: {
+          periods?: Array<{
+            start: string
+            end: string
+            available?: number | boolean
+            bookings?: Array<{ arrival: string; departure: string }>
+          }>
+        }
+
+        if (Array.isArray(availabilityResponse)) {
+          // If response is an array, take the first element
+          availability = availabilityResponse.length > 0 ? availabilityResponse[0] : { periods: [] }
+        } else if (availabilityResponse && typeof availabilityResponse === 'object') {
+          // If response is already an object, use it directly
+          availability = availabilityResponse as typeof availability
+        } else {
+          // Fallback for unexpected response formats
+          availability = { periods: [] }
+        }
+
+        // Determine if any booking overlaps the requested range
+        const periods = availability?.periods ?? []
+        let hasOverlapBooking = false
+        let anyUnavailableFlag = false
+        for (const pr of periods) {
+          if (typeof pr.available !== 'undefined') {
+            // Treat 0/false as unavailable for this period block
+            const availBool = typeof pr.available === 'number' ? pr.available > 0 : !!pr.available
+            if (!availBool && overlaps(pr.start, pr.end, from, to)) {
+              anyUnavailableFlag = true
+            }
+          }
+          if (Array.isArray(pr.bookings)) {
+            for (const b of pr.bookings) {
+              // Handle flexible booking date fields from different API versions
+              const booking = b as {
+                arrival?: string
+                checkIn?: string
+                start?: string
+                from?: string
+                departure?: string
+                checkOut?: string
+                end?: string
+                to?: string
+              }
+              const bStart = booking.arrival || booking.checkIn || booking.start || booking.from
+              const bEnd = booking.departure || booking.checkOut || booking.end || booking.to
+              if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
+                hasOverlapBooking = true
+                break
+              }
+            }
+          }
+          if (hasOverlapBooking) break
+        }
+
+        // Fallback check via bookings endpoint ONLY when no period data is available
+        const hasPeriodData = periods.length > 0
+        if (!hasPeriodData && !hasOverlapBooking && !anyUnavailableFlag) {
+          try {
+            const overlapBookings = await this.bookings.listBookings({
+              propertyId,
+              status: ['booked', 'confirmed'],
+              checkInTo: to,
+              checkOutFrom: from,
+              limit: PAGINATION.DEFAULT_VACANT_INVENTORY_LIMIT,
+            })
+            if (overlapBookings?.data && overlapBookings.data.length > 0) {
+              for (const b of overlapBookings.data) {
+                if (b.checkIn && b.checkOut && overlaps(b.checkIn, b.checkOut, from, to)) {
+                  hasOverlapBooking = true
+                  break
+                }
+              }
+            }
+          } catch (e) {
+            safeLogger.debug('Fallback booking overlap check failed', {
+              id: propertyId,
+              error: (e as Error)?.message,
+            })
+          }
+        }
+
+        const propertyAvailable = !hasOverlapBooking && !anyUnavailableFlag
+
+        const entry: VacantInventoryPropertyResult = {
+          id: propertyId,
+          name: prop.name,
+          available: false, // compute from rooms below when includeRooms=true; otherwise use propertyAvailable
+        }
+
+        if (includeRooms) {
+          const rooms = await this.properties.listPropertyRooms(propertyId)
+          const roomResults: VacantInventoryRoomResult[] = []
+          let anyRoomAvailable = false
+
+          // If the property is unavailable at the property level, all rooms are unavailable
+          if (!propertyAvailable) {
+            for (const r of rooms) {
+              // Handle room data that could be just an ID or a full object
+              const room =
+                typeof r === 'object'
+                  ? (r as { id?: string | number; name?: string; maxOccupancy?: number })
+                  : { id: r }
+              const roomId = String(room.id ?? r)
+              roomResults.push({
+                id: roomId,
+                name: room.name,
+                maxOccupancy: room.maxOccupancy,
+                available: false,
+              })
+            }
+            entry.rooms = roomResults
+            entry.available = false
+          } else {
+            // Property is available at the property level, check individual rooms
+            for (const r of rooms) {
+              // Handle room data that could be just an ID or a full object
+              const room =
+                typeof r === 'object'
+                  ? (r as { id?: string | number; name?: string; maxOccupancy?: number })
+                  : { id: r }
+              const roomId = String(room.id ?? r)
+              // Fetch per-room availability to avoid over-reporting
+              const roomAvailability = (await this.availability.getAvailabilityForRoom(
+                propertyId,
+                roomId,
+                {
+                  from,
+                  to,
+                },
+              )) as unknown as {
+                periods?: Array<{
+                  start: string
+                  end: string
+                  available?: number | boolean
+                  bookings?: Array<{
+                    arrival?: string
+                    departure?: string
+                    checkIn?: string
+                    checkOut?: string
+                  }>
+                }>
+              }
+
+              const rPeriods = roomAvailability?.periods ?? []
+              let roomUnavailable = false
+              for (const pr of rPeriods) {
+                // If any overlapped period is explicitly unavailable, mark room unavailable
+                if (typeof pr.available !== 'undefined') {
+                  const availBool =
+                    typeof pr.available === 'number' ? pr.available > 0 : !!pr.available
+                  if (!availBool && overlaps(pr.start, pr.end, from, to)) {
+                    roomUnavailable = true
+                    break
+                  }
+                }
+                if (Array.isArray(pr.bookings)) {
+                  for (const b of pr.bookings) {
+                    // Handle flexible booking date fields from different API versions
+                    const booking = b as {
+                      arrival?: string
+                      checkIn?: string
+                      departure?: string
+                      checkOut?: string
+                    }
+                    const bStart = booking.arrival || booking.checkIn
+                    const bEnd = booking.departure || booking.checkOut
+                    if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
+                      roomUnavailable = true
+                      break
+                    }
+                  }
+                }
+                if (roomUnavailable) break
+              }
+
+              const roomAvailable = !roomUnavailable
+              if (roomAvailable) anyRoomAvailable = true
+              roomResults.push({
+                id: roomId,
+                name: room.name,
+                maxOccupancy: room.maxOccupancy,
+                available: roomAvailable,
+              })
+            }
+
+            entry.rooms = roomResults
+            entry.available = anyRoomAvailable
+          }
+        } else {
+          entry.available = propertyAvailable
+        }
+
+        if (entry.available) availableCount++
+        results.push(entry)
+      } catch (error) {
+        safeLogger.warn('Failed to check availability for property', {
+          propertyId,
+          error: (error as Error)?.message,
+        })
+        // Skip this property and continue with others
+      }
+    }
+
+    return {
+      from,
+      to,
+      counts: { propertiesChecked: propertiesToCheck.length, availableProperties: availableCount },
+      properties: results,
+    }
   }
 
   // Payment Links backward compatibility

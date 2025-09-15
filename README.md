@@ -196,6 +196,29 @@ All validation feedback includes:
 
 🏗️ **[Architecture →](docs/MODULAR_ARCHITECTURE.md)** - System design and patterns
 
+## Performance Considerations
+
+### Module Size and Bundling
+
+This package uses modular architecture with separate modules for different API endpoints and tool categories. While this improves maintainability and code organization:
+
+- **Bundle Size**: The modular structure may result in larger bundle sizes compared to a monolithic approach
+- **Tree Shaking**: When using bundlers like Webpack or Rollup, ensure tree shaking is enabled to eliminate unused modules
+- **Production Optimization**: Consider using dynamic imports for tools that are not frequently used
+- **Dependency Management**: We use minimal external dependencies to keep the package lean (only essential deps: @modelcontextprotocol/sdk, zod, pino, dotenv)
+
+### Optimization Tips
+
+- **For MCP Server Usage**: The full package is loaded at runtime, which is acceptable for server-side usage
+- **For Library Usage**: If importing specific modules, use direct imports to avoid loading unnecessary code:
+  ```javascript
+  // Good - imports only what's needed
+  import { BookingsClient } from '@mikerob/lodgify-mcp/dist/api/v2/bookings/client.js'
+
+  // Avoid - may import entire orchestrator
+  import { LodgifyOrchestrator } from '@mikerob/lodgify-mcp'
+  ```
+
 ## Support
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/mikerobgit/lodgify-mcp/issues)

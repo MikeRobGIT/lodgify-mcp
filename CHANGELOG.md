@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.18] - 2025-09-14
+
+### Fixed
+
+- **Fixed `lodgify_list_vacant_inventory` availability detection**: The tool now correctly identifies unavailable properties when the Lodgify API returns `available: 0`. Previously, all properties were incorrectly reported as available regardless of their actual availability status.
+- **Improved API response handling**: The tool now properly handles the array response structure returned by the Lodgify availability API, extracting the periods data correctly.
+
+### Technical Details
+
+- Fixed parsing of availability API responses which return an array structure rather than an object
+- Added comprehensive test coverage for vacant inventory functionality
+- Optimized API calls by skipping individual room availability checks when a property is unavailable at the property level
+
 ## [0.1.17] - 2025-09-09
 
 ### Changed

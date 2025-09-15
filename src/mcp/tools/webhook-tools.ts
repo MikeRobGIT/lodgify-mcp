@@ -3,12 +3,14 @@
  * Contains all webhook-related MCP tool registrations
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { WebhookSubscribeRequest } from '../../api/v1/webhooks/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported WebhookEventEnum from '../schemas/common.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { sanitizeInput } from '../utils/input-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Webhooks & Notifications'
@@ -104,7 +106,18 @@ Example request:
             .describe('HTTPS URL endpoint to receive webhook notifications'),
         },
       },
-      handler: wrapToolHandler(async ({ event, target_url }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { event, target_url } = sanitizeInput(input)
+
+        // Additional validation for webhook URL
+        if (!target_url.startsWith('https://')) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Webhook target URL must use HTTPS protocol for security',
+          )
+        }
+
         const subscribeData: WebhookSubscribeRequest = {
           event,
           target_url,
@@ -137,7 +150,9 @@ Example request:
           id: z.string().min(1).describe('Webhook subscription ID to remove'),
         },
       },
-      handler: wrapToolHandler(async ({ id }) => {
+      handler: wrapToolHandler(async (input) => {
+        // Sanitize input
+        const { id } = sanitizeInput(input)
         await getClient().unsubscribeWebhook({ id })
         return {
           content: [
