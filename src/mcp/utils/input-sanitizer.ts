@@ -34,43 +34,65 @@ export type ValidBookingStatus = (typeof VALID_BOOKING_STATUSES)[number]
  * and normalizing data types
  */
 export function sanitizeInput<T extends Record<string, unknown>>(input: T): T {
-  if (!input || typeof input !== 'object') {
-    return input
-  }
+  // Track visited objects to prevent circular reference issues
+  const visited = new WeakSet<object>()
 
-  const sanitized: Record<string, unknown> = {}
-
-  for (const [key, value] of Object.entries(input)) {
-    // Skip undefined values
-    if (value === undefined) {
-      continue
+  function sanitizeWithCircularCheck(obj: unknown): unknown {
+    if (!obj || typeof obj !== 'object') {
+      return obj
     }
 
-    // Handle null values
-    if (value === null) {
-      sanitized[key] = null
-      continue
+    // Check for circular reference
+    if (visited.has(obj as object)) {
+      // Return a placeholder for circular references
+      return '[Circular Reference]'
     }
 
-    // Recursively sanitize nested objects
-    if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
-      sanitized[key] = sanitizeInput(value as Record<string, unknown>)
-      continue
-    }
+    // Mark this object as visited
+    visited.add(obj as object)
 
-    // Sanitize arrays
-    if (Array.isArray(value)) {
-      sanitized[key] = value.map((item) =>
-        typeof item === 'object' && item !== null ? sanitizeInput(item) : sanitizeValue(item),
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      return obj.map((item) =>
+        typeof item === 'object' && item !== null
+          ? sanitizeWithCircularCheck(item)
+          : sanitizeValue(item),
       )
-      continue
     }
 
-    // Sanitize individual values
-    sanitized[key] = sanitizeValue(value)
+    // Handle Date objects
+    if (obj instanceof Date) {
+      return obj
+    }
+
+    // Handle regular objects
+    const sanitized: Record<string, unknown> = {}
+
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip undefined values
+      if (value === undefined) {
+        continue
+      }
+
+      // Handle null values
+      if (value === null) {
+        sanitized[key] = null
+        continue
+      }
+
+      // Recursively sanitize nested objects and arrays
+      if (typeof value === 'object') {
+        sanitized[key] = sanitizeWithCircularCheck(value)
+      } else {
+        // Sanitize individual values
+        sanitized[key] = sanitizeValue(value)
+      }
+    }
+
+    return sanitized
   }
 
-  return sanitized as T
+  return sanitizeWithCircularCheck(input) as T
 }
 
 /**

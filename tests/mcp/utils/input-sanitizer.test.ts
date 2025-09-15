@@ -207,8 +207,10 @@ describe('Input Sanitizer', () => {
       const obj: any = { a: 'test' }
       obj.circular = obj
 
-      // Current implementation doesn't handle circular references - it will throw
-      expect(() => sanitizeInput(obj)).toThrow(RangeError)
+      // Should handle circular references by replacing them with a placeholder
+      const result = sanitizeInput(obj)
+      expect(result.a).toBe('test')
+      expect(result.circular).toBe('[Circular Reference]')
     })
 
     it('should sanitize URL query parameters', () => {
