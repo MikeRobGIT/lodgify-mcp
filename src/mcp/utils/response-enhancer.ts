@@ -99,7 +99,59 @@ export interface EnhanceOptions {
 }
 
 /**
- * Format currency values
+ * Comprehensive currency symbols mapping
+ */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  // Major currencies
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  CNY: '¥',
+  // Commonwealth currencies
+  AUD: 'A$',
+  CAD: 'C$',
+  NZD: 'NZ$',
+  // European currencies
+  CHF: 'Fr.',
+  SEK: 'kr',
+  NOK: 'kr',
+  DKK: 'kr',
+  PLN: 'zł',
+  CZK: 'Kč',
+  HUF: 'Ft',
+  // Asian currencies
+  INR: '₹',
+  KRW: '₩',
+  THB: '฿',
+  SGD: 'S$',
+  HKD: 'HK$',
+  TWD: 'NT$',
+  PHP: '₱',
+  IDR: 'Rp',
+  MYR: 'RM',
+  VND: '₫',
+  // Middle East & Africa
+  AED: 'د.إ',
+  SAR: '﷼',
+  ILS: '₪',
+  ZAR: 'R',
+  EGP: 'E£',
+  // Americas
+  BRL: 'R$',
+  MXN: '$',
+  ARS: '$',
+  COP: '$',
+  CLP: '$',
+  PEN: 'S/',
+  // Other
+  RUB: '₽',
+  TRY: '₺',
+  UAH: '₴',
+}
+
+/**
+ * Format currency values with expanded symbol support
  */
 export function formatCurrency(amount: number | undefined, currency?: string): string {
   if (amount === undefined || amount === null) return 'N/A'
@@ -115,22 +167,26 @@ export function formatCurrency(amount: number | undefined, currency?: string): s
     // Check if the formatter used the generic currency symbol
     // This happens for unknown currency codes
     if (formatted.includes('¤')) {
+      // Try to use a known symbol from our mapping
+      const symbol = CURRENCY_SYMBOLS[targetCurrency] || targetCurrency
       const plainFormatted = amount.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
-      return `${targetCurrency} ${plainFormatted}`
+      return `${symbol} ${plainFormatted}`
     }
 
     return formatted
   } catch (e) {
     // Fallback for invalid currency codes, which throw a RangeError
     if (e instanceof RangeError) {
+      // Try to use a known symbol from our mapping
+      const symbol = CURRENCY_SYMBOLS[targetCurrency] || targetCurrency
       const formatted = amount.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
-      return `${targetCurrency} ${formatted}`
+      return `${symbol} ${formatted}`
     }
     // Re-throw other errors
     throw e
@@ -167,9 +223,11 @@ export function formatDate(date: string | undefined | unknown, includeTime = fal
 
 /**
  * Calculate nights between dates
+ * Handles timezone edge cases by normalizing to UTC midnight
  */
 export function calculateNights(checkIn: string, checkOut: string): number {
   try {
+    // Parse dates and normalize to UTC midnight to avoid timezone issues
     const start = new Date(checkIn)
     const end = new Date(checkOut)
 
@@ -178,9 +236,16 @@ export function calculateNights(checkIn: string, checkOut: string): number {
       return 0
     }
 
-    const diffTime = end.getTime() - start.getTime()
+    // Normalize to UTC midnight to handle cross-timezone calculations
+    // This ensures consistent behavior regardless of local timezone
+    const startUTC = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
+    const endUTC = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate())
+
+    const diffTime = endUTC - startUTC
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+
+    // Ensure non-negative result
+    return Math.max(0, diffDays)
   } catch {
     return 0
   }

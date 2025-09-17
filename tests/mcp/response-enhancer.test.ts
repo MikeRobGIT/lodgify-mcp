@@ -35,6 +35,62 @@ describe('Response Enhancer', () => {
     it('should default to USD when currency not specified', () => {
       expect(formatCurrency(100)).toBe('$100.00')
     })
+
+    it('should format expanded currency list correctly', () => {
+      // Test both Intl-supported and fallback currencies
+      // Note: Intl.NumberFormat support varies by environment
+
+      // Major currencies with well-known symbols
+      expect(formatCurrency(1000, 'INR')).toBe('₹1,000.00')
+      expect(formatCurrency(1000, 'KRW')).toMatch(/₩1,000/) // KRW doesn't use decimals
+      expect(formatCurrency(1000, 'JPY')).toMatch(/¥1,000/) // JPY doesn't use decimals
+
+      // Asian currencies - Intl may return code or symbol depending on environment
+      // Note: Intl.NumberFormat may use non-breaking spaces (\u00A0) instead of regular spaces
+      expect(formatCurrency(1000, 'THB')).toMatch(/THB[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'SGD')).toMatch(/SGD[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'HKD')).toBe('HK$1,000.00')
+      expect(formatCurrency(1000, 'TWD')).toBe('NT$1,000.00')
+      expect(formatCurrency(1000, 'PHP')).toBe('₱1,000.00')
+      expect(formatCurrency(1000, 'IDR')).toMatch(/IDR[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'MYR')).toMatch(/MYR[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'VND')).toMatch(/₫1,000|VND/)
+
+      // Commonwealth currencies - AUD and CAD work with Intl
+      expect(formatCurrency(1000, 'AUD')).toMatch(/A?\$1,000.00/)
+      expect(formatCurrency(1000, 'CAD')).toMatch(/C?\$1,000.00/)
+      expect(formatCurrency(1000, 'NZD')).toBe('NZ$1,000.00')
+
+      // European currencies - Most work with Intl
+      expect(formatCurrency(1000, 'CHF')).toMatch(/1,000/) // CHF formatting varies
+      expect(formatCurrency(1000, 'SEK')).toMatch(/1,000/) // SEK formatting varies
+      expect(formatCurrency(1000, 'NOK')).toMatch(/1,000/) // NOK formatting varies
+      expect(formatCurrency(1000, 'DKK')).toMatch(/1,000/) // DKK formatting varies
+      expect(formatCurrency(1000, 'PLN')).toMatch(/1,000/) // PLN formatting varies
+      expect(formatCurrency(1000, 'CZK')).toMatch(/1,000/) // CZK formatting varies
+      expect(formatCurrency(1000, 'HUF')).toMatch(/1,000/) // HUF formatting varies
+
+      // Middle East & Africa - Most are recognized but return code instead of symbol
+      // Note: May have non-breaking spaces from Intl.NumberFormat
+      expect(formatCurrency(1000, 'AED')).toMatch(/AED[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'SAR')).toMatch(/SAR[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'ILS')).toMatch(/1,000/) // ILS may be supported by Intl
+      expect(formatCurrency(1000, 'ZAR')).toMatch(/ZAR[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'EGP')).toMatch(/EGP[\s\u00A0]1,000\.00/)
+
+      // Americas - Most are recognized by Intl but formatting varies
+      expect(formatCurrency(1000, 'BRL')).toMatch(/1,000/) // BRL formatting varies
+      expect(formatCurrency(1000, 'MXN')).toMatch(/1,000/) // MXN formatting varies
+      expect(formatCurrency(1000, 'ARS')).toMatch(/ARS[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'COP')).toMatch(/COP[\s\u00A0]1,000\.00/)
+      expect(formatCurrency(1000, 'CLP')).toMatch(/CLP[\s\u00A0]1,000/)
+      expect(formatCurrency(1000, 'PEN')).toMatch(/PEN[\s\u00A0]1,000/)
+
+      // Other currencies - Most are recognized by Intl
+      expect(formatCurrency(1000, 'RUB')).toMatch(/1,000/) // RUB formatting varies
+      expect(formatCurrency(1000, 'TRY')).toMatch(/1,000/) // TRY formatting varies
+      expect(formatCurrency(1000, 'UAH')).toMatch(/UAH[\s\u00A0]1,000\.00/)
+    })
   })
 
   describe('formatDate', () => {
@@ -69,6 +125,35 @@ describe('Response Enhancer', () => {
     it('should handle invalid dates', () => {
       expect(calculateNights('invalid', '2024-03-20')).toBe(0)
       expect(calculateNights('2024-03-15', 'invalid')).toBe(0)
+    })
+
+    it('should handle timezone edge cases correctly', () => {
+      // Test with ISO 8601 dates that include time components
+      expect(calculateNights('2024-03-15T23:59:59Z', '2024-03-20T00:00:01Z')).toBe(5)
+      expect(calculateNights('2024-03-15T00:00:01Z', '2024-03-16T23:59:59Z')).toBe(1)
+
+      // Test with dates across timezone boundaries
+      // Note: This date range actually represents March 16 01:00 UTC to March 19 23:00 UTC = 3 nights
+      expect(calculateNights('2024-03-15T20:00:00-05:00', '2024-03-19T23:00:00+00:00')).toBe(3)
+
+      // Test that it returns 0 for same day regardless of time
+      expect(calculateNights('2024-03-15T00:00:00Z', '2024-03-15T23:59:59Z')).toBe(0)
+    })
+
+    it('should ensure non-negative results', () => {
+      // Test that reversed dates return 0, not negative
+      expect(calculateNights('2024-03-20', '2024-03-15')).toBe(0)
+      expect(calculateNights('2024-03-16', '2024-03-15')).toBe(0)
+    })
+
+    it('should handle cross-month and cross-year calculations', () => {
+      // Cross-month
+      expect(calculateNights('2024-02-28', '2024-03-01')).toBe(2) // Leap year
+      expect(calculateNights('2023-02-28', '2023-03-01')).toBe(1) // Non-leap year
+
+      // Cross-year
+      expect(calculateNights('2023-12-30', '2024-01-02')).toBe(3)
+      expect(calculateNights('2023-12-31', '2024-01-01')).toBe(1)
     })
   })
 
