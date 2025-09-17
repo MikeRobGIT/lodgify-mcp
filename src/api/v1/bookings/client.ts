@@ -77,7 +77,10 @@ export class BookingsV1Client extends BaseApiModule {
 
     // Lodgify v1 API returns just the booking ID as a plain integer on success
     // Check if the response is a simple number (either as number or string)
-    if (typeof result === 'number' || (typeof result === 'string' && NUMERIC_ID_PATTERN.test(result))) {
+    if (
+      typeof result === 'number' ||
+      (typeof result === 'string' && NUMERIC_ID_PATTERN.test(result))
+    ) {
       const bookingId = typeof result === 'number' ? result : parseInt(result, 10)
 
       safeLogger.info('Booking created successfully', {
