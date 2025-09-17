@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.19] - 2025-09-17
+
+### Added
+
+- **Enhanced API Response Handling**: New response enhancer utility functions that provide improved formatting, validation, and processing of API responses across all MCP tools
+- **Comprehensive Test Coverage**: Added extensive unit tests for the new response enhancement functionality
+
+### Changed
+
+- **Booking Tools Enhancement**: Improved response handling for booking operations with better data structure formatting and enhanced validation
+- **Messaging Tools Enhancement**: Enhanced message thread handling with improved response formatting and metadata extraction
+- **Rate Tools Enhancement**: Improved rate response processing with better data normalization and validation
+- **Webhook Tools Enhancement**: Enhanced webhook subscription responses with clearer formatting and improved error messages
+- **API Client Improvements**: Enhanced v1 bookings client with better response handling and improved error reporting
+
+### Technical Details
+
+- Introduced centralized response enhancement module (`src/mcp/utils/response-enhancer.ts`) with 665+ lines of utility functions
+- Added 310+ lines of comprehensive test coverage for response enhancement functionality
+- Improved consistency across all tool responses with standardized formatting patterns
+- Enhanced data validation and type safety across API responses
+- Better separation of concerns with dedicated response processing utilities
+
 ## [0.1.18] - 2025-09-14
 
 ### Fixed
