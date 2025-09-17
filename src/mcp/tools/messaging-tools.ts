@@ -10,6 +10,7 @@ import { isISODateTime } from '../utils/date-format.js'
 // Types from messaging API (imported for reference but not used in declarations)
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput, validateGuid } from '../utils/input-sanitizer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response-enhancer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Messaging & Communication'
@@ -174,11 +175,19 @@ Example request:
         }
 
         const result = await getClient().messaging.sendMessage(threadGuid, message)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'create',
+          entityType: 'message',
+          inputParams: { threadGuid, message },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -214,11 +223,19 @@ Example request:
         }
 
         const result = await getClient().messaging.markThreadAsRead(threadGuid)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result || { success: true }, {
+          operationType: 'action',
+          entityType: 'thread',
+          inputParams: { threadGuid, action: 'read' },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -254,11 +271,19 @@ Example request:
         }
 
         const result = await getClient().messaging.archiveThread(threadGuid)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result || { success: true }, {
+          operationType: 'action',
+          entityType: 'thread',
+          inputParams: { threadGuid, action: 'archived' },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }

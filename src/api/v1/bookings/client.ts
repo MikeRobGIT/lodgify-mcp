@@ -66,9 +66,58 @@ export class BookingsV1Client extends BaseApiModule {
     // Transform flat structure to API's nested structure
     const apiRequest = this.transformToApiRequest(booking)
 
-    return this.request<BookingV1Response>('POST', '', {
+    const result = await this.request<BookingV1Response | string>('POST', '', {
       body: apiRequest,
     })
+
+    // Lodgify v1 API returns just the booking ID as a plain integer on success
+    // Check if the response is a simple number (either as number or string)
+    if (typeof result === 'number' || (typeof result === 'string' && /^\d+$/.test(result))) {
+      const bookingId = typeof result === 'number' ? result : parseInt(result, 10)
+
+      safeLogger.info('Booking created successfully', {
+        bookingId,
+        property_id: booking.property_id,
+        arrival: booking.arrival,
+        departure: booking.departure,
+        guest_name: booking.guest_name,
+      })
+
+      // Return a proper booking response with the ID
+      return {
+        id: bookingId,
+        property_id: booking.property_id,
+        arrival: booking.arrival,
+        departure: booking.departure,
+        guest_name: booking.guest_name,
+        guest_email: booking.guest_email,
+        guest_phone: booking.guest_phone,
+        adults: booking.adults,
+        children: booking.children,
+        infants: booking.infants,
+        status: booking.status || 'booked',
+        source: booking.source,
+        room_type_id: booking.room_type_id,
+      }
+    }
+
+    // If result is an empty object, the booking may have failed
+    if (!result || (typeof result === 'object' && Object.keys(result).length === 0)) {
+      safeLogger.error('Booking creation failed - API returned empty response', {
+        property_id: booking.property_id,
+        arrival: booking.arrival,
+        departure: booking.departure,
+        guest_name: booking.guest_name,
+      })
+
+      throw new Error(
+        'Booking creation failed. The API returned an empty response. ' +
+          'Please check the property availability, dates, and ensure all required fields are valid.',
+      )
+    }
+
+    // If we got a full booking object, return it
+    return result as BookingV1Response
   }
 
   /**

@@ -19,6 +19,7 @@ import {
 } from '../utils/date-validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput, validateDatePair } from '../utils/input-sanitizer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response-enhancer.js'
 import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
@@ -434,11 +435,18 @@ Example request:
         // Debug logging
         debugLogResponse('Update rates API response', result)
 
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'update',
+          entityType: 'rate',
+          inputParams: sanitized,
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: safeJsonStringify(result),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -577,11 +585,18 @@ Example response:
         // Debug logging
         debugLogResponse('Create booking quote response', result)
 
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'create',
+          entityType: 'quote',
+          inputParams: { bookingId, payload },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: safeJsonStringify(result),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }

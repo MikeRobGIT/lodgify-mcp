@@ -11,6 +11,7 @@ import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 // Previously imported WebhookEventEnum from '../schemas/common.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response-enhancer.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Webhooks & Notifications'
@@ -123,11 +124,19 @@ Example request:
           target_url,
         }
         const result = await getClient().subscribeWebhook(subscribeData)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'create',
+          entityType: 'webhook',
+          inputParams: subscribeData as unknown as Record<string, unknown>,
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -154,11 +163,22 @@ Example request:
         // Sanitize input
         const { id } = sanitizeInput(input)
         await getClient().unsubscribeWebhook({ id })
+
+        // Enhance the response with context (unsubscribe returns void, so we create a success response)
+        const enhanced = enhanceResponse(
+          { success: true, webhookId: id },
+          {
+            operationType: 'delete',
+            entityType: 'webhook',
+            inputParams: { webhookId: id },
+          },
+        )
+
         return {
           content: [
             {
               type: 'text',
-              text: `Successfully unsubscribed from webhook: ${id}`,
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
