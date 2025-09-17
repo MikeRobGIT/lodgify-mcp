@@ -104,26 +104,37 @@ export interface EnhanceOptions {
 export function formatCurrency(amount: number | undefined, currency?: string): string {
   if (amount === undefined || amount === null) return 'N/A'
 
-  const currencySymbols: Record<string, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    JPY: '¥',
-    AUD: 'A$',
-    CAD: 'C$',
-    CHF: 'CHF',
-    CNY: '¥',
-    SEK: 'kr',
-    NZD: 'NZ$',
+  const targetCurrency = currency || 'USD'
+
+  try {
+    const formatted = amount.toLocaleString('en-US', {
+      style: 'currency',
+      currency: targetCurrency,
+    })
+
+    // Check if the formatter used the generic currency symbol
+    // This happens for unknown currency codes
+    if (formatted.includes('¤')) {
+      const plainFormatted = amount.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      return `${targetCurrency} ${plainFormatted}`
+    }
+
+    return formatted
+  } catch (e) {
+    // Fallback for invalid currency codes, which throw a RangeError
+    if (e instanceof RangeError) {
+      const formatted = amount.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      return `${targetCurrency} ${formatted}`
+    }
+    // Re-throw other errors
+    throw e
   }
-
-  const symbol = currency ? currencySymbols[currency] || `${currency} ` : '$'
-  const formatted = amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-
-  return `${symbol}${formatted}`
 }
 
 /**
@@ -167,8 +178,8 @@ export function calculateNights(checkIn: string, checkOut: string): number {
       return 0
     }
 
-    const diffTime = Math.abs(end.getTime() - start.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const diffTime = end.getTime() - start.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
     return diffDays
   } catch {
     return 0
@@ -196,8 +207,11 @@ function generateSummary(
           return `${statusText} created payment link for ${details.amount || 'booking'}`
         case 'quote': {
           // For quotes, prefer the bookingId from details (which comes from inputParams)
-          const bookingId = details.bookingId || details.quoteId || ''
-          return `${statusText} created quote for booking ${bookingId}`
+          const bookingId = details.bookingId
+          if (bookingId) {
+            return `${statusText} created quote for booking ${bookingId}`
+          }
+          return `${statusText} created quote ${details.quoteId || ''}`.trim()
         }
         case 'webhook':
           return `${statusText} subscribed to ${details.event || 'event'} webhook`

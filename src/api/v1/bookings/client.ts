@@ -22,6 +22,11 @@ import type {
 } from './types.js'
 
 /**
+ * Regex pattern to match numeric ID responses from the API
+ */
+const NUMERIC_ID_PATTERN = /^\d+$/
+
+/**
  * V1 Bookings API Client
  * Provides access to v1-only booking operations like create, update, and delete
  * These endpoints are not available in the v2 API
@@ -72,7 +77,7 @@ export class BookingsV1Client extends BaseApiModule {
 
     // Lodgify v1 API returns just the booking ID as a plain integer on success
     // Check if the response is a simple number (either as number or string)
-    if (typeof result === 'number' || (typeof result === 'string' && /^\d+$/.test(result))) {
+    if (typeof result === 'number' || (typeof result === 'string' && NUMERIC_ID_PATTERN.test(result))) {
       const bookingId = typeof result === 'number' ? result : parseInt(result, 10)
 
       safeLogger.info('Booking created successfully', {
@@ -83,21 +88,11 @@ export class BookingsV1Client extends BaseApiModule {
         guest_name: booking.guest_name,
       })
 
-      // Return a proper booking response with the ID
+      // Return a proper booking response by spreading the original request and adding the new ID
       return {
+        ...booking,
         id: bookingId,
-        property_id: booking.property_id,
-        arrival: booking.arrival,
-        departure: booking.departure,
-        guest_name: booking.guest_name,
-        guest_email: booking.guest_email,
-        guest_phone: booking.guest_phone,
-        adults: booking.adults,
-        children: booking.children,
-        infants: booking.infants,
         status: booking.status || 'booked',
-        source: booking.source,
-        room_type_id: booking.room_type_id,
       }
     }
 
