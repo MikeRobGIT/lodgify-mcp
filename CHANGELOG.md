@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.20] - 2025-09-19
+
+### Added
+
+- **Enhanced Response System**: Complete overhaul of response handling with new modular utility system including response builders, validators, and formatters
+- **Internationalization (i18n)**: Added multi-language support for validation messages (English, Spanish, French) with centralized resource management
+- **Advanced Date Handling**: New date validation and formatting utilities with comprehensive ISO 8601 support and relative date calculation
+- **Currency Formatting**: Professional currency display utilities supporting multiple locales and formats
+- **Entity Extraction**: Smart extraction of IDs, names, and metadata from API responses
+- **Suggestion Generation**: Intelligent context-aware suggestions for user guidance based on API responses
+- **Summary Generation**: Automatic generation of human-readable summaries from complex API data
+- **JSON Sanitization**: Enhanced data sanitization for secure response handling
+- **GitHub Copilot Instructions**: Added `.github/copilot-instructions.md` for AI-assisted development guidance
+
+### Changed
+
+- **Response Architecture**: Refactored response enhancement from single module to modular system (`src/mcp/utils/response/`) with specialized components
+- **Booking Tools**: Enhanced with response builders, validation, and improved error messages with actionable suggestions
+- **Date Validation**: Significantly enhanced date validator with 580+ lines of comprehensive validation logic and i18n support
+- **Test Coverage**: Expanded test suite with 800+ new test lines covering response enhancement, i18n, and edge cases
+- **Documentation**: Added DeepWiki badge to README for improved visibility
+
+### Removed
+
+- **Example Files**: Removed outdated example files (`check-availability.js`, `create-quote.js`, `handle-errors.js`, `list-properties.js`) in favor of documentation
+
+### Technical Details
+
+- Introduced modular response system with `builder.ts`, `validators.ts`, `types.ts`, and `index.ts` for better separation of concerns
+- Added comprehensive i18n system with resource bundles and translation support across 3 languages
+- Enhanced date utilities relocated to `src/mcp/utils/date/` with specialized modules for formatting and validation
+- New utility modules: `entity-extractors.ts`, `suggestion-generator.ts`, `summary-generator.ts`, `currency-formatter.ts`
+- Added 1000+ lines of new test coverage including response enhancement, i18n resources, and ISO 8601 edge cases
+- Improved type safety with dedicated TypeScript types for response structures
+
 ## [0.1.19] - 2025-09-17
 
 ### Added
