@@ -96,6 +96,67 @@ export function generateSuggestions(
         'Document backup entry method',
       )
       break
+
+    case 'vacant_inventory': {
+      // Check if any properties are available
+      const availableCount = Number(details.availableProperties || details.vacantCount || 0)
+      const checkedCount = Number(details.propertiesChecked || 0)
+      const hasDiagnostics = details.hasDiagnostics === true
+
+      if (availableCount > 0) {
+        suggestions.push(
+          `${availableCount} vacant ${availableCount === 1 ? 'property is' : 'properties are'} available for booking`,
+          'Review individual property details for specific availability',
+          'Consider pricing strategies for vacant properties',
+          'Create special offers for last-minute bookings',
+        )
+        if (details.includesRoomDetails && details.availableRooms) {
+          suggestions.push(
+            `${details.availableRooms} individual rooms available across properties`,
+            'Check room-specific amenities and capacities',
+          )
+        }
+      } else if (checkedCount > 0) {
+        suggestions.push(
+          'No properties are vacant for the selected dates',
+          'Try adjusting the date range for different availability',
+          'Consider checking additional properties not in the current search',
+          'Review booking patterns to optimize occupancy',
+        )
+      } else {
+        suggestions.push(
+          'Unable to retrieve property availability',
+          'Verify API credentials and permissions',
+          'Check if properties exist in the account',
+          'Contact support if the issue persists',
+        )
+      }
+
+      // Add diagnostic-specific suggestions
+      if (hasDiagnostics) {
+        const issuesIdentified = Number(details.issuesIdentified || 0)
+        if (issuesIdentified > 0) {
+          suggestions.push(
+            `Review ${issuesIdentified} identified issues in diagnostics`,
+            'Check API response format compatibility',
+            'Verify property data structure matches expectations',
+          )
+        }
+        if (details.apiCallsCount) {
+          suggestions.push(
+            `${details.apiCallsCount} API calls were made to gather availability data`,
+          )
+        }
+      }
+
+      // Add filter-specific suggestions
+      if (details.filteredByPropertyIds) {
+        suggestions.push(
+          `Search was limited to ${details.filteredByPropertyIds} specific properties`,
+        )
+      }
+      break
+    }
   }
 
   return suggestions

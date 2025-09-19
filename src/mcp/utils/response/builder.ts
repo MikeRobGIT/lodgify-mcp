@@ -9,6 +9,7 @@ import {
   extractMessageDetails,
   extractPaymentLinkDetails,
   extractRateDetails,
+  extractVacantInventoryDetails,
   extractWebhookDetails,
 } from '../entity-extractors.js'
 import { getNestedValue, getString, getStringOrNumber } from '../helpers.js'
@@ -80,6 +81,9 @@ export function extractEntityDetails(
       }
       break
     }
+    case 'vacant_inventory':
+      details = extractVacantInventoryDetails(apiData, inputParams)
+      break
     default: {
       // Generic details extraction
       const id = getStringOrNumber(apiData.id) // Handle numeric IDs

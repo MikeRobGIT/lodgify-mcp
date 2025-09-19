@@ -93,6 +93,8 @@ export interface Property {
 
 /**
  * Properties list response
+ * The actual API returns { count, items } structure
+ * We maintain 'data' for backward compatibility and transform in the client
  */
 export interface PropertiesListResponse {
   data: Property[]
@@ -102,6 +104,15 @@ export interface PropertiesListResponse {
     offset: number
     total: number
   }
+}
+
+/**
+ * Actual API response structure from Lodgify v2 Properties endpoint
+ * Based on API documentation: returns { count: int32 | null, items: array | null }
+ */
+export interface PropertiesApiResponse {
+  count: number | null
+  items: Property[] | null
 }
 
 /**

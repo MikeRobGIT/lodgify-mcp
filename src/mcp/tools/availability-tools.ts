@@ -10,6 +10,7 @@ import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { createValidator, DateToolCategory } from '../utils/date/validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
+import { enhanceResponse } from '../utils/response/builder.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -143,6 +144,7 @@ Example request:
             .default(25)
             .describe('Max number of properties when propertyIds not provided'),
           wid: z.number().int().optional().describe('Website ID filter (if supported)'),
+          debug: z.boolean().optional().describe('Include diagnostic information in response'),
         },
       },
       handler: wrapToolHandler(async (input) => {
@@ -153,8 +155,9 @@ Example request:
           includeRooms?: boolean
           limit?: number
           wid?: number
+          debug?: boolean
         }
-        const { from, to, propertyIds, includeRooms, limit, wid } = sanitized
+        const { from, to, propertyIds, includeRooms, limit, wid, debug } = sanitized
 
         // Validate and normalize dates
         const validator = createValidator(DateToolCategory.AVAILABILITY)
@@ -189,11 +192,38 @@ Example request:
           wid,
         })
 
+        // Determine if operation was successful based on the result
+        const hasIssues =
+          result.diagnostics?.possibleIssues && result.diagnostics.possibleIssues.length > 0
+        const hasProperties = result.properties && result.properties.length > 0
+        const status =
+          hasIssues && !hasProperties ? 'failed' : hasProperties ? 'success' : 'partial'
+
+        // Use response enhancer for better formatting
+        const enhanced = enhanceResponse(result, {
+          operationType: 'read',
+          entityType: 'vacant_inventory',
+          status,
+          inputParams: sanitized,
+        })
+
+        // Remove diagnostics from the enhanced response if debug is not enabled
+        if (
+          !debug &&
+          enhanced.data &&
+          typeof enhanced.data === 'object' &&
+          'diagnostics' in enhanced.data
+        ) {
+          const responseData = { ...enhanced.data }
+          delete responseData.diagnostics
+          enhanced.data = responseData
+        }
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }

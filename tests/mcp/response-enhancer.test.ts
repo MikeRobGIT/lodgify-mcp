@@ -396,6 +396,99 @@ describe('Response Enhancer', () => {
       expect(keyCodeDetails.codesUpdated).toBe(0)
       expect(keyCodeDetails.codes).toEqual([])
     })
+
+    it('should extract vacant inventory details correctly', () => {
+      const apiData = {
+        from: '2025-03-01',
+        to: '2025-03-07',
+        counts: {
+          propertiesRequested: 10,
+          propertiesFound: 8,
+          propertiesChecked: 7,
+          availableProperties: 5,
+        },
+        properties: [
+          { id: '101', name: 'Beach House', available: true, rooms: [] },
+          {
+            id: '102',
+            name: 'Mountain Cabin',
+            available: true,
+            rooms: [
+              { id: 'r1', available: true },
+              { id: 'r2', available: false },
+            ],
+          },
+          { id: '103', name: 'City Apt', available: false, rooms: [] },
+        ],
+        diagnostics: {
+          apiCalls: [
+            { endpoint: '/properties', itemsFound: 10 },
+            { endpoint: '/availability', itemsFound: 7 },
+          ],
+          possibleIssues: ['API rate limit warning'],
+        },
+      }
+
+      const inputParams = {
+        from: '2025-03-01',
+        to: '2025-03-07',
+        propertyIds: ['101', '102', '103'],
+        includeRooms: true,
+      }
+
+      const details = extractEntityDetails('vacant_inventory', apiData, inputParams)
+
+      // Date range
+      expect(details.dateRange).toBe('March 1, 2025 to March 7, 2025')
+      expect(details.from).toBe('March 1, 2025')
+      expect(details.to).toBe('March 7, 2025')
+
+      // Counts
+      expect(details.propertiesRequested).toBe(10)
+      expect(details.propertiesFound).toBe(8)
+      expect(details.propertiesChecked).toBe(7)
+      expect(details.availableProperties).toBe(5)
+      expect(details.vacantCount).toBe(5)
+      expect(details.propertiesReturned).toBe(3)
+
+      // Room details
+      expect(details.includesRoomDetails).toBe(true)
+      expect(details.totalRooms).toBe(2)
+      expect(details.availableRooms).toBe(1)
+
+      // Diagnostics
+      expect(details.hasDiagnostics).toBe(true)
+      expect(details.apiCallsCount).toBe(2)
+      expect(details.issuesIdentified).toBe(1)
+
+      // Search filters
+      expect(details.filteredByPropertyIds).toBe(3)
+      expect(details.roomDetailsRequested).toBe(true)
+    })
+
+    it('should handle vacant inventory with no available properties', () => {
+      const apiData = {
+        from: '2025-04-01',
+        to: '2025-04-05',
+        counts: {
+          propertiesChecked: 5,
+          availableProperties: 0,
+        },
+        properties: [],
+      }
+
+      const inputParams = {
+        from: '2025-04-01',
+        to: '2025-04-05',
+      }
+
+      const details = extractEntityDetails('vacant_inventory', apiData, inputParams)
+
+      expect(details.propertiesChecked).toBe(5)
+      expect(details.availableProperties).toBe(0)
+      expect(details.vacantCount).toBe(0)
+      expect(details.propertiesReturned).toBe(0)
+    })
   })
 
   describe('enhanceResponse', () => {
@@ -610,6 +703,102 @@ describe('Response Enhancer', () => {
       expect(enhanced.details.quoteId).toBe('quote_123')
       expect(enhanced.details.totalPrice).toBe('$2,000.00')
       expect(enhanced.details.validUntil).toContain('April 15, 2024')
+    })
+
+    it('should enhance vacant inventory response with available properties', () => {
+      const data = {
+        from: '2025-05-01',
+        to: '2025-05-07',
+        counts: {
+          propertiesChecked: 10,
+          availableProperties: 7,
+          unavailableProperties: 3,
+        },
+        properties: [
+          { id: '201', name: 'Villa 1', available: true },
+          { id: '202', name: 'Villa 2', available: true },
+          { id: '203', name: 'Villa 3', available: false },
+        ],
+      }
+
+      const inputParams = {
+        from: '2025-05-01',
+        to: '2025-05-07',
+      }
+
+      const options: EnhanceOptions = {
+        operationType: 'read',
+        entityType: 'vacant_inventory',
+        inputParams,
+      }
+
+      const enhanced = enhanceResponse(data, options)
+
+      expect(enhanced.operation.type).toBe('read')
+      expect(enhanced.operation.entity).toBe('vacant_inventory')
+      expect(enhanced.operation.status).toBe('success')
+      expect(enhanced.summary).toContain('Found 7 vacant properties')
+      expect(enhanced.details.propertiesChecked).toBe(10)
+      expect(enhanced.details.vacantCount).toBe(7)
+      expect(enhanced.suggestions?.length).toBeGreaterThan(0)
+      expect(enhanced.data).toEqual(data)
+    })
+
+    it('should enhance vacant inventory response with no available properties', () => {
+      const data = {
+        counts: {
+          propertiesChecked: 5,
+          availableProperties: 0,
+        },
+        properties: [],
+      }
+
+      const inputParams = {
+        from: '2025-06-01',
+        to: '2025-06-10',
+      }
+
+      const options: EnhanceOptions = {
+        operationType: 'read',
+        entityType: 'vacant_inventory',
+        inputParams,
+      }
+
+      const enhanced = enhanceResponse(data, options)
+
+      expect(enhanced.summary).toContain('No vacant properties found')
+      expect(enhanced.details.vacantCount).toBe(0)
+      expect(enhanced.suggestions?.length).toBeGreaterThan(0)
+      expect(enhanced.suggestions?.[0]).toContain('No properties are vacant')
+    })
+
+    it('should handle vacant inventory with diagnostics and issues', () => {
+      const data = {
+        counts: {
+          propertiesChecked: 0,
+          availableProperties: 0,
+        },
+        properties: [],
+        diagnostics: {
+          apiCalls: [{ endpoint: '/properties', error: 'Connection timeout' }],
+          possibleIssues: ['API connection failed', 'Check API credentials'],
+        },
+      }
+
+      const options: EnhanceOptions = {
+        operationType: 'read',
+        entityType: 'vacant_inventory',
+        status: 'failed',
+        inputParams: {},
+      }
+
+      const enhanced = enhanceResponse(data, options)
+
+      expect(enhanced.operation.status).toBe('failed')
+      expect(enhanced.summary).toContain('Failed to retrieve vacant inventory')
+      expect(enhanced.details.hasDiagnostics).toBe(true)
+      expect(enhanced.details.issuesIdentified).toBe(2)
+      expect(enhanced.suggestions?.length).toBeGreaterThan(0)
     })
   })
 

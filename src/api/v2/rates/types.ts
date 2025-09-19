@@ -48,3 +48,23 @@ export interface UpdateRateRequest {
   rate?: number
   currency?: string
 }
+
+/**
+ * Actual API response structure from Lodgify v2 Daily Rates endpoint
+ * Based on API documentation: returns { calendar_items: array | null, rate_settings: object }
+ */
+export interface DailyRatesApiResponse {
+  calendar_items: Array<{
+    date: string
+    rate: number
+    min_stay?: number
+    max_stay?: number
+    available: boolean
+  }> | null
+  rate_settings: {
+    currency?: string
+    base_rate?: number
+    seasonal_adjustments?: unknown[]
+    modifiers?: unknown[]
+  }
+}

@@ -125,10 +125,14 @@ describe('LodgifyOrchestrator', () => {
 
       await expect(client.properties.listProperties()).rejects.toMatchObject({
         error: true,
-        message: 'Lodgify 400: Bad Request',
+        message: 'Invalid parameters', // Now uses the message from the API error
         status: 400,
         path: '/v2/properties',
-        detail: errorDetail,
+        detail: {
+          code: 'BAD_REQUEST',
+          correlation_id: undefined,
+          event_id: undefined,
+        },
       })
     })
 

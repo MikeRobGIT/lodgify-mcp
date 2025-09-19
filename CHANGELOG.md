@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.21] - 2025-09-19
+
+### Added
+
+- **Vacant Inventory Support**: Added comprehensive `extractVacantInventoryDetails` function for enhanced entity extraction from vacant inventory responses
+- **Automated Version Management**: Added `scripts/bump-version.js` for streamlined version bumping with validation and changelog management
+- **Enhanced Error Type System**: New `LodgifyApiError` interface and `LodgifyErrorCode` enum for improved error categorization
+
+### Changed
+
+- **Error Handling Architecture**: Improved error handling with dual format support (API and legacy), enhanced type detection, and better error mapping functions
+- **Health Check & Diagnostics**: Enhanced health check functionality in orchestrator with better diagnostic reporting, API call tracking, and issue identification
+- **Response Builder**: Expanded response builder to handle vacant inventory data extraction with comprehensive metadata and statistics
+- **Developer Experience**: Updated GitHub Copilot instructions for better AI-assisted development guidance
+
+### Technical Details
+
+- Added error validation functions `isLodgifyApiError`, `isLodgifyError`, and `mapApiErrorToLegacy` for robust error processing
+- Enhanced TypeScript type safety across bookings, properties, and rates modules
+- Improved test coverage with 189 additional lines covering response enhancement and vacant inventory features
+- Better integration test coverage for list-vacant-inventory tool with comprehensive edge case handling
+- Upgraded error handler backward compatibility with proper type checking and format conversion
+
 ## [0.1.20] - 2025-09-19
 
 ### Added

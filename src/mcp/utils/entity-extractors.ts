@@ -184,6 +184,105 @@ export function extractWebhookDetails(
 }
 
 /**
+ * Extract vacant inventory details
+ */
+export function extractVacantInventoryDetails(
+  data: ApiResponseData,
+  inputParams?: ApiResponseData,
+): ApiResponseData {
+  const details: ApiResponseData = {}
+
+  // Date range
+  const from = getString(data.from) || getString(inputParams?.from)
+  const to = getString(data.to) || getString(inputParams?.to)
+  if (from && to) {
+    details.dateRange = `${formatDate(from)} to ${formatDate(to)}`
+    details.from = formatDate(from)
+    details.to = formatDate(to)
+  }
+
+  // Counts
+  const counts = getNestedValue(data, 'counts') as Record<string, number> | undefined
+  if (counts) {
+    if (counts.propertiesRequested !== undefined) {
+      details.propertiesRequested = counts.propertiesRequested
+    }
+    if (counts.propertiesFound !== undefined) {
+      details.propertiesFound = counts.propertiesFound
+    }
+    if (counts.propertiesChecked !== undefined) {
+      details.propertiesChecked = counts.propertiesChecked
+    }
+    if (counts.availableProperties !== undefined) {
+      details.availableProperties = counts.availableProperties
+      details.vacantCount = counts.availableProperties // Alias for clarity
+    }
+  }
+
+  // Define types for vacant inventory properties and rooms
+  type VacantInventoryProperty = {
+    available?: boolean
+    rooms?: Array<{ available?: boolean }>
+  }
+
+  // Properties list
+  const properties = getNestedValue(data, 'properties') as VacantInventoryProperty[] | undefined
+  if (Array.isArray(properties)) {
+    details.propertiesReturned = properties.length
+
+    // Count available properties if not provided in counts
+    if (details.vacantCount === undefined) {
+      const availableProps = properties.filter((p) => p.available === true)
+      details.vacantCount = availableProps.length
+    }
+
+    // Include rooms information if available
+    const hasRooms = properties.some((p) => p.rooms && Array.isArray(p.rooms))
+    if (hasRooms) {
+      details.includesRoomDetails = true
+      let totalRooms = 0
+      let availableRooms = 0
+      properties.forEach((p) => {
+        if (p.rooms && Array.isArray(p.rooms)) {
+          totalRooms += p.rooms.length
+          availableRooms += p.rooms.filter((r) => r.available === true).length
+        }
+      })
+      if (totalRooms > 0) {
+        details.totalRooms = totalRooms
+        details.availableRooms = availableRooms
+      }
+    }
+  }
+
+  // Diagnostics if available
+  const diagnostics = getNestedValue(data, 'diagnostics') as Record<string, unknown> | undefined
+  if (diagnostics) {
+    details.hasDiagnostics = true
+    const apiCalls = diagnostics.apiCalls as unknown[] | undefined
+    if (Array.isArray(apiCalls)) {
+      details.apiCallsCount = apiCalls.length
+    }
+    const possibleIssues = diagnostics.possibleIssues as string[] | undefined
+    if (Array.isArray(possibleIssues) && possibleIssues.length > 0) {
+      details.issuesIdentified = possibleIssues.length
+    }
+  }
+
+  // Search filters
+  const propertyIds = inputParams?.propertyIds as unknown[] | undefined
+  if (Array.isArray(propertyIds) && propertyIds.length > 0) {
+    details.filteredByPropertyIds = propertyIds.length
+  }
+  const includeRooms = inputParams?.includeRooms
+  if (includeRooms !== undefined) {
+    details.roomDetailsRequested = includeRooms === true
+  }
+
+  return details
+}
+
+/**
  * Extract message details
  */
 export function extractMessageDetails(

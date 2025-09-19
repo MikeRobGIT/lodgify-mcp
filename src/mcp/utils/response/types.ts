@@ -30,6 +30,7 @@ export type EntityType =
   | 'message'
   | 'thread'
   | 'key_codes'
+  | 'vacant_inventory'
 
 /**
  * Status of the operation

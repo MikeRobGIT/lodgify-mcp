@@ -2,7 +2,13 @@
  * Error handling and formatting utilities
  */
 
-import type { ErrorHandlerConfig, HttpErrorResponse, LodgifyError } from './types.js'
+import type {
+  ErrorHandlerConfig,
+  HttpErrorResponse,
+  LodgifyApiError,
+  LodgifyError,
+} from './types.js'
+import { isLodgifyApiError, isLodgifyError, mapApiErrorToLegacy } from './types.js'
 
 /**
  * Error handler for formatting and processing errors
@@ -33,16 +39,29 @@ export class ErrorHandler {
    */
   async formatHttpError(response: Response, path: string): Promise<LodgifyError> {
     let detail: unknown
+    let parsedBody: unknown
 
     try {
       const text = await response.text()
       if (text) {
-        detail = JSON.parse(text)
+        parsedBody = JSON.parse(text)
+        detail = parsedBody
       }
     } catch {
       // If parsing fails, detail remains undefined
     }
 
+    // Check if the response contains a LodgifyApiError (new format)
+    if (isLodgifyApiError(parsedBody)) {
+      return mapApiErrorToLegacy(parsedBody as LodgifyApiError, response.status, path)
+    }
+
+    // Check if the response is already a LodgifyError (legacy format)
+    if (isLodgifyError(parsedBody)) {
+      return parsedBody as LodgifyError
+    }
+
+    // Default handling for other error formats
     const message =
       this.statusMessages[response.status] || `HTTP ${response.status} ${response.statusText}`
 
@@ -59,9 +78,14 @@ export class ErrorHandler {
    * Format a generic error into a LodgifyError
    */
   formatError(error: unknown, path: string): LodgifyError {
-    // If it's already a LodgifyError, return it
-    if (this.isLodgifyError(error)) {
-      return error
+    // If it's already a LodgifyError (legacy format), return it
+    if (isLodgifyError(error)) {
+      return error as LodgifyError
+    }
+
+    // If it's a LodgifyApiError (new format), map it to legacy format
+    if (isLodgifyApiError(error)) {
+      return mapApiErrorToLegacy(error as LodgifyApiError, 500, path)
     }
 
     // If it has HTTP error properties
@@ -108,18 +132,10 @@ export class ErrorHandler {
   }
 
   /**
-   * Check if an error is a LodgifyError
+   * Check if an error is a LodgifyError (backward compatibility wrapper)
    */
   isLodgifyError(error: unknown): error is LodgifyError {
-    return (
-      error !== null &&
-      typeof error === 'object' &&
-      'error' in error &&
-      (error as { error: unknown }).error === true &&
-      'message' in error &&
-      'status' in error &&
-      'path' in error
-    )
+    return isLodgifyError(error)
   }
 
   /**

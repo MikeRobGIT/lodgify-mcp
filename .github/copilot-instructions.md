@@ -1,62 +1,76 @@
-# Copilot instructions for lodgify-mcp
 
-Purpose: MCP server exposing Lodgify Public API (v1/v2) as MCP tools. Runs over stdio (default) or Streamable HTTP.
+# Copilot Instructions for lodgify-mcp
 
-## Big picture architecture
-- Entrypoints: `src/server.ts` (stdio MCP), `src/server-http.ts` (HTTP transport).
-- Setup: `src/mcp/server-setup.ts` registers tools/resources and lazy-inits the Lodgify client via `getClient()`.
-- Orchestrator: `src/lodgify-orchestrator.ts` unifies API modules (`src/api/v1|v2/**`), enforces read-only, and adds aggregates (e.g., vacant inventory).
-- Core infra: `src/core/http/**` (fetch wrapper, retry, rate limiter), `src/core/errors/**`, `src/core/retry/**`.
-- Tools/resources: grouped by domain in `src/mcp/tools/**`, `src/mcp/resources/**`; shared schemas in `src/mcp/schemas/**`.
+This project is a Model Context Protocol (MCP) server that exposes Lodgify Public API v1/v2 as MCP tools for AI agents. It is designed for modularity, testability, and safe automation.
 
-## How it works (why this structure)
-- Tools call `getClient()` (closure DI) from server setup to avoid globals and simplify tests.
-- All HTTP uses `BaseApiClient.request()` for HTTPS-only, rate limiting (sliding window), and retries (max 5; honors Retry-After).
-- Read-only safety: POST/PUT/PATCH/DELETE throw `ReadOnlyModeError` early when `LODGIFY_READ_ONLY=1`.
-- Complex params use Lodgify bracket notation. Example: `{ "roomTypes[0].Id": 123, "guest_breakdown[adults]": 2 }`.
+## Architecture Overview
+- **Entrypoints:**
+	- `src/server.ts` (stdio MCP server)
+	- `src/server-http.ts` (HTTP transport)
+- **Server Setup:**
+	- `src/mcp/server-setup.ts` registers all tools/resources and provides `getClient()` for orchestrator access (closure DI, no globals).
+- **Orchestrator:**
+	- `src/lodgify-orchestrator.ts` unifies v1/v2 API modules, enforces read-only mode, and provides aggregate endpoints (e.g., vacant inventory).
+- **Core Infrastructure:**
+	- `src/core/http/` (fetch wrapper, retry, rate limiter)
+	- `src/core/errors/`, `src/core/retry/` (centralized error handling)
+- **Tools & Resources:**
+	- Grouped by domain in `src/mcp/tools/` and `src/mcp/resources/`
+	- Shared Zod schemas in `src/mcp/schemas/`
+- **Testing:**
+	- Tests mirror source structure in `tests/` (see `tests/mcp/tools/` for tool tests)
 
-## Dev workflow (commands)
-- Install: `bun install`
-- Env: copy `.env.example` → `.env`; set `LODGIFY_API_KEY`. Optional: `LOG_LEVEL`, `DEBUG_HTTP=1`, `LODGIFY_READ_ONLY=1`.
-- Run (stdio): `bun dev` (dev) or `bun run build && bun start` (from dist).
-- Run (HTTP): `bun run start:http` (requires `MCP_TOKEN`), prod: `bun run start:http:prod`.
-- Quality gate: `bun run check` (lint + format + typecheck + build + test).
-- Tests: `bun test` (watch: `bun test --watch`, coverage: `bun test --coverage`).
+## Key Patterns & Conventions
+- **Dependency Injection:** Always use `getClient()` from server setup for orchestrator access—never import singletons.
+- **HTTP Layer:** All requests go through `BaseApiClient.request()` (enforces HTTPS, sliding window rate limiting, up to 5 retries, honors `Retry-After`).
+- **Read-Only Mode:** All write operations (POST/PUT/PATCH/DELETE) throw `ReadOnlyModeError` if `LODGIFY_READ_ONLY=1` is set.
+- **Parameter Notation:** Use Lodgify bracket notation for complex params (e.g., `{ "roomTypes[0].Id": 123 }`).
+- **Validation:** All tool inputs must use Zod schemas, with shared shapes in `src/mcp/schemas/` and `.describe()` for fields.
+- **Logging:** Use `safeLogger` (never log secrets). Errors are sanitized before returning to clients.
+- **Date Handling:** Tools may return `dateValidation` feedback (warning/error/info) instead of auto-fixing dates.
+- **Module Size:** Keep modules ≤250 LOC and single-responsibility.
 
-## Conventions to follow
-- TypeScript strict; Biome formats/lints. Keep modules ≲ 250 LOC and single-responsibility.
-- Validate tool inputs with Zod; put shared shapes in `src/mcp/schemas/**` and add `.describe()` text for fields.
-- Use `safeLogger`; never log secrets. Errors are sanitized before returning.
-- Dates: tools may include `dateValidation` feedback (warning/error/info) instead of silently fixing dates.
+## Developer Workflow
+- **Install:** `bun install`
+- **Environment:** Copy `.env.example` → `.env`, set `LODGIFY_API_KEY`. Optional: `LOG_LEVEL`, `DEBUG_HTTP=1`, `LODGIFY_READ_ONLY=1`.
+- **Run (stdio):** `bun dev` (dev) or `bun run build && bun start` (from dist)
+- **Run (HTTP):** `bun run start:http` (requires `MCP_TOKEN`), prod: `bun run start:http:prod`
+- **Quality Gate:** `bun run check` (lint + format + typecheck + build + test)
+- **Tests:** `bun test` (watch: `bun test --watch`, coverage: `bun test --coverage`)
 
-## Add or update a tool (pattern)
-1) Create it under `src/mcp/tools/` (right category file). Define a Zod `inputSchema` and a clear `description`.
-2) In `handler`, `const client = getClient()` then call orchestrator methods (e.g., `client.properties.listProperties`). Add date feedback if relevant.
-3) Export and register it in `src/mcp/tools/register-all.ts` so MCP exposes it.
-4) If the orchestrator lacks a method, add it in `src/lodgify-orchestrator.ts` delegating to `src/api/v1|v2/**`.
-5) Tests mirror source (add in `tests/mcp/tools/**`) and update `docs/TOOL_CATALOG.md` if user-facing.
+## Tool Implementation Example
+1. Create tool in `src/mcp/tools/[category]-tools.ts` with Zod `inputSchema` and clear `description`.
+2. In handler: `const client = getClient()`; call orchestrator methods (e.g., `client.properties.listProperties`).
+3. Register tool in `src/mcp/tools/register-all.ts`.
+4. If orchestrator lacks a method, add it in `src/lodgify-orchestrator.ts` (delegate to `src/api/v1|v2/**`).
+5. Add/modify tests in `tests/mcp/tools/` and update `docs/TOOL_CATALOG.md` if user-facing.
 
-Minimal example
+**Minimal Example:**
 - Schema: `const S = z.object({ propertyId: z.string().min(1) })`
 - Handler: `const res = await getClient().properties.getProperty(args.propertyId)`
 - Register: export in file and include in `register-all.ts`
 
-## Integration points
-- Base URL: `https://api.lodgify.com` (HTTPS enforced).
-- Tool categories: properties, bookings, availability, rates, quotes, messaging, webhooks, helpers (`docs/TOOL_CATALOG.md`).
-- Resource: `lodgify://health` reports ok/version/apiKeyConfigured/timestamp.
-- HTTP transport: `POST /mcp` with `Authorization: Bearer <MCP_TOKEN>`; session TTL ~30m (`src/server-http.ts`).
+## Integration Points
+- **API Base:** `https://api.lodgify.com` (HTTPS enforced)
+- **Tool Categories:** properties, bookings, availability, rates, quotes, messaging, webhooks, helpers (see `docs/TOOL_CATALOG.md`)
+- **Resource:** `lodgify://health` (system status)
+- **HTTP Transport:** `POST /mcp` with `Authorization: Bearer <MCP_TOKEN>`; session TTL ~30m
 
-## Files you’ll reference most
-- `src/mcp/server-setup.ts` — registries, capabilities, lazy `getClient()`
-- `src/mcp/tools/register-all.ts` — where to add tools
-- `src/lodgify-orchestrator.ts` — unified API, read-only enforcement, aggregates
-- `src/core/http/**` — fetch/retry/rate-limit behavior
-- `docs/TOOL_CATALOG.md` — parameters and examples for all tools
+## Critical Files & References
+- `src/mcp/server-setup.ts` — tool/resource registration, orchestrator DI
+- `src/mcp/tools/register-all.ts` — tool registry
+- `src/lodgify-orchestrator.ts` — unified API, read-only, aggregates
+- `src/core/http/` — fetch/retry/rate-limit
+- `docs/TOOL_CATALOG.md` — tool parameters/examples
+- `tests/` — test strategy and coverage
 
-## Safety/quality before PR
-- `bun run check` passes; tests updated for any tool changes
-- No write ops in read-only tests; errors sanitized; no secrets in logs
-- If enabling HTTP mode, require `MCP_TOKEN` and document usage in README
+## Error Handling & Rate Limiting
+- All errors are processed through centralized handlers and sanitized.
+- Rate limiting uses a sliding window; 429s honor `Retry-After` or exponential backoff (max 30s, 5 attempts).
 
-Unclear or missing? Tell us what’s confusing and we’ll refine these instructions.
+## Security
+- API keys only from environment variables; never log secrets or PII.
+- Mask sensitive fields in logs/errors.
+
+---
+If any section is unclear or incomplete, please provide feedback for further refinement.

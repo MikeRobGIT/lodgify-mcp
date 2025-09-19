@@ -84,6 +84,29 @@ export function generateSummary(
           return `${statusText} ${isFailed ? 'perform' : 'performed'} action on ${entityType}`
       }
 
+    case 'read':
+      switch (entityType) {
+        case 'vacant_inventory': {
+          const availableCount = details.availableProperties || details.vacantCount || 0
+          const checkedCount = details.propertiesChecked || 0
+          const dateRange =
+            details.dateRange || `${details.from || 'start'} to ${details.to || 'end'}`
+
+          if (isFailed) {
+            return `Failed to retrieve vacant inventory for ${dateRange}`
+          }
+          if (checkedCount === 0) {
+            return `No properties found to check for ${dateRange}`
+          }
+          if (availableCount === 0) {
+            return `No vacant properties found for ${dateRange} (checked ${checkedCount} ${checkedCount === 1 ? 'property' : 'properties'})`
+          }
+          return `Found ${availableCount} vacant ${availableCount === 1 ? 'property' : 'properties'} for ${dateRange} (out of ${checkedCount} checked)`
+        }
+        default:
+          return `${statusText} ${isFailed ? 'retrieve' : 'retrieved'} ${entityType}`
+      }
+
     default:
       return `${statusText} ${isFailed ? 'process' : 'processed'} ${entityType}`
   }

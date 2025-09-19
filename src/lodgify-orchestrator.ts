@@ -81,11 +81,33 @@ export interface VacantInventoryPropertyResult {
   rooms?: VacantInventoryRoomResult[]
 }
 
+export interface VacantInventoryDiagnostic {
+  endpoint: string
+  responseStructure: string
+  itemsFound: number
+  error?: string
+}
+
+export interface VacantInventoryDiagnostics {
+  apiCalls: VacantInventoryDiagnostic[]
+  possibleIssues: string[]
+  debugInfo?: {
+    rawResponse?: unknown
+    extractionAttempts: string[]
+  }
+}
+
 export interface VacantInventoryResult {
   from: string
   to: string
-  counts: { propertiesChecked: number; availableProperties: number }
+  counts: {
+    propertiesRequested: number
+    propertiesFound: number
+    propertiesChecked: number
+    availableProperties: number
+  }
   properties: VacantInventoryPropertyResult[]
+  diagnostics?: VacantInventoryDiagnostics
 }
 
 /**
@@ -357,6 +379,15 @@ export class LodgifyOrchestrator {
       return as < be && bs < ae
     }
 
+    // Initialize diagnostics
+    const diagnostics: VacantInventoryDiagnostics = {
+      apiCalls: [],
+      possibleIssues: [],
+      debugInfo: {
+        extractionAttempts: [],
+      },
+    }
+
     // Resolve properties to check
     let propertiesToCheck: Property[] = []
     if (propertyIds && propertyIds.length > 0) {
@@ -378,6 +409,13 @@ export class LodgifyOrchestrator {
       try {
         const list = await this.properties.listProperties({ limit, ...(wid ? { wid } : {}) })
 
+        // Track API call
+        diagnostics.apiCalls.push({
+          endpoint: 'listProperties',
+          responseStructure: 'pending',
+          itemsFound: 0,
+        })
+
         // Handle nested response structure from Lodgify API
         if (list.data && Array.isArray(list.data) && list.data.length > 0) {
           const firstItem = list.data[0] as unknown as Record<string, unknown>
@@ -390,6 +428,13 @@ export class LodgifyOrchestrator {
             Array.isArray(firstItem.items)
           ) {
             propertiesToCheck = firstItem.items as Property[]
+            diagnostics.apiCalls[diagnostics.apiCalls.length - 1].responseStructure =
+              'nested_data_items'
+            diagnostics.apiCalls[diagnostics.apiCalls.length - 1].itemsFound =
+              propertiesToCheck.length
+            diagnostics.debugInfo?.extractionAttempts.push(
+              `Successfully extracted ${propertiesToCheck.length} properties from data[0].items`,
+            )
             safeLogger.debug('Properties extracted from nested structure', {
               count: propertiesToCheck.length,
             })
@@ -399,34 +444,85 @@ export class LodgifyOrchestrator {
             list.data.every((item: unknown) => item && typeof item === 'object' && 'id' in item)
           ) {
             propertiesToCheck = list.data as Property[]
+            diagnostics.apiCalls[diagnostics.apiCalls.length - 1].responseStructure =
+              'direct_data_array'
+            diagnostics.apiCalls[diagnostics.apiCalls.length - 1].itemsFound =
+              propertiesToCheck.length
+            diagnostics.debugInfo?.extractionAttempts.push(
+              `Successfully extracted ${propertiesToCheck.length} properties from data array`,
+            )
             safeLogger.debug('Properties extracted from direct array', {
               count: propertiesToCheck.length,
             })
+          } else {
+            diagnostics.apiCalls[diagnostics.apiCalls.length - 1].responseStructure = 'unexpected'
+            diagnostics.debugInfo?.extractionAttempts.push(
+              'Could not extract properties from data array - unexpected structure',
+            )
           }
+        } else {
+          diagnostics.apiCalls[diagnostics.apiCalls.length - 1].responseStructure =
+            'empty_or_invalid'
+          diagnostics.debugInfo?.extractionAttempts.push(
+            'No data array found or data array is empty',
+          )
         }
 
         // If we still don't have properties, try using findProperties as fallback
         if (!propertiesToCheck.length) {
           safeLogger.warn('No properties found in list response, trying findProperties fallback')
-          const foundProps = await this.properties.findProperties(undefined, false, limit)
-          propertiesToCheck = []
+          diagnostics.debugInfo?.extractionAttempts.push(
+            'No properties found in listProperties response, attempting findProperties fallback',
+          )
 
-          // Convert found properties to Property objects
-          for (const prop of foundProps.properties.slice(0, limit)) {
-            try {
-              const fullProp = await this.properties.getProperty(prop.id)
-              if (fullProp) propertiesToCheck.push(fullProp)
-            } catch (e) {
-              safeLogger.warn('Could not fetch property details', {
-                id: prop.id,
-                error: (e as Error)?.message,
-              })
+          try {
+            const foundProps = await this.properties.findProperties(undefined, false, limit)
+            diagnostics.apiCalls.push({
+              endpoint: 'findProperties (fallback)',
+              responseStructure: foundProps.properties.length > 0 ? 'success' : 'empty',
+              itemsFound: foundProps.properties.length,
+            })
+
+            propertiesToCheck = []
+            // Convert found properties to Property objects
+            for (const prop of foundProps.properties.slice(0, limit)) {
+              try {
+                const fullProp = await this.properties.getProperty(prop.id)
+                if (fullProp) propertiesToCheck.push(fullProp)
+              } catch (e) {
+                diagnostics.debugInfo?.extractionAttempts.push(
+                  `Failed to fetch property ${prop.id}: ${(e as Error)?.message}`,
+                )
+                safeLogger.warn('Could not fetch property details', {
+                  id: prop.id,
+                  error: (e as Error)?.message,
+                })
+              }
             }
+          } catch (fallbackError) {
+            diagnostics.apiCalls.push({
+              endpoint: 'findProperties (fallback)',
+              responseStructure: 'error',
+              itemsFound: 0,
+              error: (fallbackError as Error)?.message,
+            })
           }
         }
       } catch (error) {
+        const errorMessage = (error as Error)?.message || 'Unknown error'
+        diagnostics.apiCalls.push({
+          endpoint: 'listProperties',
+          responseStructure: 'error',
+          itemsFound: 0,
+          error: errorMessage,
+        })
+        diagnostics.possibleIssues.push(
+          'Failed to list properties - check API key and permissions',
+          errorMessage.includes('401') ? 'Authentication failed - invalid API key' : '',
+          errorMessage.includes('403') ? 'Access denied - check API key permissions' : '',
+        )
         safeLogger.error('Failed to list properties', {
-          error: (error as Error)?.message,
+          error: errorMessage,
         })
         propertiesToCheck = []
       }
@@ -435,8 +531,22 @@ export class LodgifyOrchestrator {
     const results: VacantInventoryPropertyResult[] = []
     let availableCount = 0
 
-    // If no properties to check, return early with empty results
+    // If no properties to check, return early with empty results and diagnostics
     if (!propertiesToCheck.length) {
+      // Add possible issues if we couldn't find any properties
+      if (diagnostics.possibleIssues.length === 0) {
+        diagnostics.possibleIssues.push(
+          'No properties found in the account',
+          'API key may not have proper permissions',
+          wid
+            ? 'Website ID filter may be too restrictive'
+            : 'Try specifying a website ID if properties are associated with specific websites',
+        )
+      }
+
+      // Filter out empty strings from possibleIssues
+      diagnostics.possibleIssues = diagnostics.possibleIssues.filter((issue) => issue.length > 0)
+
       safeLogger.warn('No properties found to check availability', {
         from,
         to,
@@ -444,14 +554,18 @@ export class LodgifyOrchestrator {
         wid,
         hadPropertyIds: !!propertyIds && propertyIds.length > 0,
       })
+
       return {
         from,
         to,
         counts: {
+          propertiesRequested: propertyIds?.length || limit,
+          propertiesFound: 0,
           propertiesChecked: 0,
           availableProperties: 0,
         },
         properties: [],
+        diagnostics,
       }
     }
 
@@ -467,6 +581,13 @@ export class LodgifyOrchestrator {
             to,
           },
         )
+
+        // Track availability API call
+        diagnostics.apiCalls.push({
+          endpoint: `getAvailabilityForProperty(${propertyId})`,
+          responseStructure: Array.isArray(availabilityResponse) ? 'array' : 'object',
+          itemsFound: Array.isArray(availabilityResponse) ? availabilityResponse.length : 1,
+        })
 
         // Handle both array and object response formats
         let availability: {
@@ -554,6 +675,13 @@ export class LodgifyOrchestrator {
 
         const propertyAvailable = !hasOverlapBooking && !anyUnavailableFlag
 
+        // Track property availability result
+        if (!propertyAvailable) {
+          diagnostics.debugInfo?.extractionAttempts.push(
+            `Property ${propertyId} unavailable: hasOverlapBooking=${hasOverlapBooking}, anyUnavailableFlag=${anyUnavailableFlag}`,
+          )
+        }
+
         const entry: VacantInventoryPropertyResult = {
           id: propertyId,
           name: prop.name,
@@ -614,6 +742,13 @@ export class LodgifyOrchestrator {
                 }>
               }
 
+              // Track room availability API call
+              diagnostics.apiCalls.push({
+                endpoint: `getAvailabilityForRoom(${propertyId}/${roomId})`,
+                responseStructure: 'room_availability',
+                itemsFound: 1,
+              })
+
               const rPeriods = roomAvailability?.periods ?? []
               let roomUnavailable = false
               for (const pr of rPeriods) {
@@ -666,19 +801,54 @@ export class LodgifyOrchestrator {
         if (entry.available) availableCount++
         results.push(entry)
       } catch (error) {
+        const errorMessage = (error as Error)?.message || 'Unknown error'
         safeLogger.warn('Failed to check availability for property', {
           propertyId,
-          error: (error as Error)?.message,
+          error: errorMessage,
         })
+
+        // Track error in diagnostics
+        diagnostics.apiCalls.push({
+          endpoint: `getAvailabilityForProperty(${propertyId})`,
+          responseStructure: 'error',
+          itemsFound: 0,
+          error: errorMessage,
+        })
+        diagnostics.debugInfo?.extractionAttempts.push(
+          `Failed to check availability for property ${propertyId}: ${errorMessage}`,
+        )
+
         // Skip this property and continue with others
       }
     }
 
+    // Add final summary to diagnostics
+    if (availableCount === 0 && propertiesToCheck.length > 0) {
+      diagnostics.possibleIssues.push(
+        `All ${propertiesToCheck.length} properties are unavailable for the requested dates`,
+        'Consider checking different date ranges or more properties',
+        'Some properties may have minimum stay requirements not met by the date range',
+      )
+    } else if (availableCount > 0) {
+      diagnostics.debugInfo?.extractionAttempts.push(
+        `Successfully found ${availableCount} available properties out of ${propertiesToCheck.length} checked`,
+      )
+    }
+
+    // Filter out empty strings from possibleIssues
+    diagnostics.possibleIssues = diagnostics.possibleIssues.filter((issue) => issue.length > 0)
+
     return {
       from,
       to,
-      counts: { propertiesChecked: propertiesToCheck.length, availableProperties: availableCount },
+      counts: {
+        propertiesRequested: propertyIds?.length || limit,
+        propertiesFound: propertiesToCheck.length,
+        propertiesChecked: propertiesToCheck.length,
+        availableProperties: availableCount,
+      },
       properties: results,
+      diagnostics,
     }
   }
 

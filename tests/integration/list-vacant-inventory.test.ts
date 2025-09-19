@@ -60,8 +60,19 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.counts.propertiesChecked).toBe(2)
-      expect(content.counts.availableProperties).toBe(1)
+      expect(content.data.counts.propertiesChecked).toBe(2)
+      expect(content.data.counts.availableProperties).toBe(1)
+      // Also verify enhanced response structure
+      expect(content.operation).toEqual(
+        expect.objectContaining({
+          type: 'read',
+          entity: 'vacant_inventory',
+          status: 'success',
+        }),
+      )
+      expect(content.summary).toContain('Found 1 vacant')
+      expect(content.details).toBeDefined()
+      expect(content.suggestions).toBeInstanceOf(Array)
     })
 
     it('should handle ISO 8601 date-time format and normalize to YYYY-MM-DD', async () => {
@@ -227,8 +238,8 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       )
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.properties[0].rooms).toBeDefined()
-      expect(content.properties[0].rooms).toHaveLength(2)
+      expect(content.data.properties[0].rooms).toBeDefined()
+      expect(content.data.properties[0].rooms).toHaveLength(2)
     })
 
     it('should respect includeRooms=false', async () => {
@@ -253,7 +264,7 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       )
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.properties[0].rooms).toBeUndefined()
+      expect(content.data.properties[0].rooms).toBeUndefined()
     })
   })
 
@@ -421,7 +432,7 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.properties[0].rooms).toEqual([])
+      expect(content.data.properties[0].rooms).toEqual([])
     })
 
     it('should handle mixed availability in rooms', async () => {
@@ -451,7 +462,7 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       })
 
       const content = JSON.parse(result.content[0].text)
-      const property = content.properties[0]
+      const property = content.data.properties[0]
 
       expect(property.available).toBe(true)
       expect(property.rooms).toHaveLength(3)
@@ -487,9 +498,9 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.properties).toHaveLength(100)
-      expect(content.counts.propertiesChecked).toBe(100)
-      expect(content.counts.availableProperties).toBe(67)
+      expect(content.data.properties).toHaveLength(100)
+      expect(content.data.counts.propertiesChecked).toBe(100)
+      expect(content.data.counts.availableProperties).toBe(67)
     })
   })
 
@@ -569,9 +580,9 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.counts.propertiesChecked).toBe(2)
-      expect(content.counts.availableProperties).toBe(2)
-      expect(content.properties).toHaveLength(2)
+      expect(content.data.counts.propertiesChecked).toBe(2)
+      expect(content.data.counts.availableProperties).toBe(2)
+      expect(content.data.properties).toHaveLength(2)
     })
 
     it('should fallback to findProperties when listProperties returns empty', async () => {
@@ -617,8 +628,8 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.counts.propertiesChecked).toBe(1)
-      expect(content.properties[0].name).toBe('Fallback Property')
+      expect(content.data.counts.propertiesChecked).toBe(1)
+      expect(content.data.properties[0].name).toBe('Fallback Property')
     })
 
     it('should handle direct array response from listProperties', async () => {
@@ -655,8 +666,8 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.counts.propertiesChecked).toBe(2)
-      expect(content.properties).toHaveLength(2)
+      expect(content.data.counts.propertiesChecked).toBe(2)
+      expect(content.data.properties).toHaveLength(2)
     })
   })
 

@@ -87,6 +87,8 @@ export interface Booking {
 
 /**
  * Bookings list response
+ * The actual API returns { count, items } structure
+ * We maintain 'data' for backward compatibility and transform in the client
  */
 export interface BookingsListResponse {
   data: Booking[]
@@ -96,6 +98,15 @@ export interface BookingsListResponse {
     offset: number
     total: number
   }
+}
+
+/**
+ * Actual API response structure from Lodgify v2 Bookings endpoint
+ * Based on API documentation: returns { count: int32 | null, items: array | null }
+ */
+export interface BookingsApiResponse {
+  count: number | null
+  items: Booking[] | null
 }
 
 /**
