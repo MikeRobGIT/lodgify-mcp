@@ -495,38 +495,20 @@ Retrieve an existing quote that was created when a booking was made. This does N
 }
 ```
 
-### `lodgify_list_threads`
-
-List conversation threads with optional filtering. Useful for inbox views, triage, and audit of guest communications.
-
-**Parameters:**
-
-- `params` (optional, object): Query parameters for filtering
-  - `includeMessages` (optional, boolean): Include messages in response
-  - `includeParticipants` (optional, boolean): Include participant details
-  - `messageLimit` (optional, number): Maximum messages per thread, 1-200
-  - `since` (optional, string): ISO date-time to filter threads since
-
-**Example:**
-
-```javascript
-{
-  "params": {
-    "includeMessages": true,
-    "includeParticipants": true,
-    "messageLimit": 50,
-    "since": "2024-03-01T00:00:00Z"
-  }
-}
-```
-
 ### `lodgify_get_thread`
 
 Retrieve a messaging conversation thread including all messages, participants, and thread metadata.
 
+**IMPORTANT**: This is currently the ONLY functional messaging endpoint in the Lodgify API v2.
+
+To find thread UIDs:
+1. Get a booking using `lodgify_get_booking`
+2. Look for the `thread_uid` field in the booking data
+3. Use that UUID with this tool to retrieve the conversation
+
 **Parameters:**
 
-- `threadGuid` (required, string): Unique thread identifier (GUID) for the conversation
+- `threadGuid` (required, string): Thread UID from booking data (found in thread_uid field)
 
 **Example:**
 
@@ -536,69 +518,30 @@ Retrieve a messaging conversation thread including all messages, participants, a
 }
 ```
 
-### `lodgify_send_message`
+## Messaging Limitations
 
-Send a message to a specific conversation thread. Respects read-only mode and will be blocked when enabled.
+**IMPORTANT API LIMITATIONS:**
+The Lodgify API has significant limitations for messaging functionality:
 
-**Parameters:**
+1. **v2 API Limitations** (current implementation):
+   - Only GET /v2/messaging/{threadGuid} exists
+   - Cannot list all threads (endpoint doesn't exist)
+   - Cannot send messages (endpoint doesn't exist)
+   - Cannot mark threads as read (endpoint doesn't exist)
+   - Cannot archive threads (endpoint doesn't exist)
 
-- `threadGuid` (required, string): Thread GUID
-- `message` (required, object): Message payload
-  - `content` (required, string): Message content
-  - `attachments` (optional, array): Array of attachment objects
-    - `fileName` (required, string): File name
-    - `fileUrl` (required, string): File URL
-    - `fileType` (optional, string): File MIME type
+2. **v1 API Issues** (legacy endpoints):
+   - POST /v1/reservation/booking/{id}/messages exists but is **NON-FUNCTIONAL**
+   - POST /v1/reservation/enquiry/{id}/messages exists but is **NON-FUNCTIONAL**
+   - These endpoints return 200 OK but do NOT actually send messages
+   - This is a known issue acknowledged by Lodgify support
+   - See: https://docs.lodgify.com/discuss/6899e597bd22070fb43002df
 
-**Example:**
-
-```javascript
-{
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000",
-  "message": {
-    "content": "Thank you for your inquiry about the Ocean View Villa.",
-    "attachments": [
-      {
-        "fileName": "villa_photos.pdf",
-        "fileUrl": "https://example.com/files/villa_photos.pdf",
-        "fileType": "application/pdf"
-      }
-    ]
-  }
-}
-```
-
-### `lodgify_mark_thread_as_read`
-
-Mark a conversation thread as read to clear unread indicators. Respects read-only mode and will be blocked when enabled.
-
-**Parameters:**
-
-- `threadGuid` (required, string): Thread GUID
-
-**Example:**
-
-```javascript
-{
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
-
-### `lodgify_archive_thread`
-
-Archive a conversation thread to remove it from active views. Respects read-only mode and will be blocked when enabled.
-
-**Parameters:**
-
-- `threadGuid` (required, string): Thread GUID
-
-**Example:**
-
-```javascript
-{
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
+**Current Workaround:**
+For guest communication, property managers must use:
+- The Lodgify web interface or mobile app
+- Email communication outside of Lodgify
+- Wait for Lodgify to fix their messaging API endpoints
 
 ## Property Discovery & Helper Tools
 

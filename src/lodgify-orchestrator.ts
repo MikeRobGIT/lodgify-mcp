@@ -872,34 +872,9 @@ export class LodgifyOrchestrator {
   }
 
   // Messaging backward compatibility
+  // Messaging - Only GET thread endpoint exists and works in v2
   async getThread(threadGuid: string): Promise<MessageThread> {
     return this.messaging.getThread(threadGuid)
-  }
-
-  // Messaging
-  async listThreads(params?: Record<string, unknown>): Promise<MessageThread[]> {
-    return this.messaging.listThreads<MessageThread[]>(params)
-  }
-
-  async sendMessage(
-    threadGuid: string,
-    message: {
-      content: string
-      attachments?: Array<{ fileName: string; fileUrl: string; fileType?: string }>
-    },
-  ): Promise<unknown> {
-    this.checkReadOnly('Send Message', `/v2/messaging/${threadGuid}/messages`)
-    return this.messaging.sendMessage(threadGuid, message)
-  }
-
-  async markThreadAsRead(threadGuid: string): Promise<unknown> {
-    this.checkReadOnly('Mark Thread As Read', `/v2/messaging/${threadGuid}/read`)
-    return this.messaging.markThreadAsRead(threadGuid)
-  }
-
-  async archiveThread(threadGuid: string): Promise<unknown> {
-    this.checkReadOnly('Archive Thread', `/v2/messaging/${threadGuid}/archive`)
-    return this.messaging.archiveThread(threadGuid)
   }
 
   // Webhooks backward compatibility
