@@ -22,7 +22,20 @@ export function isISO8601String(value: string): value is ISO8601String {
 
   // Additional validation: ensure it's a valid date
   const date = new Date(value)
-  return !Number.isNaN(date.getTime()) && date.toISOString() === value
+  if (Number.isNaN(date.getTime())) {
+    return false
+  }
+
+  // Check if the input contains milliseconds
+  const hasMilliseconds = value.includes('.')
+
+  // Compare appropriately based on whether input has milliseconds
+  if (hasMilliseconds) {
+    return date.toISOString() === value
+  } else {
+    // Remove milliseconds from the ISO string for comparison
+    return date.toISOString().replace('.000Z', 'Z') === value
+  }
 }
 
 /**

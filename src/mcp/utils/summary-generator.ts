@@ -23,6 +23,7 @@ export function generateSummary(
   details: ApiResponseData,
   status: OperationStatus = 'success',
 ): string {
+  const isFailed = status === 'failed'
   const statusText =
     status === 'success' ? 'Successfully' : status === 'partial' ? 'Partially' : 'Failed to'
 
@@ -30,60 +31,60 @@ export function generateSummary(
     case 'create':
       switch (entityType) {
         case 'booking':
-          return `${statusText} created booking ${details.bookingId || 'new'} for ${details.guest || 'guest'}`
+          return `${statusText} ${isFailed ? 'create' : 'created'} booking ${details.bookingId || 'new'} for ${details.guest || 'guest'}`
         case 'payment_link':
-          return `${statusText} created payment link for ${details.amount || 'payment'}`
+          return `${statusText} ${isFailed ? 'create' : 'created'} payment link for ${details.amount || 'payment'}`
         case 'quote': {
           // For quotes, prefer the bookingId from details (which comes from inputParams)
           const bookingId = details.bookingId
           if (bookingId) {
-            return `${statusText} created quote for booking ${bookingId}`
+            return `${statusText} ${isFailed ? 'create' : 'created'} quote for booking ${bookingId}`
           }
-          return `${statusText} created quote ${details.quoteId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'create' : 'created'} quote ${details.quoteId || ''}`.trim()
         }
         case 'webhook':
-          return `${statusText} subscribed to ${details.event || 'event'} webhook`
+          return `${statusText} ${isFailed ? 'subscribe to' : 'subscribed to'} ${details.event || 'event'} webhook`
         case 'message':
-          return `${statusText} sent message to ${details.recipient || 'recipient'}`
+          return `${statusText} ${isFailed ? 'send' : 'sent'} message to ${details.recipient || 'recipient'}`
         default:
-          return `${statusText} created ${entityType}`
+          return `${statusText} ${isFailed ? 'create' : 'created'} ${entityType}`
       }
 
     case 'update':
       switch (entityType) {
         case 'booking':
-          return `${statusText} updated booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'update' : 'updated'} booking ${details.bookingId || ''}`.trim()
         case 'rate':
-          return `${statusText} updated rates for ${details.property || 'property'}`
+          return `${statusText} ${isFailed ? 'update' : 'updated'} rates for ${details.property || 'property'}`
         case 'key_codes':
-          return `${statusText} updated access codes for booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'update' : 'updated'} access codes for booking ${details.bookingId || ''}`.trim()
         case 'thread':
-          return `${statusText} marked thread as ${details.action || 'updated'}`
+          return `${statusText} ${isFailed ? 'mark' : 'marked'} thread as ${details.action || 'updated'}`
         default:
-          return `${statusText} updated ${entityType}`
+          return `${statusText} ${isFailed ? 'update' : 'updated'} ${entityType}`
       }
 
     case 'delete':
       switch (entityType) {
         case 'booking':
-          return `${statusText} deleted booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'delete' : 'deleted'} booking ${details.bookingId || ''}`.trim()
         case 'webhook':
-          return `${statusText} unsubscribed from webhook ${details.webhookId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'unsubscribe from' : 'unsubscribed from'} webhook ${details.webhookId || ''}`.trim()
         default:
-          return `${statusText} deleted ${entityType}`
+          return `${statusText} ${isFailed ? 'delete' : 'deleted'} ${entityType}`
       }
 
     case 'action':
       switch (entityType) {
         case 'booking':
-          return `${statusText} ${details.action || 'performed action on'} booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'perform' : 'performed'} ${details.action || 'action on'} booking ${details.bookingId || ''}`.trim()
         case 'thread':
-          return `${statusText} ${details.action || 'performed action on'} thread`
+          return `${statusText} ${isFailed ? 'perform' : 'performed'} ${details.action || 'action on'} thread`
         default:
-          return `${statusText} performed action on ${entityType}`
+          return `${statusText} ${isFailed ? 'perform' : 'performed'} action on ${entityType}`
       }
 
     default:
-      return `${statusText} processed ${entityType}`
+      return `${statusText} ${isFailed ? 'process' : 'processed'} ${entityType}`
   }
 }
