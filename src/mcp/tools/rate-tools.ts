@@ -9,18 +9,18 @@ import type { RateUpdateV1Request } from '../../api/v1/rates/types.js'
 import type { QuoteParams } from '../../api/v2/quotes/types.js'
 import type { DailyRatesParams } from '../../api/v2/rates/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
-import { isISODateTime, isYYYYMMDD } from '../utils/date-format.js'
+import { debugLogResponse, safeJsonStringify } from '../serialization/json-sanitizer.js'
+import { isISODateTime, isYYYYMMDD } from '../utils/date/format.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported DateStringSchema from '../schemas/common.js'
 import {
   createValidator,
   DateToolCategory,
   type DateValidationInfo,
-} from '../utils/date-validator.js'
+} from '../utils/date/validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput, validateDatePair } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response-enhancer.js'
-import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
 

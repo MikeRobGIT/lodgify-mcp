@@ -6,11 +6,11 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
-import { isISODateTime } from '../utils/date-format.js'
+import { isISODateTime } from '../utils/date/format.js'
 // Types from messaging API (imported for reference but not used in declarations)
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput, validateGuid } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response-enhancer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Messaging & Communication'
@@ -52,11 +52,19 @@ Example request:
         }
 
         const result = await getClient().messaging.getThread(threadGuid)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'read',
+          entityType: 'thread',
+          inputParams: { threadGuid },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -106,11 +114,19 @@ Example request:
         }
 
         const result = await getClient().messaging.listThreads(params)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'read',
+          entityType: 'thread',
+          inputParams: params ? { params } : {},
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }

@@ -11,7 +11,7 @@ import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 // Previously imported WebhookEventEnum from '../schemas/common.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response-enhancer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Webhooks & Notifications'

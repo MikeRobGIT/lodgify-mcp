@@ -1,0 +1,31 @@
+{
+  "invalidFormat": "Formato de fecha inválido. Se esperaba {{expectedFormat}}, se recibió: {{actual}}",
+  "llmCutoffSuspected": "La fecha \"{{date}}\" parece ser de un año anterior ({{cutoffYear, number}}). El año actual es {{currentYear, number}}.",
+  "dateInPastSoft_one": "La fecha \"{{date}}\" está {{count, number}} día en el pasado. Las operaciones de {{toolCategory}} normalmente requieren fechas futuras.",
+  "dateInPastSoft_other": "La fecha \"{{date}}\" está {{count, number}} días en el pasado. Las operaciones de {{toolCategory}} normalmente requieren fechas futuras.",
+  "dateInPastHard_one": "La fecha está {{count, number}} día en el pasado. Las fechas pasadas no están permitidas para {{toolCategory}}.",
+  "dateInPastHard_other": "La fecha está {{count, number}} días en el pasado. Las fechas pasadas no están permitidas para {{toolCategory}}.",
+  "dateInFuture_one": "La fecha está {{count, number}} día en el futuro. Es posible que las fechas futuras no sean las previstas para esta operación.",
+  "dateInFuture_other": "La fecha está {{count, number}} días en el futuro. Es posible que las fechas futuras no sean las previstas para esta operación.",
+  "tooFarPast_one": "La fecha está demasiado lejos en el pasado ({{count, number}} día). El máximo permitido es {{maxDays, number}} días.",
+  "tooFarPast_other": "La fecha está demasiado lejos en el pasado ({{count, number}} días). El máximo permitido es {{maxDays, number}} días.",
+  "tooFarFuture_one": "La fecha está demasiado lejos en el futuro ({{count, number}} día). El máximo permitido es {{maxDays, number}} días.",
+  "tooFarFuture_other": "La fecha está demasiado lejos en el futuro ({{count, number}} días). El máximo permitido es {{maxDays, number}} días.",
+  "invalidRange": "Rango de fechas inválido: la fecha de fin \"{{endDate}}\" es anterior a la fecha de inicio \"{{startDate}}\".",
+  "suggestions": {
+    "useIsoFormat": "Utiliza el formato {{expectedFormat}} (p. ej., {{example}})",
+    "ensureValidRange": "Asegúrate de que la fecha sea válida (revisa los rangos de mes y día)",
+    "useCurrentYear": "Si querías este año, usa: {{suggestedDate}}",
+    "confirmHistoricalDate": "Si te referías a la fecha histórica {{originalDate}}, por favor confírmalo",
+    "currentDate": "Fecha actual: {{currentDate, date}}",
+    "didYouMeanFuture": "¿Querías una fecha futura?",
+    "todaysDate": "Fecha de hoy: {{currentDate, date}}",
+    "confirmPastData": "Si necesitas datos pasados, confirma que sea intencional",
+    "ensureEndAfterStart": "Asegúrate de que la fecha de fin sea posterior a la fecha de inicio",
+    "checkDateOrder": "Comprueba si las fechas se introdujeron en el orden correcto",
+    "provideFutureDate": "Proporciona una fecha futura",
+    "confirmFutureDate": "Confirma que esta fecha futura sea correcta",
+    "provideRecentDate": "Proporciona una fecha dentro de los últimos {{maxDays, number}} días",
+    "provideUpcomingDate": "Proporciona una fecha dentro de los próximos {{maxDays, number}} días"
+  }
+}

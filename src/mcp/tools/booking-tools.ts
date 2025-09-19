@@ -8,17 +8,17 @@ import { z } from 'zod'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
 import { BOOKING_CONFIG, PAGINATION, STRING_LIMITS } from '../../core/config/constants.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { debugLogResponse, safeJsonStringify } from '../serialization/json-sanitizer.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported from '../schemas/common.js'
 import {
   createValidator,
   DateToolCategory,
   type DateValidationFeedback,
-} from '../utils/date-validator.js'
+} from '../utils/date/validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response-enhancer.js'
-import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**

@@ -2,15 +2,39 @@
  * Tests for Response Enhancer Utility
  */
 
-import { describe, expect, it } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import type { Logger } from 'pino'
+
+// Create a mock for safeLogger
+const mockWarn = mock(() => {})
+const mockSafeLogger = {
+  error: mock(() => {}),
+  warn: mockWarn,
+  info: mock(() => {}),
+  debug: mock(() => {}),
+  debugHttp: mock(() => {}),
+}
+
+// Mock the logger module before importing anything that uses it
+mock.module('../../src/logger', () => ({
+  safeLogger: mockSafeLogger,
+  logger: {} as Logger,
+  SafeLogger: class {},
+  createChildLogger: () => mockSafeLogger,
+}))
+
 import {
   calculateNights,
   type EnhanceOptions,
+  type EntityType,
   enhanceResponse,
+  extractEntityDetails,
   formatCurrency,
   formatDate,
   formatMcpResponse,
-} from '../../src/mcp/utils/response-enhancer'
+  isApiResponseData,
+  toApiResponseData,
+} from '../../src/mcp/utils/response/index'
 
 describe('Response Enhancer', () => {
   describe('formatCurrency', () => {
@@ -154,6 +178,223 @@ describe('Response Enhancer', () => {
       // Cross-year
       expect(calculateNights('2023-12-30', '2024-01-02')).toBe(3)
       expect(calculateNights('2023-12-31', '2024-01-01')).toBe(1)
+    })
+  })
+
+  describe('extractEntityDetails', () => {
+    it('should extract booking details correctly', () => {
+      const apiData = {
+        id: 123,
+        guest_name: 'John Doe',
+        guest_email: 'john@example.com',
+        property_id: 456,
+        arrival: '2024-03-15',
+        departure: '2024-03-20',
+        adults: 2,
+        children: 1,
+        amount: 1500,
+        currency: 'USD',
+        status: 'confirmed',
+      }
+
+      const details = extractEntityDetails('booking', apiData)
+
+      expect(details.bookingId).toBe('123')
+      expect(details.guest).toBe('John Doe')
+      expect(details.checkIn).toBe('March 15, 2024')
+      expect(details.checkOut).toBe('March 20, 2024')
+      expect(details.nights).toBe(5)
+      expect(details.totalGuests).toBe(3)
+    })
+
+    it('should extract payment link details correctly', () => {
+      const apiData = {
+        paymentUrl: 'https://pay.lodgify.com/xyz',
+        amount: 500,
+        currency: 'EUR',
+        expiresAt: '2024-04-01T12:00:00Z',
+      }
+
+      const inputParams = {
+        id: 'booking-789',
+        payload: {
+          amount: 500,
+          currency: 'EUR',
+          description: 'Deposit payment',
+        },
+      }
+
+      const details = extractEntityDetails('payment_link', apiData, inputParams)
+
+      expect(details.bookingId).toBe('booking-789')
+      expect(details.amount).toBe('€500.00')
+      expect(details.paymentUrl).toBe('https://pay.lodgify.com/xyz')
+      expect(details.description).toBe('Deposit payment')
+    })
+
+    it('should extract quote details with special bookingId handling', () => {
+      const apiData = {
+        id: 'quote_123',
+        totalPrice: 2000,
+        currency: 'USD',
+        validUntil: '2024-04-15T12:00:00Z',
+      }
+
+      const inputParams = {
+        bookingId: 'BK789',
+        payload: {
+          totalPrice: 2000,
+          currency: 'USD',
+          validUntil: '2024-04-15T12:00:00Z',
+        },
+      }
+
+      const details = extractEntityDetails('quote', apiData, inputParams)
+
+      // Should prefer bookingId from inputParams over apiData.id
+      expect(details.bookingId).toBe('BK789')
+      expect(details.quoteId).toBe('quote_123')
+      expect(details.totalPrice).toBe('$2,000.00')
+      expect(details.validUntil).toContain('April 15, 2024')
+    })
+
+    it('should extract rate details correctly', () => {
+      const apiData = {}
+
+      const inputParams = {
+        property_id: 123,
+        rates: [
+          {
+            room_type_id: 456,
+            start_date: '2024-06-01',
+            end_date: '2024-08-31',
+            price_per_day: 150,
+            min_stay: 3,
+            currency: 'USD',
+          },
+        ],
+      }
+
+      const details = extractEntityDetails('rate', apiData, inputParams)
+
+      expect(details.property).toBe('Property 123')
+      expect(details.ratesUpdated).toBe(1)
+      expect(details.dateRange).toContain('June 1, 2024')
+      expect(details.pricePerDay).toBe('$150.00')
+      expect(details.minimumStay).toBe('3 nights')
+    })
+
+    it('should extract webhook details correctly', () => {
+      const apiData = {
+        id: 'webhook_123',
+        status: 'active',
+        createdAt: '2024-03-15T10:00:00Z',
+      }
+
+      const inputParams = {
+        event: 'booking_new_status_booked',
+        target_url: 'https://example.com/webhooks',
+      }
+
+      const details = extractEntityDetails('webhook', apiData, inputParams)
+
+      expect(details.webhookId).toBe('webhook_123')
+      expect(details.event).toBe('booking_new_status_booked')
+      expect(details.targetUrl).toBe('https://example.com/webhooks')
+      expect(details.status).toBe('active')
+    })
+
+    it('should extract thread details correctly', () => {
+      const apiData = {
+        threadId: 'thread_456',
+      }
+
+      const inputParams = {
+        threadGuid: 'thread_123',
+        action: 'marked_read',
+      }
+
+      const details = extractEntityDetails('thread', apiData, inputParams)
+
+      // Should prefer inputParams.threadGuid over apiData.threadId
+      expect(details.threadId).toBe('thread_123')
+      expect(details.action).toBe('marked_read')
+    })
+
+    it('should extract key_codes details correctly', () => {
+      const apiData = {
+        bookingId: 'booking_456',
+      }
+
+      const inputParams = {
+        id: 'booking_123',
+        payload: {
+          keyCodes: ['1234', '5678', 'ABCD'],
+        },
+      }
+
+      const details = extractEntityDetails('key_codes', apiData, inputParams)
+
+      // Should prefer inputParams.id over apiData.bookingId
+      expect(details.bookingId).toBe('booking_123')
+      expect(details.codesUpdated).toBe(3)
+      expect(details.codes).toEqual(['1234', '5678', 'ABCD'])
+    })
+
+    it('should handle generic entity type with default extraction', () => {
+      const apiData = {
+        id: 999,
+        name: 'Generic Entity',
+        status: 'active',
+        someOtherField: 'ignored',
+      }
+
+      // Use type assertion to test default case without 'any'
+      const details = extractEntityDetails('unknown_type' as EntityType, apiData)
+
+      expect(details.id).toBe('999')
+      expect(details.name).toBe('Generic Entity')
+      expect(details.status).toBe('active')
+      expect(details.someOtherField).toBeUndefined()
+    })
+
+    it('should handle numeric IDs correctly', () => {
+      const apiData = {
+        id: 12345,
+        bookingId: 67890,
+        property_id: 111,
+      }
+
+      const details = extractEntityDetails('booking', apiData)
+
+      // Should convert numeric IDs to strings
+      expect(details.bookingId).toBe('12345')
+      expect(details.propertyId).toBe('111')
+    })
+
+    it('should handle missing data gracefully', () => {
+      const apiData = {}
+      const inputParams = {}
+
+      // Test each entity type with empty data
+      const bookingDetails = extractEntityDetails('booking', apiData, inputParams)
+      expect(bookingDetails).toBeDefined()
+      // nights may be undefined when dates are missing
+      expect(bookingDetails.nights).toBeUndefined()
+
+      const rateDetails = extractEntityDetails('rate', apiData, inputParams)
+      expect(rateDetails).toBeDefined()
+      // ratesUpdated will be undefined when rates array is missing
+      expect(rateDetails.ratesUpdated).toBeUndefined()
+
+      const threadDetails = extractEntityDetails('thread', apiData, inputParams)
+      expect(threadDetails).toBeDefined()
+      expect(threadDetails.action).toBe('updated')
+
+      const keyCodeDetails = extractEntityDetails('key_codes', apiData, inputParams)
+      expect(keyCodeDetails).toBeDefined()
+      expect(keyCodeDetails.codesUpdated).toBe(0)
+      expect(keyCodeDetails.codes).toEqual([])
     })
   })
 
@@ -390,6 +631,173 @@ describe('Response Enhancer', () => {
       expect(parsed.summary).toBeDefined()
       expect(parsed.details).toBeDefined()
       expect(parsed.data).toBeDefined()
+    })
+  })
+
+  describe('isApiResponseData', () => {
+    it('should return true for valid objects', () => {
+      expect(isApiResponseData({})).toBe(true)
+      expect(isApiResponseData({ id: 123 })).toBe(true)
+      expect(isApiResponseData({ nested: { key: 'value' } })).toBe(true)
+      expect(isApiResponseData({ multiple: 'keys', with: 123, values: true })).toBe(true)
+    })
+
+    it('should return false for null', () => {
+      expect(isApiResponseData(null)).toBe(false)
+    })
+
+    it('should return false for arrays', () => {
+      expect(isApiResponseData([])).toBe(false)
+      expect(isApiResponseData([1, 2, 3])).toBe(false)
+      expect(isApiResponseData(['a', 'b', 'c'])).toBe(false)
+    })
+
+    it('should return false for primitives', () => {
+      expect(isApiResponseData(undefined)).toBe(false)
+      expect(isApiResponseData(123)).toBe(false)
+      expect(isApiResponseData('string')).toBe(false)
+      expect(isApiResponseData(true)).toBe(false)
+      expect(isApiResponseData(false)).toBe(false)
+      expect(isApiResponseData(Symbol('test'))).toBe(false)
+    })
+  })
+
+  describe('toApiResponseData', () => {
+    beforeEach(() => {
+      // Clear all mock calls before each test
+      mockWarn.mockClear()
+    })
+
+    it('should return valid objects unchanged', () => {
+      const obj = { id: 123, name: 'test' }
+      expect(toApiResponseData(obj)).toBe(obj)
+      expect(mockWarn).not.toHaveBeenCalled()
+    })
+
+    it('should convert null to empty object and log warning', () => {
+      const result = toApiResponseData(null)
+      expect(result).toEqual({})
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'unknown',
+        expected: 'object',
+        actualType: 'object', // null is typeof 'object'
+        fallbackUsed: true,
+      })
+    })
+
+    it('should convert undefined to empty object and log warning', () => {
+      const result = toApiResponseData(undefined)
+      expect(result).toEqual({})
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'unknown',
+        expected: 'object',
+        actualType: 'undefined',
+        fallbackUsed: true,
+      })
+    })
+
+    it('should convert arrays to empty object and log warning', () => {
+      const result = toApiResponseData([1, 2, 3])
+      expect(result).toEqual({})
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'unknown',
+        expected: 'object',
+        actualType: 'array',
+        fallbackUsed: true,
+      })
+    })
+
+    it('should convert primitives to empty object and log warning', () => {
+      const result = toApiResponseData(123)
+      expect(result).toEqual({})
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'unknown',
+        expected: 'object',
+        actualType: 'number',
+        fallbackUsed: true,
+      })
+    })
+
+    it('should include context in warning message when provided', () => {
+      toApiResponseData('invalid', 'create booking')
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'create booking',
+        expected: 'object',
+        actualType: 'string',
+        fallbackUsed: true,
+      })
+    })
+  })
+
+  describe('enhanceResponse with invalid data', () => {
+    beforeEach(() => {
+      // Clear all mock calls before each test
+      mockWarn.mockClear()
+    })
+
+    it('should handle null data gracefully', () => {
+      const options: EnhanceOptions = {
+        operationType: 'create',
+        entityType: 'booking',
+      }
+
+      const enhanced = enhanceResponse(null, options)
+
+      expect(enhanced).toBeDefined()
+      expect(enhanced.data).toEqual({})
+      expect(enhanced.operation.status).toBe('success')
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'create booking',
+        expected: 'object',
+        actualType: 'object', // null is typeof 'object'
+        fallbackUsed: true,
+      })
+    })
+
+    it('should handle array data gracefully', () => {
+      const options: EnhanceOptions = {
+        operationType: 'read',
+        entityType: 'booking',
+      }
+
+      const enhanced = enhanceResponse([1, 2, 3], options)
+
+      expect(enhanced).toBeDefined()
+      expect(enhanced.data).toEqual({})
+      expect(enhanced.operation.status).toBe('success')
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'read booking',
+        expected: 'object',
+        actualType: 'array',
+        fallbackUsed: true,
+      })
+    })
+
+    it('should handle primitive data gracefully', () => {
+      const options: EnhanceOptions = {
+        operationType: 'update',
+        entityType: 'rate',
+      }
+
+      const enhanced = enhanceResponse('string value', options)
+
+      expect(enhanced).toBeDefined()
+      expect(enhanced.data).toEqual({})
+      expect(enhanced.operation.status).toBe('success')
+      expect(mockWarn).toHaveBeenCalledTimes(1)
+      expect(mockWarn).toHaveBeenCalledWith('Invalid data type for ApiResponseData', {
+        context: 'update rate',
+        expected: 'object',
+        actualType: 'string',
+        fallbackUsed: true,
+      })
     })
   })
 })

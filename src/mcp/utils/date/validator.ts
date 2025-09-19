@@ -1,3 +1,5 @@
+import { getTranslator } from '../i18n/index.js'
+
 /**
  * Date Validation Module
  *
@@ -32,6 +34,15 @@ export enum DateToolCategory {
   /** Historical queries - allows past dates */
   HISTORICAL = 'historical',
 }
+
+/**
+ * Date range constants for validation limits
+ */
+export const ONE_YEAR_DAYS = 365
+export const TWO_YEARS_DAYS = 730
+export const DEFAULT_MAX_PAST_DAYS = 365
+export const DEFAULT_MAX_FUTURE_DAYS_SHORT = 365 // For bookings, quotes, rates
+export const DEFAULT_MAX_FUTURE_DAYS_LONG = 730 // For availability (2 years)
 
 /**
  * Result of date validation with feedback-based approach
@@ -229,6 +240,39 @@ export interface InternationalizationOptions {
 }
 
 /**
+ * Descriptor for messages that can be localized via translation keys
+ */
+export type LocalizableText =
+  | string
+  | {
+      /** Translation key (namespace included) */
+      key: string
+      /** Default English message with interpolation placeholders */
+      defaultValue: string
+      /** Dynamic values for interpolation */
+      values?: Record<string, unknown>
+      /** Count value for pluralization */
+      count?: number
+    }
+
+/**
+ * Helper to build LocalizableText descriptors with strong defaults
+ */
+export function createLocalizedText(
+  key: string,
+  defaultValue: string,
+  values?: Record<string, unknown>,
+  count?: number,
+): LocalizableText {
+  return {
+    key,
+    defaultValue,
+    values,
+    count,
+  }
+}
+
+/**
  * Enhanced date validation info for tool responses with feedback-based approach
  */
 export interface DateValidationInfo {
@@ -281,11 +325,11 @@ export interface DateValidationInfo {
  * Creates a structured feedback object for date validation issues
  */
 export function createDateValidationFeedback(options: {
-  message: string
+  message: LocalizableText
   severity: FeedbackSeverity
   originalInput: string
   detectedIssue: ValidationIssueCode
-  suggestions: string[]
+  suggestions: LocalizableText[]
   confirmationRequired?: boolean
   feedbackStyle?: FeedbackStyle
   context?: DateValidationFeedback['context']
@@ -293,17 +337,16 @@ export function createDateValidationFeedback(options: {
   i18n?: InternationalizationOptions
 }): DateValidationFeedback {
   // Generate accessibility enhancements if not provided
+  const baseMessage = formatDefaultText(options.message)
   const accessibility =
     options.accessibility ??
-    generateAccessibilityEnhancements(options.severity, options.detectedIssue, options.message)
+    generateAccessibilityEnhancements(options.severity, options.detectedIssue, baseMessage)
 
   // Apply internationalization if provided
-  const message = options.i18n ? localizeMessage(options.message, options.i18n) : options.message
-  const suggestions = options.i18n
-    ? options.suggestions.map((s) =>
-        localizeMessage(s, options.i18n as InternationalizationOptions),
-      )
-    : options.suggestions
+  const message = renderLocalizedText(options.message, options.i18n)
+  const suggestions = options.suggestions.map((suggestion) =>
+    renderLocalizedText(suggestion, options.i18n),
+  )
 
   return {
     message,
@@ -401,27 +444,88 @@ function createStructuredDescription(
 }
 
 /**
- * Basic localization function - in a real implementation, this would use a full i18n library
+ * Resolve localized message text with fallback interpolation support
  */
-function localizeMessage(message: string, i18n: InternationalizationOptions): string {
-  // This is a placeholder implementation - real i18n would use message keys and translation dictionaries
-  if (i18n.language === 'es') {
-    // Spanish translations for common patterns
-    return message
-      .replace(/Invalid date format/g, 'Formato de fecha inválido')
-      .replace(/Date is in the past/g, 'La fecha está en el pasado')
-      .replace(/Date appears to be from/g, 'La fecha parece ser de')
-      .replace(/Current date:/g, 'Fecha actual:')
-  } else if (i18n.language === 'fr') {
-    // French translations for common patterns
-    return message
-      .replace(/Invalid date format/g, 'Format de date invalide')
-      .replace(/Date is in the past/g, 'La date est dans le passé')
-      .replace(/Date appears to be from/g, 'La date semble provenir de')
-      .replace(/Current date:/g, 'Date actuelle:')
+function renderLocalizedText(text: LocalizableText, i18n?: InternationalizationOptions): string {
+  if (!i18n) {
+    return formatDefaultText(text)
   }
 
-  return message // Default to English
+  return localizeMessage(text, i18n)
+}
+
+/**
+ * Localize a message using the shared i18n translator infrastructure
+ */
+function localizeMessage(text: LocalizableText, i18n: InternationalizationOptions): string {
+  if (typeof text === 'string') {
+    return text
+  }
+
+  const translator = getTranslator('validator', i18n)
+  const values = {
+    ...(text.values ?? {}),
+  }
+
+  if (typeof text.count === 'number' && values.count === undefined) {
+    values.count = text.count
+  }
+
+  const translationKey = normalizeTranslationKey(text.key)
+
+  return translator(translationKey, {
+    defaultValue: text.defaultValue,
+    ...values,
+  })
+}
+
+function normalizeTranslationKey(key: string): string {
+  if (key.includes(':')) {
+    return key
+  }
+
+  const [maybeNamespace, ...rest] = key.split('.')
+  if (rest.length > 0 && maybeNamespace === 'validator') {
+    return rest.join('.')
+  }
+
+  return key
+}
+
+/**
+ * Replace interpolation tokens in the default message for fallback rendering
+ */
+function formatDefaultText(text: LocalizableText): string {
+  if (typeof text === 'string') {
+    return text
+  }
+
+  const values = {
+    ...(text.values ?? {}),
+  }
+
+  if (typeof text.count === 'number' && values.count === undefined) {
+    values.count = text.count
+  }
+
+  return interpolateDefault(text.defaultValue, values)
+}
+
+function interpolateDefault(template: string, values: Record<string, unknown>): string {
+  return template.replace(/\{\{\s*([^,}\s]+)[^}]*\}\}/g, (_, rawKey: string) => {
+    const key = rawKey.trim()
+    const value = values[key]
+
+    if (value === undefined || value === null) {
+      return ''
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString().split('T')[0]
+    }
+
+    return String(value)
+  })
 }
 
 /**
@@ -435,24 +539,54 @@ export const FeedbackTemplates = {
     originalInput: string,
     currentYear: number,
     cutoffYear: number = 2024,
+    i18n?: InternationalizationOptions,
   ): DateValidationFeedback => {
     // Extract the year from the input and replace it with current year
     const inputYear = new Date(`${originalInput}T12:00:00Z`).getFullYear()
     const suggestedDate = originalInput.replace(String(inputYear), String(currentYear))
+    const currentDate = new Date()
+
     return createDateValidationFeedback({
-      message: `The date "${originalInput}" appears to be from a previous year (${cutoffYear}). Current year is ${currentYear}.`,
+      message: createLocalizedText(
+        'validator.llmCutoffSuspected',
+        'The date "{{date}}" appears to be from a previous year ({{cutoffYear}}). Current year is {{currentYear}}.',
+        {
+          date: originalInput,
+          cutoffYear,
+          currentYear,
+        },
+      ),
       severity: FeedbackSeverity.WARNING,
       originalInput,
       detectedIssue: ValidationIssueCode.LLM_CUTOFF_SUSPECTED,
       suggestions: [
-        `If you meant this year, use: ${suggestedDate}`,
-        `If you meant the historical date ${originalInput}, please confirm`,
-        `Current date: ${new Date().toISOString().split('T')[0]}`,
+        createLocalizedText(
+          'validator.suggestions.useCurrentYear',
+          'If you meant this year, use: {{suggestedDate}}',
+          {
+            suggestedDate,
+          },
+        ),
+        createLocalizedText(
+          'validator.suggestions.confirmHistoricalDate',
+          'If you meant the historical date {{originalDate}}, please confirm',
+          {
+            originalDate: originalInput,
+          },
+        ),
+        createLocalizedText(
+          'validator.suggestions.currentDate',
+          'Current date: {{currentDate, date}}',
+          {
+            currentDate,
+          },
+        ),
       ],
       confirmationRequired: true,
       context: {
         cutoffYear,
       },
+      i18n,
     })
   },
 
@@ -463,41 +597,87 @@ export const FeedbackTemplates = {
     originalInput: string,
     daysPast: number,
     toolCategory: string,
+    i18n?: InternationalizationOptions,
   ): DateValidationFeedback => {
-    const todayDate = new Date().toISOString().split('T')[0]
+    const today = new Date()
     return createDateValidationFeedback({
-      message: `The date "${originalInput}" is ${daysPast} days in the past. ${toolCategory} operations typically require future dates.`,
+      message: createLocalizedText(
+        'validator.dateInPastSoft',
+        'The date "{{date}}" is {{count}} days in the past. {{toolCategory}} operations typically require future dates.',
+        {
+          date: originalInput,
+          toolCategory,
+        },
+        daysPast,
+      ),
       severity: FeedbackSeverity.WARNING,
       originalInput,
       detectedIssue: ValidationIssueCode.DATE_IN_PAST,
       suggestions: [
-        `Did you mean a future date?`,
-        `Today's date: ${todayDate}`,
-        `If you need past data, please confirm this is intentional`,
+        createLocalizedText(
+          'validator.suggestions.didYouMeanFuture',
+          'Did you mean a future date?',
+        ),
+        createLocalizedText(
+          'validator.suggestions.todaysDate',
+          "Today's date: {{currentDate, date}}",
+          {
+            currentDate: today,
+          },
+        ),
+        createLocalizedText(
+          'validator.suggestions.confirmPastData',
+          'If you need past data, please confirm this is intentional',
+        ),
       ],
       confirmationRequired: true,
       context: {
         daysDifference: -daysPast,
         toolCategory,
       },
+      i18n,
     })
   },
 
   /**
    * Create feedback for invalid date ranges
    */
-  invalidRange: (startDate: string, endDate: string): DateValidationFeedback => {
+  invalidRange: (
+    startDate: string,
+    endDate: string,
+    i18n?: InternationalizationOptions,
+  ): DateValidationFeedback => {
     return createDateValidationFeedback({
-      message: `Invalid date range: end date "${endDate}" is before start date "${startDate}".`,
+      message: createLocalizedText(
+        'validator.invalidRange',
+        'Invalid date range: end date "{{endDate}}" is before start date "{{startDate}}".',
+        {
+          startDate,
+          endDate,
+        },
+      ),
       severity: FeedbackSeverity.ERROR,
       originalInput: `${startDate} to ${endDate}`,
       detectedIssue: ValidationIssueCode.INVALID_RANGE,
       suggestions: [
-        `Ensure the end date is after the start date`,
-        `Check if the dates were entered in the correct order`,
-        `Current date: ${new Date().toISOString().split('T')[0]}`,
+        createLocalizedText(
+          'validator.suggestions.ensureEndAfterStart',
+          'Ensure the end date is after the start date',
+        ),
+        createLocalizedText(
+          'validator.suggestions.checkDateOrder',
+          'Check if the dates were entered in the correct order',
+        ),
+        createLocalizedText(
+          'validator.suggestions.currentDate',
+          'Current date: {{currentDate, date}}',
+          {
+            currentDate: new Date(),
+          },
+        ),
       ],
       confirmationRequired: false,
+      i18n,
     })
   },
 }
@@ -511,29 +691,29 @@ const DEFAULT_CONFIGS: Record<DateToolCategory, Partial<ValidationConfig>> = {
     mode: ValidationMode.SOFT, // Changed from AUTO_CORRECT - provides feedback instead
     allowPast: false,
     allowFuture: true,
-    maxFutureDays: 730, // 2 years
+    maxFutureDays: DEFAULT_MAX_FUTURE_DAYS_LONG, // 2 years
     detectLLMCutoff: true,
   },
   [DateToolCategory.BOOKING]: {
     mode: ValidationMode.SOFT,
     allowPast: false,
     allowFuture: true,
-    maxFutureDays: 365,
+    maxFutureDays: DEFAULT_MAX_FUTURE_DAYS_SHORT,
     detectLLMCutoff: true,
   },
   [DateToolCategory.RATE]: {
     mode: ValidationMode.SOFT,
     allowPast: true,
     allowFuture: true,
-    maxPastDays: 365,
-    maxFutureDays: 365,
+    maxPastDays: DEFAULT_MAX_PAST_DAYS,
+    maxFutureDays: DEFAULT_MAX_FUTURE_DAYS_SHORT,
     detectLLMCutoff: true,
   },
   [DateToolCategory.QUOTE]: {
     mode: ValidationMode.SOFT, // Changed from AUTO_CORRECT - provides feedback instead
     allowPast: false,
     allowFuture: true,
-    maxFutureDays: 365,
+    maxFutureDays: DEFAULT_MAX_FUTURE_DAYS_SHORT,
     detectLLMCutoff: true,
   },
   [DateToolCategory.HISTORICAL]: {
@@ -581,14 +761,32 @@ export class DateValidator {
 
     // Basic format validation
     if (!this.isValidDateFormat(dateString)) {
+      const isoExample = '2025-08-31'
       const feedback = createDateValidationFeedback({
-        message: `Invalid date format. Expected YYYY-MM-DD, got: ${dateString}`,
+        message: createLocalizedText(
+          'validator.invalidFormat',
+          'Invalid date format. Expected {{expectedFormat}}, got: {{actual}}',
+          {
+            expectedFormat: 'YYYY-MM-DD',
+            actual: dateString,
+          },
+        ),
         severity: FeedbackSeverity.ERROR,
         originalInput: dateString,
         detectedIssue: ValidationIssueCode.INVALID_FORMAT,
         suggestions: [
-          'Use YYYY-MM-DD format (e.g., 2025-08-31)',
-          'Ensure the date is valid (check month/day ranges)',
+          createLocalizedText(
+            'validator.suggestions.useIsoFormat',
+            'Use {{expectedFormat}} format (e.g., {{example}})',
+            {
+              expectedFormat: 'YYYY-MM-DD',
+              example: isoExample,
+            },
+          ),
+          createLocalizedText(
+            'validator.suggestions.ensureValidRange',
+            'Ensure the date is valid (check month/day ranges)',
+          ),
         ],
         i18n: this.config.i18n,
       })
@@ -643,7 +841,7 @@ export class DateValidator {
       rangeValid = endDateObj >= startDateObj
 
       if (!rangeValid) {
-        rangeFeedback = FeedbackTemplates.invalidRange(startDate, endDate)
+        rangeFeedback = FeedbackTemplates.invalidRange(startDate, endDate, this.config.i18n)
         rangeError = rangeFeedback.message
       }
     } else {
@@ -698,7 +896,12 @@ export class DateValidator {
 
     // Detect if date is from a past year that might be LLM cutoff
     if (dateYear <= llmCutoffYear && dateYear < currentYear) {
-      const feedback = FeedbackTemplates.llmCutoffSuspected(dateString, currentYear, llmCutoffYear)
+      const feedback = FeedbackTemplates.llmCutoffSuspected(
+        dateString,
+        currentYear,
+        llmCutoffYear,
+        this.config.i18n,
+      )
 
       return {
         feedback,
@@ -722,64 +925,104 @@ export class DateValidator {
   private validateTimeConstraints(date: Date, originalInput: string): Partial<ValidationResult> {
     const daysDiff = this.getDaysDifference(date, this.referenceDate)
 
-    // Check past constraint
+    // Check each constraint in order, returning first issue found
+    const pastResult = this.checkPastConstraint(originalInput, daysDiff)
+    if (pastResult) return pastResult
+
+    const futureResult = this.checkFutureConstraint(originalInput, daysDiff)
+    if (futureResult) return futureResult
+
+    const maxPastResult = this.checkMaxPastDays(originalInput, daysDiff)
+    if (maxPastResult) return maxPastResult
+
+    const maxFutureResult = this.checkMaxFutureDays(originalInput, daysDiff)
+    if (maxFutureResult) return maxFutureResult
+
+    return { isValid: true }
+  }
+
+  /**
+   * Check if date violates past constraint
+   */
+  private checkPastConstraint(
+    originalInput: string,
+    daysDiff: number,
+  ): Partial<ValidationResult> | null {
     if (daysDiff < 0 && !this.config.allowPast) {
       const absDays = Math.abs(daysDiff)
       const toolCategory = this.config.category || 'this operation'
+      const severity =
+        this.config.mode === ValidationMode.HARD ? FeedbackSeverity.ERROR : FeedbackSeverity.WARNING
 
-      if (this.config.mode === ValidationMode.HARD) {
-        const feedback = createDateValidationFeedback({
-          message: `Date is ${absDays} days in the past. Past dates are not allowed for ${toolCategory}.`,
-          severity: FeedbackSeverity.ERROR,
-          originalInput,
-          detectedIssue: ValidationIssueCode.DATE_IN_PAST,
-          suggestions: [
-            'Please provide a future date',
-            `Current date: ${new Date().toISOString().split('T')[0]}`,
-          ],
-          context: {
-            daysDifference: daysDiff,
-            toolCategory,
+      const feedback = this.buildDateFeedback({
+        messageKey: 'validator.dateInPastHard',
+        messageTemplate:
+          'Date is {{count}} days in the past. Past dates are not allowed for {{toolCategory}}.',
+        messageParams: { toolCategory },
+        count: absDays,
+        severity,
+        originalInput,
+        issueCode: ValidationIssueCode.DATE_IN_PAST,
+        suggestions: [
+          {
+            key: 'validator.suggestions.provideFutureDate',
+            template: 'Please provide a future date',
           },
-          i18n: this.config.i18n,
-        })
+          {
+            key: 'validator.suggestions.currentDate',
+            template: 'Current date: {{currentDate, date}}',
+            params: { currentDate: new Date() },
+          },
+        ],
+        context: {
+          daysDifference: daysDiff,
+          toolCategory,
+        },
+      })
 
-        return {
-          isValid: false,
-          feedback,
-          error: feedback.message,
-        }
-      } else {
-        // SOFT mode: provide feedback but allow processing
-        const feedback = FeedbackTemplates.dateInPast(originalInput, absDays, toolCategory)
-
-        return {
-          isValid: true,
-          feedback,
-          warning: feedback.message,
-        }
+      return {
+        isValid: this.config.mode !== ValidationMode.HARD,
+        feedback,
+        error: this.config.mode === ValidationMode.HARD ? feedback.message : undefined,
+        warning: this.config.mode !== ValidationMode.HARD ? feedback.message : undefined,
       }
     }
+    return null
+  }
 
-    // Check future constraint
+  /**
+   * Check if date violates future constraint
+   */
+  private checkFutureConstraint(
+    originalInput: string,
+    daysDiff: number,
+  ): Partial<ValidationResult> | null {
     if (daysDiff > 0 && !this.config.allowFuture) {
-      const feedback = createDateValidationFeedback({
-        message: `Date is ${daysDiff} days in the future. Future dates may not be intended for this operation.`,
-        severity:
-          this.config.mode === ValidationMode.HARD
-            ? FeedbackSeverity.ERROR
-            : FeedbackSeverity.WARNING,
+      const severity = this.determineSeverity()
+
+      const feedback = this.buildDateFeedback({
+        messageKey: 'validator.dateInFuture',
+        messageTemplate:
+          'Date is {{count}} days in the future. Future dates may not be intended for this operation.',
+        count: daysDiff,
+        severity,
         originalInput,
-        detectedIssue: ValidationIssueCode.DATE_IN_FUTURE,
+        issueCode: ValidationIssueCode.DATE_IN_FUTURE,
         suggestions: [
-          'Please confirm this future date is correct',
-          `Current date: ${new Date().toISOString().split('T')[0]}`,
+          {
+            key: 'validator.suggestions.confirmFutureDate',
+            template: 'Please confirm this future date is correct',
+          },
+          {
+            key: 'validator.suggestions.currentDate',
+            template: 'Current date: {{currentDate, date}}',
+            params: { currentDate: new Date() },
+          },
         ],
         context: {
           daysDifference: daysDiff,
           toolCategory: this.config.category,
         },
-        i18n: this.config.i18n,
       })
 
       return {
@@ -789,32 +1032,50 @@ export class DateValidator {
         warning: this.config.mode !== ValidationMode.HARD ? feedback.message : undefined,
       }
     }
+    return null
+  }
 
-    // Check max past days
+  /**
+   * Check if date violates maximum past days constraint
+   */
+  private checkMaxPastDays(
+    originalInput: string,
+    daysDiff: number,
+  ): Partial<ValidationResult> | null {
     if (this.config.maxPastDays && daysDiff < 0 && Math.abs(daysDiff) > this.config.maxPastDays) {
-      const feedback = createDateValidationFeedback({
-        message: `Date is too far in the past (${Math.abs(daysDiff)} days). Maximum allowed: ${this.config.maxPastDays} days.`,
-        severity:
-          this.config.mode === ValidationMode.HARD
-            ? FeedbackSeverity.ERROR
-            : FeedbackSeverity.WARNING,
+      const absDays = Math.abs(daysDiff)
+      const maxPastDays = this.config.maxPastDays
+      const severity = this.determineSeverity()
+
+      const feedback = this.buildDateFeedback({
+        messageKey: 'validator.tooFarPast',
+        messageTemplate:
+          'Date is too far in the past ({{count}} days). Maximum allowed: {{maxDays}} days.',
+        messageParams: { maxDays: maxPastDays },
+        count: absDays,
+        severity,
         originalInput,
-        detectedIssue: ValidationIssueCode.TOO_FAR_PAST,
+        issueCode: ValidationIssueCode.TOO_FAR_PAST,
         suggestions: [
-          `Please provide a date within the last ${this.config.maxPastDays} days`,
-          `Current date: ${new Date().toISOString().split('T')[0]}`,
+          {
+            key: 'validator.suggestions.provideRecentDate',
+            template: 'Please provide a date within the last {{maxDays}} days',
+            params: { maxDays: maxPastDays },
+          },
+          {
+            key: 'validator.suggestions.currentDate',
+            template: 'Current date: {{currentDate, date}}',
+            params: { currentDate: new Date() },
+          },
         ],
         context: {
           daysDifference: daysDiff,
           allowedRange: {
-            minDate: new Date(
-              this.referenceDate.getTime() - this.config.maxPastDays * 24 * 60 * 60 * 1000,
-            )
+            minDate: new Date(this.referenceDate.getTime() - maxPastDays * 24 * 60 * 60 * 1000)
               .toISOString()
               .split('T')[0],
           },
         },
-        i18n: this.config.i18n,
       })
 
       return {
@@ -824,32 +1085,49 @@ export class DateValidator {
         warning: this.config.mode !== ValidationMode.HARD ? feedback.message : undefined,
       }
     }
+    return null
+  }
 
-    // Check max future days
+  /**
+   * Check if date violates maximum future days constraint
+   */
+  private checkMaxFutureDays(
+    originalInput: string,
+    daysDiff: number,
+  ): Partial<ValidationResult> | null {
     if (this.config.maxFutureDays && daysDiff > this.config.maxFutureDays) {
-      const feedback = createDateValidationFeedback({
-        message: `Date is too far in the future (${daysDiff} days). Maximum allowed: ${this.config.maxFutureDays} days.`,
-        severity:
-          this.config.mode === ValidationMode.HARD
-            ? FeedbackSeverity.ERROR
-            : FeedbackSeverity.WARNING,
+      const maxFutureDays = this.config.maxFutureDays
+      const severity = this.determineSeverity()
+
+      const feedback = this.buildDateFeedback({
+        messageKey: 'validator.tooFarFuture',
+        messageTemplate:
+          'Date is too far in the future ({{count}} days). Maximum allowed: {{maxDays}} days.',
+        messageParams: { maxDays: maxFutureDays },
+        count: daysDiff,
+        severity,
         originalInput,
-        detectedIssue: ValidationIssueCode.TOO_FAR_FUTURE,
+        issueCode: ValidationIssueCode.TOO_FAR_FUTURE,
         suggestions: [
-          `Please provide a date within the next ${this.config.maxFutureDays} days`,
-          `Current date: ${new Date().toISOString().split('T')[0]}`,
+          {
+            key: 'validator.suggestions.provideUpcomingDate',
+            template: 'Please provide a date within the next {{maxDays}} days',
+            params: { maxDays: maxFutureDays },
+          },
+          {
+            key: 'validator.suggestions.currentDate',
+            template: 'Current date: {{currentDate, date}}',
+            params: { currentDate: new Date() },
+          },
         ],
         context: {
           daysDifference: daysDiff,
           allowedRange: {
-            maxDate: new Date(
-              this.referenceDate.getTime() + this.config.maxFutureDays * 24 * 60 * 60 * 1000,
-            )
+            maxDate: new Date(this.referenceDate.getTime() + maxFutureDays * 24 * 60 * 60 * 1000)
               .toISOString()
               .split('T')[0],
           },
         },
-        i18n: this.config.i18n,
       })
 
       return {
@@ -859,8 +1137,59 @@ export class DateValidator {
         warning: this.config.mode !== ValidationMode.HARD ? feedback.message : undefined,
       }
     }
+    return null
+  }
 
-    return { isValid: true }
+  /**
+   * Helper: Determine severity based on validation mode
+   */
+  private determineSeverity(): FeedbackSeverity {
+    return this.config.mode === ValidationMode.HARD
+      ? FeedbackSeverity.ERROR
+      : FeedbackSeverity.WARNING
+  }
+
+  /**
+   * Helper: Build date validation feedback with standardized structure
+   */
+  private buildDateFeedback(options: {
+    messageKey: string
+    messageTemplate: string
+    messageParams?: Record<string, unknown>
+    count?: number
+    severity: FeedbackSeverity
+    originalInput: string
+    issueCode: ValidationIssueCode
+    suggestions: Array<{
+      key: string
+      template: string
+      params?: Record<string, unknown>
+    }>
+    context?: Record<string, unknown>
+  }): DateValidationFeedback {
+    const {
+      messageKey,
+      messageTemplate,
+      messageParams,
+      count,
+      severity,
+      originalInput,
+      issueCode,
+      suggestions,
+      context,
+    } = options
+
+    return createDateValidationFeedback({
+      message: createLocalizedText(messageKey, messageTemplate, messageParams, count),
+      severity,
+      originalInput,
+      detectedIssue: issueCode,
+      suggestions: suggestions.map((suggestion) =>
+        createLocalizedText(suggestion.key, suggestion.template, suggestion.params),
+      ),
+      context,
+      i18n: this.config.i18n,
+    })
   }
 
   /**
