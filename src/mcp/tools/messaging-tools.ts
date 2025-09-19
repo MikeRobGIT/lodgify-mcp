@@ -1,35 +1,50 @@
 /**
- * Messaging Tools Module
- * Contains all messaging and communication-related MCP tool registrations
+ * @fileoverview Messaging Tools Module for Lodgify MCP Server
+ * @description Contains all messaging and communication-related MCP tool registrations
+ * @author Lodgify MCP Server
+ * @since 0.1.20
  *
- * IMPORTANT: As of the latest Lodgify API documentation, only the GET thread
+ * @important As of the latest Lodgify API documentation, only the GET thread
  * endpoint is available in v2. Other messaging operations (send, mark as read,
  * archive, list) are not currently supported.
  *
+ * @see {@link https://docs.lodgify.com/discuss/6899e597bd22070fb43002df} Known Issues
+ *
  * Known Issues:
  * - v1 messaging endpoints exist but are non-functional (return 200 OK without sending)
- * - See: https://docs.lodgify.com/discuss/6899e597bd22070fb43002df
  */
 
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
-import { sanitizeInput, validateGuid } from '../utils/input-sanitizer.js'
+import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Messaging & Communication'
 
 /**
- * Get all messaging tools
+ * Get all messaging tools for the MCP server
  *
- * Currently only includes the getThread tool as it's the only functional
+ * @description Currently only includes the getThread tool as it's the only functional
  * messaging endpoint in the Lodgify API v2.
+ *
+ * @param {() => LodgifyOrchestrator} getClient - Function that returns the Lodgify orchestrator client
+ * @returns {ToolRegistration[]} Array of messaging tool registrations
+ *
+ * @since 0.1.20
+ * @category Messaging
+ *
+ * @example
+ * ```typescript
+ * const client = () => new LodgifyOrchestrator(apiKey);
+ * const messagingTools = getMessagingTools(client);
+ * // Returns: [{ name: 'lodgify_get_thread', ... }]
+ * ```
  */
 export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolRegistration[] {
   return [
-    // Get thread tool - THE ONLY FUNCTIONAL MESSAGING ENDPOINT
+    // Get thread tool - the only functional messaging endpoint
     {
       name: 'lodgify_get_thread',
       category: CATEGORY,
@@ -37,23 +52,10 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
         title: 'Get Messaging Thread',
         description: `Retrieve a messaging conversation thread including all messages, participants, and thread metadata.
 
-This is currently the ONLY functional messaging endpoint in Lodgify API v2.
+This is currently the only functional messaging endpoint in Lodgify API v2.
+Thread UIDs can be found in booking data (thread_uid field).
 
-To find thread UIDs:
-1. Get a booking using lodgify_get_booking
-2. Look for the "thread_uid" field in the booking data
-3. Use that UUID with this tool to retrieve the conversation
-
-LIMITATIONS:
-- Cannot send messages (v1 endpoints exist but are broken)
-- Cannot mark threads as read (endpoint doesn't exist)
-- Cannot archive threads (endpoint doesn't exist)
-- Cannot list all threads (endpoint doesn't exist)
-
-Example request:
-{
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Thread UID from booking data
-}`,
+For detailed usage instructions and examples, see the TOOL_CATALOG.md documentation.`,
         inputSchema: {
           threadGuid: z
             .string()
@@ -65,13 +67,8 @@ Example request:
         // Sanitize input
         const { threadGuid } = sanitizeInput(input)
 
-        // Validate GUID format
-        if (!validateGuid(threadGuid)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'Invalid thread GUID format. Must be a valid UUID/GUID.',
-          )
-        }
+        // Note: Thread GUID validation is handled by MessagingClient.validateThreadGuid()
+        // which allows broader patterns like "thread_123" in addition to standard UUIDs
 
         const result = await getClient().messaging.getThread(threadGuid)
 
