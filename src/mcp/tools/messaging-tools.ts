@@ -1,13 +1,19 @@
 /**
  * Messaging Tools Module
  * Contains all messaging and communication-related MCP tool registrations
+ *
+ * IMPORTANT: As of the latest Lodgify API documentation, only the GET thread
+ * endpoint is available in v2. Other messaging operations (send, mark as read,
+ * archive, list) are not currently supported.
+ *
+ * Known Issues:
+ * - v1 messaging endpoints exist but are non-functional (return 200 OK without sending)
+ * - See: https://docs.lodgify.com/discuss/6899e597bd22070fb43002df
  */
 
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
-import { isISODateTime } from '../utils/date/format.js'
-// Types from messaging API (imported for reference but not used in declarations)
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput, validateGuid } from '../utils/input-sanitizer.js'
 import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
@@ -17,26 +23,42 @@ const CATEGORY: ToolCategory = 'Messaging & Communication'
 
 /**
  * Get all messaging tools
+ *
+ * Currently only includes the getThread tool as it's the only functional
+ * messaging endpoint in the Lodgify API v2.
  */
 export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolRegistration[] {
   return [
-    // Get thread tool
+    // Get thread tool - THE ONLY FUNCTIONAL MESSAGING ENDPOINT
     {
       name: 'lodgify_get_thread',
       category: CATEGORY,
       config: {
         title: 'Get Messaging Thread',
-        description: `Retrieve a messaging conversation thread including all messages, participants, and thread metadata. Use this for customer service inquiries, guest communication history, or managing ongoing conversations with guests and staff.
+        description: `Retrieve a messaging conversation thread including all messages, participants, and thread metadata.
+
+This is currently the ONLY functional messaging endpoint in Lodgify API v2.
+
+To find thread UIDs:
+1. Get a booking using lodgify_get_booking
+2. Look for the "thread_uid" field in the booking data
+3. Use that UUID with this tool to retrieve the conversation
+
+LIMITATIONS:
+- Cannot send messages (v1 endpoints exist but are broken)
+- Cannot mark threads as read (endpoint doesn't exist)
+- Cannot archive threads (endpoint doesn't exist)
+- Cannot list all threads (endpoint doesn't exist)
 
 Example request:
 {
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Unique thread identifier (GUID) for the conversation
+  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Thread UID from booking data
 }`,
         inputSchema: {
           threadGuid: z
             .string()
             .min(1)
-            .describe('Unique thread identifier (GUID) for the conversation'),
+            .describe('Thread UID from booking data (found in thread_uid field)'),
         },
       },
       handler: wrapToolHandler(async (input) => {
@@ -71,239 +93,14 @@ Example request:
       }, 'lodgify_get_thread'),
     },
 
-    // List threads tool
-    {
-      name: 'lodgify_list_threads',
-      category: CATEGORY,
-      config: {
-        title: 'List Messaging Threads',
-        description: `List conversation threads with optional filtering. Useful for inbox views, triage, and audit of guest communications.
-
-Example request:
-{
-  "params": {
-    "includeMessages": true,        // Include messages in response (optional)
-    "includeParticipants": true,    // Include participant details (optional)
-    "messageLimit": 50,             // Maximum messages per thread, 1-200 (optional)
-    "since": "2024-03-01T00:00:00Z" // ISO date-time to filter threads since (optional)
-  }
-}`,
-        inputSchema: {
-          params: z
-            .object({
-              includeMessages: z.boolean().optional(),
-              includeParticipants: z.boolean().optional(),
-              messageLimit: z.number().int().min(1).max(200).optional(),
-              since: z.string().optional().describe('ISO date-time to filter threads since'),
-            })
-            .optional(),
-        },
-      },
-      handler: wrapToolHandler(async (input) => {
-        // Sanitize input
-        const { params } = sanitizeInput(input)
-
-        // Additional validation for date parameter if present
-        if (params?.since) {
-          if (!isISODateTime(params.since)) {
-            throw new McpError(
-              ErrorCode.InvalidParams,
-              'Invalid date format for since parameter. Use ISO 8601 format (e.g., 2024-03-01T00:00:00Z)',
-            )
-          }
-        }
-
-        const result = await getClient().messaging.listThreads(params)
-
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'read',
-          entityType: 'thread',
-          inputParams: params ? { params } : {},
-        })
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatMcpResponse(enhanced),
-            },
-          ],
-        }
-      }, 'lodgify_list_threads'),
-    },
-
-    // Send message tool (WRITE)
-    {
-      name: 'lodgify_send_message',
-      category: CATEGORY,
-      config: {
-        title: 'Send Message To Thread',
-        description: `Send a message to a specific conversation thread. Respects read-only mode and will be blocked when enabled.
-
-Example request:
-{
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000",  // Thread GUID
-  "message": {
-    "content": "Thank you for your inquiry about the Ocean View Villa.",  // Message content
-    "attachments": [                                                      // Optional attachments
-      {
-        "fileName": "villa_photos.pdf",                                  // File name
-        "fileUrl": "https://example.com/files/villa_photos.pdf",         // File URL
-        "fileType": "application/pdf"                                    // File MIME type (optional)
-      }
-    ]
-  }
-}`,
-        inputSchema: {
-          threadGuid: z.string().min(1).describe('Thread GUID'),
-          message: z
-            .object({
-              content: z.string().min(1).describe('Message content'),
-              attachments: z
-                .array(
-                  z.object({
-                    fileName: z.string(),
-                    fileUrl: z.string().url(),
-                    fileType: z.string().optional(),
-                  }),
-                )
-                .optional(),
-            })
-            .describe('Message payload'),
-        },
-      },
-      handler: wrapToolHandler(async (input) => {
-        // Sanitize input
-        const { threadGuid, message } = sanitizeInput(input)
-
-        // Validate GUID format
-        if (!validateGuid(threadGuid)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'Invalid thread GUID format. Must be a valid UUID/GUID.',
-          )
-        }
-
-        // Validate message content is not empty
-        if (!message.content || message.content.trim().length === 0) {
-          throw new McpError(ErrorCode.InvalidParams, 'Message content cannot be empty')
-        }
-
-        const result = await getClient().messaging.sendMessage(threadGuid, message)
-
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'create',
-          entityType: 'message',
-          inputParams: { threadGuid, message },
-        })
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatMcpResponse(enhanced),
-            },
-          ],
-        }
-      }, 'lodgify_send_message'),
-    },
-
-    // Mark thread as read (WRITE)
-    {
-      name: 'lodgify_mark_thread_as_read',
-      category: CATEGORY,
-      config: {
-        title: 'Mark Thread As Read',
-        description: `Mark a conversation thread as read to clear unread indicators. Respects read-only mode and will be blocked when enabled.
-
-Example request:
-{
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Thread GUID
-}`,
-        inputSchema: {
-          threadGuid: z.string().min(1).describe('Thread GUID'),
-        },
-      },
-      handler: wrapToolHandler(async (input) => {
-        // Sanitize input
-        const { threadGuid } = sanitizeInput(input)
-
-        // Validate GUID format
-        if (!validateGuid(threadGuid)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'Invalid thread GUID format. Must be a valid UUID/GUID.',
-          )
-        }
-
-        const result = await getClient().messaging.markThreadAsRead(threadGuid)
-
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result || { success: true }, {
-          operationType: 'action',
-          entityType: 'thread',
-          inputParams: { threadGuid, action: 'read' },
-        })
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatMcpResponse(enhanced),
-            },
-          ],
-        }
-      }, 'lodgify_mark_thread_as_read'),
-    },
-
-    // Archive thread (WRITE)
-    {
-      name: 'lodgify_archive_thread',
-      category: CATEGORY,
-      config: {
-        title: 'Archive Thread',
-        description: `Archive a conversation thread to remove it from active views. Respects read-only mode and will be blocked when enabled.
-
-Example request:
-{
-  "threadGuid": "550e8400-e29b-41d4-a716-446655440000"  // Thread GUID
-}`,
-        inputSchema: {
-          threadGuid: z.string().min(1).describe('Thread GUID'),
-        },
-      },
-      handler: wrapToolHandler(async (input) => {
-        // Sanitize input
-        const { threadGuid } = sanitizeInput(input)
-
-        // Validate GUID format
-        if (!validateGuid(threadGuid)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'Invalid thread GUID format. Must be a valid UUID/GUID.',
-          )
-        }
-
-        const result = await getClient().messaging.archiveThread(threadGuid)
-
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result || { success: true }, {
-          operationType: 'action',
-          entityType: 'thread',
-          inputParams: { threadGuid, action: 'archived' },
-        })
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: formatMcpResponse(enhanced),
-            },
-          ],
-        }
-      }, 'lodgify_archive_thread'),
-    },
+    // REMOVED TOOLS - These endpoints don't exist in Lodgify API v2:
+    // - lodgify_list_threads - GET /v2/messaging endpoint doesn't exist
+    // - lodgify_send_message - POST /v2/messaging/{threadGuid}/messages endpoint doesn't exist
+    // - lodgify_mark_thread_as_read - PUT /v2/messaging/{threadGuid}/read endpoint doesn't exist
+    // - lodgify_archive_thread - PUT /v2/messaging/{threadGuid}/archive endpoint doesn't exist
+    //
+    // Note: v1 has POST /v1/reservation/booking/{id}/messages and POST /v1/reservation/enquiry/{id}/messages
+    // but these are currently non-functional (return 200 OK without sending messages).
+    // See: https://docs.lodgify.com/discuss/6899e597bd22070fb43002df
   ]
 }

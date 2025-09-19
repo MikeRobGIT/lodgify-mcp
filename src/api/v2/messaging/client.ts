@@ -1,6 +1,10 @@
 /**
  * Messaging API Client Module
  * Handles all messaging-related API operations
+ *
+ * IMPORTANT: As of the latest API documentation, only the GET thread endpoint
+ * is available in v2. Other messaging operations (send, mark as read, archive, list)
+ * are not currently supported by the Lodgify API v2.
  */
 
 import type { BaseApiClient } from '../../base-client.js'
@@ -9,7 +13,11 @@ import type { MessageThread, ThreadQueryParams } from './types.js'
 
 /**
  * Messaging API Client
- * Manages message threads and communication
+ * Currently only supports retrieving thread details.
+ *
+ * Note: Lodgify v1 has POST endpoints for sending messages to bookings/enquiries,
+ * but these are currently non-functional (returning 200 OK without executing).
+ * See: https://docs.lodgify.com/discuss/6899e597bd22070fb43002df
  */
 export class MessagingClient extends BaseApiModule {
   constructor(client: BaseApiClient) {
@@ -42,6 +50,9 @@ export class MessagingClient extends BaseApiModule {
   /**
    * Get a messaging thread
    * GET /v2/messaging/{threadGuid}
+   *
+   * This is the only messaging endpoint currently available in v2.
+   * Thread UIDs can be found in booking data (thread_uid field).
    */
   async getThread<T = MessageThread>(threadGuid: string, params?: ThreadQueryParams): Promise<T> {
     const sanitized = this.validateThreadGuid(threadGuid)
@@ -52,55 +63,9 @@ export class MessagingClient extends BaseApiModule {
     )
   }
 
-  /**
-   * List message threads (if API supports it)
-   * GET /v2/messaging
-   */
-  async listThreads<T = MessageThread[]>(params?: ThreadQueryParams): Promise<T> {
-    return this.request<T>('GET', '', params ? { params: params as Record<string, unknown> } : {})
-  }
-
-  /**
-   * Send a message to a thread (if API supports it)
-   * POST /v2/messaging/{threadGuid}/messages
-   */
-  async sendMessage<T = unknown>(
-    threadGuid: string,
-    message: {
-      content: string
-      attachments?: Array<{
-        fileName: string
-        fileUrl: string
-        fileType?: string
-      }>
-    },
-  ): Promise<T> {
-    const sanitized = this.validateThreadGuid(threadGuid)
-
-    if (!message || !message.content) {
-      throw new Error('Message content is required')
-    }
-
-    return this.request<T>('POST', `${sanitized}/messages`, {
-      body: message,
-    })
-  }
-
-  /**
-   * Mark a thread as read (if API supports it)
-   * PUT /v2/messaging/{threadGuid}/read
-   */
-  async markThreadAsRead<T = unknown>(threadGuid: string): Promise<T> {
-    const sanitized = this.validateThreadGuid(threadGuid)
-    return this.request<T>('PUT', `${sanitized}/read`)
-  }
-
-  /**
-   * Archive a thread (if API supports it)
-   * PUT /v2/messaging/{threadGuid}/archive
-   */
-  async archiveThread<T = unknown>(threadGuid: string): Promise<T> {
-    const sanitized = this.validateThreadGuid(threadGuid)
-    return this.request<T>('PUT', `${sanitized}/archive`)
-  }
+  // Note: The following methods have been removed as they don't exist in the Lodgify API v2:
+  // - listThreads() - GET /v2/messaging endpoint doesn't exist
+  // - sendMessage() - POST /v2/messaging/{threadGuid}/messages endpoint doesn't exist
+  // - markThreadAsRead() - PUT /v2/messaging/{threadGuid}/read endpoint doesn't exist
+  // - archiveThread() - PUT /v2/messaging/{threadGuid}/archive endpoint doesn't exist
 }
