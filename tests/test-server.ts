@@ -173,34 +173,9 @@ export function createTestServer(mockClient: unknown): TestServer {
       },
     },
 
-    // New Messaging tools
-    {
-      name: 'lodgify_list_threads',
-      description: 'List messaging threads',
-      inputSchema: { type: 'object', properties: { params: { type: 'object' } } },
-    },
-    {
-      name: 'lodgify_send_message',
-      description: 'Send message to thread',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          threadGuid: { type: 'string' },
-          message: { type: 'object' },
-        },
-        required: ['threadGuid', 'message'],
-      },
-    },
-    {
-      name: 'lodgify_mark_thread_read',
-      description: 'Mark thread as read',
-      inputSchema: { type: 'object', properties: { threadGuid: { type: 'string' } } },
-    },
-    {
-      name: 'lodgify_archive_thread',
-      description: 'Archive thread',
-      inputSchema: { type: 'object', properties: { threadGuid: { type: 'string' } } },
-    },
+    // Note: lodgify_list_threads, lodgify_send_message, lodgify_mark_thread_read,
+    // and lodgify_archive_thread have been removed as they are non-functional
+    // (v2 endpoints don't exist, v1 endpoints return 200 OK but don't work)
 
     // v1 Webhook Management Tools
     {

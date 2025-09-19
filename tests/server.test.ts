@@ -119,7 +119,7 @@ describe('MCP Server Integration Tests', () => {
     test('should register all Lodgify tools', async () => {
       const response = await testServer.listTools()
 
-      expect(response.tools.length).toBeGreaterThanOrEqual(29)
+      expect(response.tools.length).toBeGreaterThanOrEqual(25)
 
       const toolNames = response.tools.map((t: { name: string }) => t.name)
       expect(toolNames).toContain('lodgify_list_properties')
@@ -135,11 +135,8 @@ describe('MCP Server Integration Tests', () => {
       expect(toolNames).toContain('lodgify_update_key_codes')
       expect(toolNames).toContain('lodgify_get_quote')
       expect(toolNames).toContain('lodgify_get_thread')
-      // New messaging tools
-      expect(toolNames).toContain('lodgify_list_threads')
-      expect(toolNames).toContain('lodgify_send_message')
-      expect(toolNames).toContain('lodgify_mark_thread_read')
-      expect(toolNames).toContain('lodgify_archive_thread')
+      // Only the working messaging tool remains
+      // (lodgify_list_threads, lodgify_send_message, lodgify_mark_thread_read, lodgify_archive_thread removed - non-functional)
       expect(toolNames).toContain('lodgify_find_properties')
 
       // v1 Webhook endpoints
