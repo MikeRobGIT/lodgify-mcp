@@ -1,0 +1,31 @@
+{
+  "invalidFormat": "Format de date invalide. Format attendu : {{expectedFormat}}, reçu : {{actual}}",
+  "llmCutoffSuspected": "La date \"{{date}}\" semble provenir d'une année précédente ({{cutoffYear, number}}). L'année actuelle est {{currentYear, number}}.",
+  "dateInPastSoft_one": "La date \"{{date}}\" est {{count, number}} jour dans le passé. Les opérations {{toolCategory}} nécessitent généralement des dates futures.",
+  "dateInPastSoft_other": "La date \"{{date}}\" est {{count, number}} jours dans le passé. Les opérations {{toolCategory}} nécessitent généralement des dates futures.",
+  "dateInPastHard_one": "La date est {{count, number}} jour dans le passé. Les dates passées ne sont pas autorisées pour {{toolCategory}}.",
+  "dateInPastHard_other": "La date est {{count, number}} jours dans le passé. Les dates passées ne sont pas autorisées pour {{toolCategory}}.",
+  "dateInFuture_one": "La date est {{count, number}} jour dans le futur. Les dates futures ne sont peut-être pas prévues pour cette opération.",
+  "dateInFuture_other": "La date est {{count, number}} jours dans le futur. Les dates futures ne sont peut-être pas prévues pour cette opération.",
+  "tooFarPast_one": "La date est trop éloignée dans le passé ({{count, number}} jour). Maximum autorisé : {{maxDays, number}} jours.",
+  "tooFarPast_other": "La date est trop éloignée dans le passé ({{count, number}} jours). Maximum autorisé : {{maxDays, number}} jours.",
+  "tooFarFuture_one": "La date est trop éloignée dans le futur ({{count, number}} jour). Maximum autorisé : {{maxDays, number}} jours.",
+  "tooFarFuture_other": "La date est trop éloignée dans le futur ({{count, number}} jours). Maximum autorisé : {{maxDays, number}} jours.",
+  "invalidRange": "Plage de dates invalide : la date de fin \"{{endDate}}\" est antérieure à la date de début \"{{startDate}}\".",
+  "suggestions": {
+    "useIsoFormat": "Utilisez le format {{expectedFormat}} (ex. : {{example}})",
+    "ensureValidRange": "Assurez-vous que la date est valide (vérifiez les mois/jours)",
+    "useCurrentYear": "Si vous vouliez cette année, utilisez : {{suggestedDate}}",
+    "confirmHistoricalDate": "Si vous visiez la date historique {{originalDate}}, veuillez confirmer",
+    "currentDate": "Date actuelle : {{currentDate, date}}",
+    "didYouMeanFuture": "Vouliez-vous une date future ?",
+    "todaysDate": "Date du jour : {{currentDate, date}}",
+    "confirmPastData": "Si vous avez besoin de données passées, veuillez confirmer que c'est intentionnel",
+    "ensureEndAfterStart": "Assurez-vous que la date de fin est postérieure à la date de début",
+    "checkDateOrder": "Vérifiez que les dates ont été saisies dans le bon ordre",
+    "provideFutureDate": "Veuillez fournir une date future",
+    "confirmFutureDate": "Veuillez confirmer que cette date future est correcte",
+    "provideRecentDate": "Veuillez fournir une date dans les {{maxDays, number}} derniers jours",
+    "provideUpcomingDate": "Veuillez fournir une date dans les {{maxDays, number}} prochains jours"
+  }
+}

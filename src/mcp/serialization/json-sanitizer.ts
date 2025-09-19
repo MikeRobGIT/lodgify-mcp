@@ -9,6 +9,12 @@
  */
 export function sanitizeForJson(obj: unknown): unknown {
   const seen = new WeakSet()
+  const REDACTED_PLACEHOLDER = '[REDACTED]'
+  const SENSITIVE_PATTERNS = [/api[-_]?key/i, /secret/i, /password/i, /token/i, /auth/i]
+
+  function isSensitiveField(path: string): boolean {
+    return SENSITIVE_PATTERNS.some((pattern) => pattern.test(path))
+  }
 
   function sanitize(value: unknown, path = ''): unknown {
     // Handle primitives
@@ -16,6 +22,11 @@ export function sanitizeForJson(obj: unknown): unknown {
     if (value === undefined) return null
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       return value
+    }
+
+    // Handle BigInt - convert to string for JSON serialization
+    if (typeof value === 'bigint') {
+      return value.toString()
     }
 
     // Handle dates
@@ -30,7 +41,23 @@ export function sanitizeForJson(obj: unknown): unknown {
 
     // Handle arrays
     if (Array.isArray(value)) {
-      return value.map((item, index) => sanitize(item, `${path}[${index}]`))
+      // Check for circular reference
+      if (seen.has(value)) {
+        return '[Circular Reference]'
+      }
+      seen.add(value)
+
+      const sanitized = value.map((item, index) => {
+        const nextPath = path ? `${path}[${index}]` : `[${index}]`
+        if (isSensitiveField(nextPath)) {
+          return REDACTED_PLACEHOLDER
+        }
+        return sanitize(item, nextPath)
+      })
+
+      // Remove from seen set after processing
+      seen.delete(value)
+      return sanitized
     }
 
     // Handle objects
@@ -41,11 +68,15 @@ export function sanitizeForJson(obj: unknown): unknown {
       }
       seen.add(value)
 
+      let result: unknown
+
       // Handle special object types that might have custom toString
       if (value.constructor && value.constructor.name !== 'Object') {
         // If it has a toJSON method, use it
         if (typeof (value as { toJSON?: () => unknown }).toJSON === 'function') {
-          return sanitize((value as { toJSON: () => unknown }).toJSON(), path)
+          result = sanitize((value as { toJSON: () => unknown }).toJSON(), path)
+          seen.delete(value)
+          return result
         }
         // If it's a class instance with properties, extract them
         if (Object.keys(value).length > 0) {
@@ -53,12 +84,19 @@ export function sanitizeForJson(obj: unknown): unknown {
           for (const [key, val] of Object.entries(value)) {
             // Skip functions and symbols
             if (typeof val !== 'function' && typeof val !== 'symbol') {
-              sanitized[key] = sanitize(val, `${path}.${key}`)
+              const nextPath = path ? `${path}.${key}` : key
+              if (isSensitiveField(nextPath)) {
+                sanitized[key] = REDACTED_PLACEHOLDER
+              } else {
+                sanitized[key] = sanitize(val, nextPath)
+              }
             }
           }
+          seen.delete(value)
           return sanitized
         }
         // Otherwise, try to get a string representation
+        seen.delete(value)
         return String(value)
       }
 
@@ -67,9 +105,17 @@ export function sanitizeForJson(obj: unknown): unknown {
       for (const [key, val] of Object.entries(value)) {
         // Skip functions and symbols
         if (typeof val !== 'function' && typeof val !== 'symbol') {
-          sanitized[key] = sanitize(val, `${path}.${key}`)
+          const nextPath = path ? `${path}.${key}` : key
+          if (isSensitiveField(nextPath)) {
+            sanitized[key] = REDACTED_PLACEHOLDER
+          } else {
+            sanitized[key] = sanitize(val, nextPath)
+          }
         }
       }
+
+      // Remove from seen set after processing
+      seen.delete(value)
       return sanitized
     }
 

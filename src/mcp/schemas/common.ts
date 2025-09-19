@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod'
-import { isYYYYMMDD } from '../utils/date-format.js'
+import { isYYYYMMDD } from '../utils/date/format.js'
 
 /**
  * Date format validation for YYYY-MM-DD format

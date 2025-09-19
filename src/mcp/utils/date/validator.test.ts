@@ -7,10 +7,12 @@ import {
   createValidator,
   DateToolCategory,
   DateValidator,
+  FeedbackSeverity,
+  ValidationIssueCode,
   ValidationMode,
   type ValidationResult,
   validators,
-} from './date-validator'
+} from './validator'
 
 describe('DateValidator', () => {
   let originalDate: DateConstructor
@@ -79,7 +81,7 @@ describe('DateValidator', () => {
 
       const result = validator.validateDate('2024-09-15')
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('llm_cutoff_suspected')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.LLM_CUTOFF_SUSPECTED)
       expect(result.feedback?.originalInput).toBe('2024-09-15')
       expect(result.feedback?.suggestions).toContain('If you meant this year, use: 2025-09-15')
       expect(result.feedback?.confirmationRequired).toBe(true)
@@ -99,7 +101,7 @@ describe('DateValidator', () => {
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.validatedDate).toBe('2024-09-15') // Original input preserved
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.severity).toBe('warning')
+      expect(result.feedback?.severity).toBe(FeedbackSeverity.WARNING)
     })
 
     test('should provide feedback in SOFT mode', () => {
@@ -141,8 +143,8 @@ describe('DateValidator', () => {
       const result = validator.validateDate('2025-08-01')
       expect(result.isValid).toBe(false)
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('date_in_past')
-      expect(result.feedback?.severity).toBe('error')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.DATE_IN_PAST)
+      expect(result.feedback?.severity).toBe(FeedbackSeverity.ERROR)
       expect(result.error).toContain('in the past')
     })
 
@@ -157,9 +159,10 @@ describe('DateValidator', () => {
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.validatedDate).toBe('2025-08-01') // Original input preserved
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('date_in_past')
-      expect(result.feedback?.severity).toBe('warning')
-      expect(result.feedback?.confirmationRequired).toBe(true)
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.DATE_IN_PAST)
+      expect(result.feedback?.severity).toBe(FeedbackSeverity.WARNING)
+      // Soft mode validation of past dates doesn't require confirmation when disallowed
+      expect(result.feedback?.confirmationRequired).toBe(false)
     })
 
     test('should warn about past dates in SOFT mode with feedback', () => {
@@ -171,7 +174,11 @@ describe('DateValidator', () => {
       const result = validator.validateDate('2025-08-01')
       expect(result.isValid).toBe(true)
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.suggestions).toContain('Did you mean a future date?')
+      // Check that suggestions exist and contain expected guidance
+      expect(result.feedback?.suggestions).toBeDefined()
+      expect(result.feedback?.suggestions.length).toBeGreaterThan(0)
+      // The first suggestion should be about providing a future date
+      expect(result.feedback?.suggestions[0]).toContain('future date')
       expect(result.warning).toContain('in the past')
     })
 
@@ -216,7 +223,7 @@ describe('DateValidator', () => {
 
       expect(result.rangeValid).toBe(false)
       expect(result.rangeFeedback).toBeDefined()
-      expect(result.rangeFeedback?.detectedIssue).toBe('invalid_range')
+      expect(result.rangeFeedback?.detectedIssue).toBe(ValidationIssueCode.INVALID_RANGE)
       expect(result.rangeError).toContain('Invalid date range')
     })
 
@@ -253,13 +260,13 @@ describe('DateValidator', () => {
       expect(result.start.wasAutoCorrected).toBe(false)
       expect(result.start.validatedDate).toBe('2024-02-15')
       expect(result.start.feedback).toBeDefined()
-      expect(result.start.feedback?.detectedIssue).toBe('llm_cutoff_suspected')
+      expect(result.start.feedback?.detectedIssue).toBe(ValidationIssueCode.LLM_CUTOFF_SUSPECTED)
       expect(result.start.context?.llmCutoffDetected).toBe(true)
 
       expect(result.end.wasAutoCorrected).toBe(false)
       expect(result.end.validatedDate).toBe('2024-02-22')
       expect(result.end.feedback).toBeDefined()
-      expect(result.end.feedback?.detectedIssue).toBe('llm_cutoff_suspected')
+      expect(result.end.feedback?.detectedIssue).toBe(ValidationIssueCode.LLM_CUTOFF_SUSPECTED)
       expect(result.end.context?.llmCutoffDetected).toBe(true)
 
       // Range validation passes for original dates
@@ -282,8 +289,8 @@ describe('DateValidator', () => {
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.validatedDate).toBe('2025-08-01') // Original input preserved
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('date_in_past')
-      expect(result.feedback?.severity).toBe('warning')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.DATE_IN_PAST)
+      expect(result.feedback?.severity).toBe(FeedbackSeverity.WARNING)
     })
 
     test('BOOKING category should warn but allow processing with feedback', () => {
@@ -292,7 +299,7 @@ describe('DateValidator', () => {
 
       expect(result.isValid).toBe(true)
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('llm_cutoff_suspected')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.LLM_CUTOFF_SUSPECTED)
       expect(result.warning).toBeDefined()
       expect(result.wasAutoCorrected).toBe(false)
     })
@@ -314,8 +321,8 @@ describe('DateValidator', () => {
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.validatedDate).toBe('2025-08-01') // Original input preserved
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('date_in_past')
-      expect(result.feedback?.severity).toBe('warning')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.DATE_IN_PAST)
+      expect(result.feedback?.severity).toBe(FeedbackSeverity.WARNING)
     })
 
     test('HISTORICAL category should allow all dates without LLM detection', () => {
@@ -334,14 +341,14 @@ describe('DateValidator', () => {
       const result = validator.validateDate('2025-08-01')
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('date_in_past')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.DATE_IN_PAST)
     })
 
     test('should create booking validator with feedback', () => {
       const validator = validators.booking()
       const result = validator.validateDate('2024-09-15')
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('llm_cutoff_suspected')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.LLM_CUTOFF_SUSPECTED)
       expect(result.warning).toBeDefined()
     })
 
@@ -356,7 +363,7 @@ describe('DateValidator', () => {
       const result = validator.validateDate('2025-08-01')
       expect(result.wasAutoCorrected).toBe(false) // Never auto-correct
       expect(result.feedback).toBeDefined()
-      expect(result.feedback?.detectedIssue).toBe('date_in_past')
+      expect(result.feedback?.detectedIssue).toBe(ValidationIssueCode.DATE_IN_PAST)
     })
 
     test('should create historical validator', () => {
@@ -463,6 +470,38 @@ describe('DateValidator', () => {
       const result = validator.validateDate('2025-10-15')
       expect(result.isValid).toBe(false)
       expect(result.error).toContain('too far in the future')
+    })
+  })
+
+  describe('Localization', () => {
+    test('translates feedback to Spanish with pluralization and localized dates', () => {
+      const validator = new DateValidator({
+        mode: ValidationMode.HARD,
+        allowPast: false,
+        i18n: {
+          language: 'es',
+          locale: 'es-ES',
+        },
+      })
+
+      const result = validator.validateDate('2025-08-01')
+      expect(result.feedback?.message).toContain('30 días en el pasado')
+      expect(result.feedback?.suggestions[0]).toBe('Proporciona una fecha futura')
+      expect(result.feedback?.suggestions[1]).toMatch(/Fecha actual: \d{1,2} \w+ 2025/)
+    })
+
+    test('falls back to English when locale is unsupported', () => {
+      const validator = new DateValidator({
+        mode: ValidationMode.HARD,
+        allowPast: false,
+        i18n: {
+          language: 'zz',
+          locale: 'zz-ZZ',
+        },
+      })
+
+      const result = validator.validateDate('2025-08-01')
+      expect(result.feedback?.message).toContain('Date is 30 days in the past')
     })
   })
 })

@@ -8,16 +8,17 @@ import { z } from 'zod'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
 import { BOOKING_CONFIG, PAGINATION, STRING_LIMITS } from '../../core/config/constants.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { debugLogResponse, safeJsonStringify } from '../serialization/json-sanitizer.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported from '../schemas/common.js'
 import {
   createValidator,
   DateToolCategory,
   type DateValidationFeedback,
-} from '../utils/date-validator.js'
+} from '../utils/date/validator.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
-import { debugLogResponse, safeJsonStringify } from '../utils/response-sanitizer.js'
+import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -182,6 +183,9 @@ Example response:
         if (sanitized.trash !== undefined) mappedParams.trash = sanitized.trash
 
         const result = await getClient().bookings.listBookings(mappedParams)
+
+        // For list operations, return raw data as it may contain multiple items
+        // Enhancement is more suitable for individual operations
         return {
           content: [
             {
@@ -212,6 +216,9 @@ Example request:
       handler: wrapToolHandler(async (input) => {
         const { id } = sanitizeInput(input)
         const result = await getClient().bookings.getBooking(id)
+
+        // For get operations, return raw data as it already contains full details
+        // The response is comprehensive and doesn't need additional context
         return {
           content: [
             {
@@ -246,6 +253,7 @@ Example request:
         // Debug logging
         debugLogResponse('Booking payment link response', result)
 
+        // For get operations, return raw data as it already contains the information needed
         return {
           content: [
             {
@@ -308,11 +316,18 @@ Example request:
         // Debug logging
         debugLogResponse('Create payment link response', result)
 
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'create',
+          entityType: 'payment_link',
+          inputParams: { id, payload },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: safeJsonStringify(result),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -358,11 +373,19 @@ Example request:
         }
 
         const result = await getClient().updateKeyCodes(id.toString(), payload)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'update',
+          entityType: 'key_codes',
+          inputParams: { id, payload },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -397,11 +420,19 @@ Example request:
         }
         const { id, time } = sanitized
         const result = await getClient().checkinBooking(id.toString(), time)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'action',
+          entityType: 'booking',
+          inputParams: { id, time, action: 'checked in' },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -436,11 +467,19 @@ Example request:
         }
         const { id, time } = sanitized
         const result = await getClient().checkoutBooking(id.toString(), time)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'action',
+          entityType: 'booking',
+          inputParams: { id, time, action: 'checked out' },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -466,6 +505,9 @@ Example request:
       handler: wrapToolHandler(async (input) => {
         const { id } = sanitizeInput(input)
         const result = await getClient().bookings.getExternalBookings(id)
+
+        // For list operations with external bookings, return raw data
+        // as it contains multiple items from various sources
         return {
           content: [
             {
@@ -640,11 +682,18 @@ The transformation handles: guest name splitting, room structuring, status capit
               }
             : result
 
+        // Enhance the response with context
+        const enhanced = enhanceResponse(finalResult, {
+          operationType: 'create',
+          entityType: 'booking',
+          inputParams: sanitized,
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(finalResult, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -726,11 +775,19 @@ This gets automatically transformed to the nested API structure with guest objec
         }
         // Pass flat structure - the V1 client will transform it to nested API structure
         const result = await getClient().updateBookingV1(id, sanitizedUpdates)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'update',
+          entityType: 'booking',
+          inputParams: { id, ...sanitizedUpdates },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }
@@ -756,11 +813,19 @@ Example request:
       handler: wrapToolHandler(async (input) => {
         const { id } = sanitizeInput(input)
         const result = await getClient().deleteBookingV1(id)
+
+        // Enhance the response with context
+        const enhanced = enhanceResponse(result, {
+          operationType: 'delete',
+          entityType: 'booking',
+          inputParams: { id },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: formatMcpResponse(enhanced),
             },
           ],
         }

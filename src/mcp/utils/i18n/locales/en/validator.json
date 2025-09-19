@@ -1,0 +1,31 @@
+{
+  "invalidFormat": "Invalid date format. Expected {{expectedFormat}}, got: {{actual}}",
+  "llmCutoffSuspected": "The date \"{{date}}\" appears to be from a previous year ({{cutoffYear, number}}). Current year is {{currentYear, number}}.",
+  "dateInPastSoft_one": "The date \"{{date}}\" is {{count, number}} day in the past. {{toolCategory}} operations typically require future dates.",
+  "dateInPastSoft_other": "The date \"{{date}}\" is {{count, number}} days in the past. {{toolCategory}} operations typically require future dates.",
+  "dateInPastHard_one": "Date is {{count, number}} day in the past. Past dates are not allowed for {{toolCategory}}.",
+  "dateInPastHard_other": "Date is {{count, number}} days in the past. Past dates are not allowed for {{toolCategory}}.",
+  "dateInFuture_one": "Date is {{count, number}} day in the future. Future dates may not be intended for this operation.",
+  "dateInFuture_other": "Date is {{count, number}} days in the future. Future dates may not be intended for this operation.",
+  "tooFarPast_one": "Date is too far in the past ({{count, number}} day). Maximum allowed: {{maxDays, number}} days.",
+  "tooFarPast_other": "Date is too far in the past ({{count, number}} days). Maximum allowed: {{maxDays, number}} days.",
+  "tooFarFuture_one": "Date is too far in the future ({{count, number}} day). Maximum allowed: {{maxDays, number}} days.",
+  "tooFarFuture_other": "Date is too far in the future ({{count, number}} days). Maximum allowed: {{maxDays, number}} days.",
+  "invalidRange": "Invalid date range: end date \"{{endDate}}\" is before start date \"{{startDate}}\".",
+  "suggestions": {
+    "useIsoFormat": "Use {{expectedFormat}} format (e.g., {{example}})",
+    "ensureValidRange": "Ensure the date is valid (check month/day ranges)",
+    "useCurrentYear": "If you meant this year, use: {{suggestedDate}}",
+    "confirmHistoricalDate": "If you meant the historical date {{originalDate}}, please confirm",
+    "currentDate": "Current date: {{currentDate, date}}",
+    "didYouMeanFuture": "Did you mean a future date?",
+    "todaysDate": "Today's date: {{currentDate, date}}",
+    "confirmPastData": "If you need past data, please confirm this is intentional",
+    "ensureEndAfterStart": "Ensure the end date is after the start date",
+    "checkDateOrder": "Check if the dates were entered in the correct order",
+    "provideFutureDate": "Please provide a future date",
+    "confirmFutureDate": "Please confirm this future date is correct",
+    "provideRecentDate": "Please provide a date within the last {{maxDays, number}} days",
+    "provideUpcomingDate": "Please provide a date within the next {{maxDays, number}} days"
+  }
+}

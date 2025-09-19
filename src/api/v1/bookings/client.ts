@@ -22,6 +22,79 @@ import type {
 } from './types.js'
 
 /**
+ * Regex pattern to match numeric ID responses from the API
+ */
+const NUMERIC_ID_PATTERN = /^\d+$/
+
+/**
+ * Create a masked identifier for a guest name to use in logs
+ * This prevents PII exposure while still allowing log correlation
+ */
+function createGuestIdentifier(guestName: string): string {
+  if (!guestName || guestName.length === 0) return 'guest_unknown'
+
+  // Take first character and last character, mask the rest
+  const firstChar = guestName.charAt(0).toUpperCase()
+  const lastChar = guestName.charAt(guestName.length - 1).toLowerCase()
+  const hash = guestName.length.toString().padStart(2, '0')
+
+  return `guest_${firstChar}***${lastChar}_${hash}`
+}
+
+/**
+ * Type guard to validate if a value is a valid BookingV1Response
+ */
+function isBookingV1Response(value: unknown): value is BookingV1Response {
+  // First check if it's an object (not null, not a primitive)
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const obj = value as Record<string, unknown>
+
+  // Check required fields with correct types
+  if (typeof obj.id !== 'number') return false
+  if (typeof obj.property_id !== 'number') return false
+  if (typeof obj.arrival !== 'string') return false
+  if (typeof obj.departure !== 'string') return false
+  if (typeof obj.guest_name !== 'string') return false
+  if (typeof obj.adults !== 'number') return false
+  if (typeof obj.status !== 'string') return false
+
+  // Check optional fields if they exist
+  if (
+    'room_type_id' in obj &&
+    obj.room_type_id !== undefined &&
+    typeof obj.room_type_id !== 'number'
+  )
+    return false
+  if (
+    'guest_email' in obj &&
+    obj.guest_email !== null &&
+    obj.guest_email !== undefined &&
+    typeof obj.guest_email !== 'string'
+  )
+    return false
+  if (
+    'guest_phone' in obj &&
+    obj.guest_phone !== null &&
+    obj.guest_phone !== undefined &&
+    typeof obj.guest_phone !== 'string'
+  )
+    return false
+  if ('children' in obj && obj.children !== undefined && typeof obj.children !== 'number')
+    return false
+  if ('infants' in obj && obj.infants !== undefined && typeof obj.infants !== 'number') return false
+  if ('notes' in obj && obj.notes !== undefined && typeof obj.notes !== 'string') return false
+  if ('source' in obj && obj.source !== undefined && typeof obj.source !== 'string') return false
+  if ('amount' in obj && obj.amount !== undefined && typeof obj.amount !== 'number') return false
+  if ('currency' in obj && obj.currency !== undefined && typeof obj.currency !== 'string')
+    return false
+
+  return true
+}
+
+/**
  * V1 Bookings API Client
  * Provides access to v1-only booking operations like create, update, and delete
  * These endpoints are not available in the v2 API
@@ -66,9 +139,71 @@ export class BookingsV1Client extends BaseApiModule {
     // Transform flat structure to API's nested structure
     const apiRequest = this.transformToApiRequest(booking)
 
-    return this.request<BookingV1Response>('POST', '', {
+    const result = await this.request<BookingV1Response | string>('POST', '', {
       body: apiRequest,
     })
+
+    // Lodgify v1 API returns just the booking ID as a plain integer on success
+    // Check if the response is a simple number (either as number or string)
+    if (
+      typeof result === 'number' ||
+      (typeof result === 'string' && NUMERIC_ID_PATTERN.test(result))
+    ) {
+      const bookingId = typeof result === 'number' ? result : parseInt(result, 10)
+
+      safeLogger.info('Booking created successfully', {
+        bookingId,
+        property_id: booking.property_id,
+        arrival: booking.arrival,
+        departure: booking.departure,
+        guestId: createGuestIdentifier(booking.guest_name),
+        adults: booking.adults,
+      })
+
+      // Return a proper booking response by spreading the original request and adding the new ID
+      return {
+        ...booking,
+        id: bookingId,
+        status: booking.status || 'booked',
+      }
+    }
+
+    // If result is an empty object, the booking may have failed
+    if (!result || (typeof result === 'object' && Object.keys(result).length === 0)) {
+      safeLogger.error('Booking creation failed - API returned empty response', {
+        property_id: booking.property_id,
+        arrival: booking.arrival,
+        departure: booking.departure,
+        guestId: createGuestIdentifier(booking.guest_name),
+        adults: booking.adults,
+      })
+
+      throw new Error(
+        'Booking creation failed. The API returned an empty response. ' +
+          'Please check the property availability, dates, and ensure all required fields are valid.',
+      )
+    }
+
+    // Validate that we got a full booking object before returning it
+    if (isBookingV1Response(result)) {
+      return result
+    }
+
+    // If the result doesn't match the expected shape, throw an error with details
+    safeLogger.error('Booking creation returned unexpected response format', {
+      responseType: typeof result,
+      isArray: Array.isArray(result),
+      hasId: result && typeof result === 'object' && 'id' in result,
+      property_id: booking.property_id,
+      arrival: booking.arrival,
+      departure: booking.departure,
+    })
+
+    throw new Error(
+      `Booking creation returned unexpected response format. Expected a booking object with required fields ` +
+        `(id, property_id, arrival, departure, guest_name, adults, status), but received: ${typeof result}. ` +
+        `The booking may have been created but the response is invalid.`,
+    )
   }
 
   /**
