@@ -16,9 +16,14 @@ import {
   DateToolCategory,
   type DateValidationFeedback,
 } from '../utils/date/validator.js'
+import { extractBookingDetails, extractPaymentLinkDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
+import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
+import { formatMcpResponse } from '../utils/response/index.js'
+import type { ApiResponseData } from '../utils/response/types.js'
+import { generateSuggestions } from '../utils/suggestion-generator.js'
+import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -184,13 +189,35 @@ Example response:
 
         const result = await getClient().bookings.listBookings(mappedParams)
 
-        // For list operations, return raw data as it may contain multiple items
-        // Enhancement is more suitable for individual operations
+        // Generate summary for booking list
+        const summary = generateSummary(result as unknown as ApiResponseData, 'booking_list')
+
+        // Generate contextual suggestions based on results and filters
+        const suggestions =
+          result?.data?.length === 0
+            ? generateSuggestions('no_results', 'booking', sanitized)
+            : generateSuggestions('success', 'booking_list', {
+                count: result?.data?.length || 0,
+                stayFilter: sanitized.stayFilter,
+                hasMore: (result?.pagination as Record<string, unknown>)?.hasNext as boolean,
+              })
+
+        // Use enhanceResponse to build the response with booking insights
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'booking',
+          operation: 'list',
+          inputParams: sanitized,
+          metadata: {
+            summary,
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -217,13 +244,33 @@ Example request:
         const { id } = sanitizeInput(input)
         const result = await getClient().bookings.getBooking(id)
 
-        // For get operations, return raw data as it already contains full details
-        // The response is comprehensive and doesn't need additional context
+        // Extract booking details for enhanced response
+        const bookingDetails = extractBookingDetails(result)
+
+        // Generate contextual suggestions based on booking status
+        const suggestions = generateSuggestions('booking_retrieved', 'booking', {
+          bookingId: id,
+          status: result?.status,
+          checkIn: result?.checkIn,
+          checkOut: result?.checkOut,
+        })
+
+        // Use enhanceResponse to build the response with booking context
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'booking',
+          operation: 'get',
+          inputParams: { id },
+          extractedInfo: bookingDetails,
+          metadata: {
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -253,12 +300,32 @@ Example request:
         // Debug logging
         debugLogResponse('Booking payment link response', result)
 
-        // For get operations, return raw data as it already contains the information needed
+        // Extract payment link details
+        const paymentDetails = extractPaymentLinkDetails(result)
+
+        // Generate payment-specific suggestions
+        const suggestions = generateSuggestions('payment_link', 'booking', {
+          bookingId: id,
+          hasLink: !!(result as unknown as Record<string, unknown>)?.paymentLink,
+          status: result?.status,
+        })
+
+        // Use enhanceResponse for payment link context
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'payment_link',
+          operation: 'get',
+          inputParams: { id },
+          extractedInfo: paymentDetails,
+          metadata: {
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: safeJsonStringify(result),
+              text: safeJsonStringify(enhanced),
             },
           ],
         }
@@ -316,11 +383,26 @@ Example request:
         // Debug logging
         debugLogResponse('Create payment link response', result)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'create',
+        // Extract created payment link details
+        const paymentDetails = extractPaymentLinkDetails(result)
+
+        // Generate suggestions for next steps after payment link creation
+        const suggestions = generateSuggestions('payment_link_created', 'booking', {
+          bookingId: id,
+          amount: payload.amount,
+          currency: payload.currency,
+          paymentUrl: (result as unknown as Record<string, unknown>)?.paymentUrl,
+        })
+
+        // Use enhanceResponse with payment link creation context
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'payment_link',
+          operation: 'create',
           inputParams: { id, payload },
+          extractedInfo: paymentDetails,
+          metadata: {
+            suggestions,
+          },
         })
 
         return {
@@ -374,11 +456,21 @@ Example request:
 
         const result = await getClient().updateKeyCodes(id.toString(), payload)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'update',
+        // Generate suggestions for key code update
+        const suggestions = generateSuggestions('key_codes_updated', 'booking', {
+          bookingId: id,
+          keyCount: payload.keyCodes?.length || 0,
+        })
+
+        // Use enhanceResponse with key codes context
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'key_codes',
+          operation: 'update',
           inputParams: { id, payload },
+          metadata: {
+            suggestions,
+            summary: 'Key codes have been updated for guest property access',
+          },
         })
 
         return {
@@ -421,11 +513,21 @@ Example request:
         const { id, time } = sanitized
         const result = await getClient().checkinBooking(id.toString(), time)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'action',
-          entityType: 'booking',
-          inputParams: { id, time, action: 'checked in' },
+        // Generate suggestions for post-checkin actions
+        const suggestions = generateSuggestions('checkin_completed', 'booking', {
+          bookingId: id,
+          checkinTime: time,
+        })
+
+        // Use enhanceResponse with check-in context
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'booking_checkin',
+          operation: 'update',
+          inputParams: { id, time },
+          metadata: {
+            suggestions,
+            summary: 'Guest has been successfully checked in',
+          },
         })
 
         return {
@@ -468,11 +570,21 @@ Example request:
         const { id, time } = sanitized
         const result = await getClient().checkoutBooking(id.toString(), time)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'action',
-          entityType: 'booking',
-          inputParams: { id, time, action: 'checked out' },
+        // Generate suggestions for post-checkout actions
+        const suggestions = generateSuggestions('checkout_completed', 'booking', {
+          bookingId: id,
+          checkoutTime: time,
+        })
+
+        // Use enhanceResponse with check-out context
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'booking_checkout',
+          operation: 'update',
+          inputParams: { id, time },
+          metadata: {
+            suggestions,
+            summary: 'Guest has been successfully checked out',
+          },
         })
 
         return {
@@ -506,13 +618,31 @@ Example request:
         const { id } = sanitizeInput(input)
         const result = await getClient().bookings.getExternalBookings(id)
 
-        // For list operations with external bookings, return raw data
-        // as it contains multiple items from various sources
+        // Generate summary for external bookings
+        const summary = generateSummary(result as unknown as ApiResponseData, 'external_bookings')
+
+        // Generate suggestions for external booking management
+        const suggestions = generateSuggestions('external_bookings', 'booking', {
+          propertyId: id,
+          count: Array.isArray(result) ? result.length : 0,
+        })
+
+        // Use enhanceResponse with external bookings context
+        const enhanced = enhanceResponseBuilder(result as unknown, {
+          entityType: 'external_booking',
+          operation: 'list',
+          inputParams: { id },
+          metadata: {
+            summary,
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -682,11 +812,27 @@ The transformation handles: guest name splitting, room structuring, status capit
               }
             : result
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(finalResult, {
-          operationType: 'create',
+        // Extract created booking details
+        const bookingDetails = extractBookingDetails(finalResult)
+
+        // Generate suggestions for newly created booking
+        const suggestions = generateSuggestions('booking_created', 'booking', {
+          bookingId: finalResult?.id,
+          propertyId: sanitized.property_id,
+          arrival: sanitized.arrival,
+          departure: sanitized.departure,
+        })
+
+        // Use enhanceResponse with booking creation context
+        const enhanced = enhanceResponseBuilder(finalResult, {
           entityType: 'booking',
+          operation: 'create',
           inputParams: sanitized,
+          extractedInfo: bookingDetails,
+          metadata: {
+            suggestions,
+            summary: 'Booking has been successfully created',
+          },
         })
 
         return {
@@ -777,10 +923,25 @@ This gets automatically transformed to the nested API structure with guest objec
         const result = await getClient().updateBookingV1(id, sanitizedUpdates)
 
         // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'update',
+        // Extract updated booking details
+        const bookingDetails = extractBookingDetails(result)
+
+        // Generate suggestions for updated booking
+        const suggestions = generateSuggestions('booking_updated', 'booking', {
+          bookingId: id,
+          updates: Object.keys(sanitizedUpdates),
+        })
+
+        // Use enhanceResponse with booking update context
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'booking',
+          operation: 'update',
           inputParams: { id, ...sanitizedUpdates },
+          extractedInfo: bookingDetails,
+          metadata: {
+            suggestions,
+            summary: 'Booking has been successfully updated',
+          },
         })
 
         return {
@@ -814,11 +975,21 @@ Example request:
         const { id } = sanitizeInput(input)
         const result = await getClient().deleteBookingV1(id)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'delete',
+        // Generate suggestions after booking deletion
+        const suggestions = generateSuggestions('booking_deleted', 'booking', {
+          bookingId: id,
+        })
+
+        // Use enhanceResponse with booking deletion context
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'booking',
+          operation: 'delete',
           inputParams: { id },
+          metadata: {
+            suggestions,
+            summary: 'Booking has been permanently deleted',
+            warnings: ['This action cannot be undone'],
+          },
         })
 
         return {

@@ -11,41 +11,120 @@ import type {
 
 /**
  * Generate operation summary based on type and entity
-+ * @param operationType - The type of operation performed
-+ * @param entityType - The type of entity being operated on
-+ * @param details - Additional data about the operation
-+ * @param status - The status of the operation (defaults to 'success')
-+ * @returns A human-readable summary of the operation
+ * Can be called with either:
+ * 1. (data, contextType) for simple context-based summaries
+ * 2. (operationType, entityType, details, status) for detailed operation summaries
  */
+export function generateSummary(data: ApiResponseData, contextType: string): string
 export function generateSummary(
   operationType: OperationType,
   entityType: EntityType,
-  details: ApiResponseData,
-  status: OperationStatus = 'success',
+  details?: ApiResponseData,
+  status?: OperationStatus,
+): string
+export function generateSummary(
+  dataOrOperationType: ApiResponseData | OperationType | string,
+  contextTypeOrEntityType?: string | EntityType,
+  details?: ApiResponseData,
+  status?: OperationStatus,
 ): string {
-  const isFailed = status === 'failed'
+  // Handle the two-argument form (data, contextType)
+  if (typeof contextTypeOrEntityType === 'string' && !details && !status) {
+    const data = dataOrOperationType as ApiResponseData
+    const contextType = contextTypeOrEntityType
+
+    // Generate context-specific summaries
+    switch (contextType) {
+      case 'property_list':
+        return `Retrieved ${(data as Record<string, unknown>).properties ? (data.properties as unknown[]).length : 0} properties`
+      case 'room_list':
+        return `Retrieved room types for property`
+      case 'deleted_properties':
+        return `Retrieved deleted properties`
+      case 'availability':
+        return `Availability check completed`
+      case 'vacant_inventory': {
+        const dataObj = data as Record<string, unknown>
+        // Try to get the count from counts.availableProperties first
+        if (dataObj.counts && typeof dataObj.counts === 'object') {
+          const counts = dataObj.counts as Record<string, unknown>
+          if (counts.availableProperties !== undefined) {
+            return `Found ${counts.availableProperties} vacant ${counts.availableProperties === 1 ? 'property' : 'properties'}`
+          }
+        }
+        // Fallback to counting available properties in the array
+        if (dataObj.properties && Array.isArray(dataObj.properties)) {
+          const availableCount = dataObj.properties.filter((p: unknown) => {
+            const prop = p as Record<string, unknown>
+            return prop.available === true
+          }).length
+          return `Found ${availableCount} vacant ${availableCount === 1 ? 'property' : 'properties'}`
+        }
+        return `Found 0 vacant properties`
+      }
+      case 'daily_rates':
+        return `Retrieved daily rates`
+      case 'rate_settings':
+        return `Retrieved rate configuration`
+      case 'quote':
+        return `Quote calculated successfully`
+      case 'rate_update':
+        return `Rates updated successfully`
+      case 'booking_quote':
+        return `Booking quote created`
+      case 'booking_list':
+        return `Retrieved ${(data.bookings as unknown[] | undefined)?.length || (data.data as unknown[] | undefined)?.length || 0} bookings`
+      case 'webhook_list':
+        return `Retrieved ${(data.webhooks as unknown[] | undefined)?.length || 0} webhooks`
+      case 'webhook_subscribe':
+        return `Webhook subscription created`
+      case 'webhook_unsubscribe':
+        return `Webhook unsubscribed successfully`
+      case 'thread':
+        return `Retrieved messaging thread`
+      default:
+        return `Operation completed for ${contextType}`
+    }
+  }
+
+  // Handle the four-argument form (original implementation)
+  const operationType = dataOrOperationType as OperationType
+  const entityType = contextTypeOrEntityType as EntityType
+  const detailsData = details || {}
+
+  // Explicitly handle undefined status - don't default to success
+  if (status === undefined) {
+    throw new Error(`Operation status cannot be undefined for ${operationType} ${entityType}`)
+  }
+  const operationStatus = status
+
+  const isFailed = operationStatus === 'failed'
   const statusText =
-    status === 'success' ? 'Successfully' : status === 'partial' ? 'Partially' : 'Failed to'
+    operationStatus === 'success'
+      ? 'Successfully'
+      : operationStatus === 'partial'
+        ? 'Partially'
+        : 'Failed to'
 
   switch (operationType) {
     case 'create':
       switch (entityType) {
         case 'booking':
-          return `${statusText} ${isFailed ? 'create' : 'created'} booking ${details.bookingId || 'new'} for ${details.guest || 'guest'}`
+          return `${statusText} ${isFailed ? 'create' : 'created'} booking ${detailsData.bookingId || 'new'} for ${detailsData.guest || 'guest'}`
         case 'payment_link':
-          return `${statusText} ${isFailed ? 'create' : 'created'} payment link for ${details.amount || 'payment'}`
+          return `${statusText} ${isFailed ? 'create' : 'created'} payment link for ${detailsData.amount || 'payment'}`
         case 'quote': {
           // For quotes, prefer the bookingId from details (which comes from inputParams)
-          const bookingId = details.bookingId
+          const bookingId = detailsData.bookingId
           if (bookingId) {
             return `${statusText} ${isFailed ? 'create' : 'created'} quote for booking ${bookingId}`
           }
-          return `${statusText} ${isFailed ? 'create' : 'created'} quote ${details.quoteId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'create' : 'created'} quote ${detailsData.quoteId || ''}`.trim()
         }
         case 'webhook':
-          return `${statusText} ${isFailed ? 'subscribe to' : 'subscribed to'} ${details.event || 'event'} webhook`
+          return `${statusText} ${isFailed ? 'subscribe to' : 'subscribed to'} ${detailsData.event || 'event'} webhook`
         case 'message':
-          return `${statusText} ${isFailed ? 'send' : 'sent'} message to ${details.recipient || 'recipient'}`
+          return `${statusText} ${isFailed ? 'send' : 'sent'} message to ${detailsData.recipient || 'recipient'}`
         default:
           return `${statusText} ${isFailed ? 'create' : 'created'} ${entityType}`
       }
@@ -53,13 +132,13 @@ export function generateSummary(
     case 'update':
       switch (entityType) {
         case 'booking':
-          return `${statusText} ${isFailed ? 'update' : 'updated'} booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'update' : 'updated'} booking ${detailsData.bookingId || ''}`.trim()
         case 'rate':
-          return `${statusText} ${isFailed ? 'update' : 'updated'} rates for ${details.property || 'property'}`
+          return `${statusText} ${isFailed ? 'update' : 'updated'} rates for ${detailsData.property || 'property'}`
         case 'key_codes':
-          return `${statusText} ${isFailed ? 'update' : 'updated'} access codes for booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'update' : 'updated'} access codes for booking ${detailsData.bookingId || ''}`.trim()
         case 'thread':
-          return `${statusText} ${isFailed ? 'mark' : 'marked'} thread as ${details.action || 'updated'}`
+          return `${statusText} ${isFailed ? 'mark' : 'marked'} thread as ${detailsData.action || 'updated'}`
         default:
           return `${statusText} ${isFailed ? 'update' : 'updated'} ${entityType}`
       }
@@ -67,9 +146,9 @@ export function generateSummary(
     case 'delete':
       switch (entityType) {
         case 'booking':
-          return `${statusText} ${isFailed ? 'delete' : 'deleted'} booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'delete' : 'deleted'} booking ${detailsData.bookingId || ''}`.trim()
         case 'webhook':
-          return `${statusText} ${isFailed ? 'unsubscribe from' : 'unsubscribed from'} webhook ${details.webhookId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'unsubscribe from' : 'unsubscribed from'} webhook ${detailsData.webhookId || ''}`.trim()
         default:
           return `${statusText} ${isFailed ? 'delete' : 'deleted'} ${entityType}`
       }
@@ -77,9 +156,9 @@ export function generateSummary(
     case 'action':
       switch (entityType) {
         case 'booking':
-          return `${statusText} ${isFailed ? 'perform' : 'performed'} ${details.action || 'action on'} booking ${details.bookingId || ''}`.trim()
+          return `${statusText} ${isFailed ? 'perform' : 'performed'} ${detailsData.action || 'action on'} booking ${detailsData.bookingId || ''}`.trim()
         case 'thread':
-          return `${statusText} ${isFailed ? 'perform' : 'performed'} ${details.action || 'action on'} thread`
+          return `${statusText} ${isFailed ? 'perform' : 'performed'} ${detailsData.action || 'action on'} thread`
         default:
           return `${statusText} ${isFailed ? 'perform' : 'performed'} action on ${entityType}`
       }
@@ -87,10 +166,10 @@ export function generateSummary(
     case 'read':
       switch (entityType) {
         case 'vacant_inventory': {
-          const availableCount = details.availableProperties || details.vacantCount || 0
-          const checkedCount = details.propertiesChecked || 0
+          const availableCount = detailsData.availableProperties || detailsData.vacantCount || 0
+          const checkedCount = detailsData.propertiesChecked || 0
           const dateRange =
-            details.dateRange || `${details.from || 'start'} to ${details.to || 'end'}`
+            detailsData.dateRange || `${detailsData.from || 'start'} to ${detailsData.to || 'end'}`
 
           if (isFailed) {
             return `Failed to retrieve vacant inventory for ${dateRange}`

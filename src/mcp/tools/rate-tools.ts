@@ -18,9 +18,14 @@ import {
   DateToolCategory,
   type DateValidationInfo,
 } from '../utils/date/validator.js'
+import { extractRateDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput, validateDatePair } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
+import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
+import { formatMcpResponse } from '../utils/response/index.js'
+import { toApiResponseData } from '../utils/response/validators.js'
+import { generateSuggestions } from '../utils/suggestion-generator.js'
+import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
 
@@ -133,11 +138,40 @@ Example request:
         // Merge validation info with result if present
         const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
 
+        // Extract rate details
+        const rateDetails = extractRateDetails(finalResult)
+
+        // Generate summary for daily rates
+        const summary = generateSummary(
+          toApiResponseData(finalResult, 'daily_rates'),
+          'daily_rates',
+        )
+
+        // Generate suggestions for rate analysis
+        const suggestions = generateSuggestions('rate_analysis', 'rates', {
+          roomTypeId,
+          houseId,
+          startDate: rangeValidation.start.validatedDate,
+          endDate: rangeValidation.end.validatedDate,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(finalResult, {
+          entityType: 'daily_rates',
+          operation: 'get',
+          inputParams: toApiResponseData(params, 'daily_rates_input'),
+          extractedInfo: rateDetails,
+          metadata: {
+            summary,
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: safeJsonStringify(finalResult),
+              text: safeJsonStringify(enhanced),
             },
           ],
         }
@@ -177,11 +211,34 @@ Example request:
         // Debug logging
         debugLogResponse('Rate settings API response', result)
 
+        // Extract rate configuration details
+        const rateDetails = extractRateDetails(result)
+
+        // Generate summary for rate settings
+        const summary = generateSummary(result, 'rate_settings')
+
+        // Generate suggestions for rate configuration
+        const suggestions = generateSuggestions('rate_settings', 'rates', {
+          houseId: params?.houseId,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'rate_settings',
+          operation: 'get',
+          inputParams: { params },
+          extractedInfo: rateDetails,
+          metadata: {
+            summary: summary || 'Rate configuration and pricing rules',
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: safeJsonStringify(result),
+              text: safeJsonStringify(enhanced),
             },
           ],
         }
@@ -312,11 +369,37 @@ Example request:
           // Merge validation info with result if present
           const finalResult = dateValidationInfo ? { ...result, ...dateValidationInfo } : result
 
+          // Extract rate quote details
+          const rateDetails = extractRateDetails(finalResult)
+
+          // Generate summary for quote
+          const summary = generateSummary(finalResult, 'quote')
+
+          // Generate suggestions based on quote results
+          const suggestions = generateSuggestions('quote_calculated', 'rates', {
+            propertyId,
+            from: validatedParams.from || validatedParams.arrival,
+            to: validatedParams.to || validatedParams.departure,
+            totalPrice: finalResult?.totalPrice,
+          })
+
+          // Use enhanceResponse to build the response
+          const enhanced = enhanceResponseBuilder(finalResult, {
+            entityType: 'quote',
+            operation: 'calculate',
+            inputParams: { propertyId, params },
+            extractedInfo: rateDetails,
+            metadata: {
+              summary,
+              suggestions,
+            },
+          })
+
           return {
             content: [
               {
                 type: 'text',
-                text: safeJsonStringify(finalResult),
+                text: safeJsonStringify(enhanced),
               },
             ],
           }
@@ -435,11 +518,24 @@ Example request:
         // Debug logging
         debugLogResponse('Update rates API response', result)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'update',
+        // Generate summary for rate update
+        const summary = generateSummary(toApiResponseData(result, 'rate_update'), 'rate_update')
+
+        // Generate suggestions for rate updates
+        const suggestions = generateSuggestions('rates_updated', 'rates', {
+          propertyId: sanitized.property_id,
+          rateCount: sanitized.rates?.length || 0,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'rate',
-          inputParams: sanitized,
+          operation: 'update',
+          inputParams: toApiResponseData(params, 'rate_update_input'),
+          metadata: {
+            summary: summary || 'Rates have been successfully updated',
+            suggestions,
+          },
         })
 
         return {
@@ -585,11 +681,31 @@ Example response:
         // Debug logging
         debugLogResponse('Create booking quote response', result)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'create',
+        // Extract rate details from quote
+        const rateDetails = extractRateDetails(result)
+
+        // Generate summary for created quote
+        const summary = generateSummary(result, 'booking_quote')
+
+        // Generate suggestions for quote follow-up
+        const suggestions = generateSuggestions('quote_created', 'rates', {
+          bookingId,
+          quoteId: result?.id,
+          totalPrice: payload.totalPrice,
+          validUntil: payload.validUntil,
+          sentToGuest: payload.sendToGuest,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'quote',
+          operation: 'create',
           inputParams: { bookingId, payload },
+          extractedInfo: rateDetails,
+          metadata: {
+            summary: summary || 'Quote has been successfully created',
+            suggestions,
+          },
         })
 
         return {

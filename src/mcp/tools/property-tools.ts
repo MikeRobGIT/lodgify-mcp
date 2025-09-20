@@ -9,8 +9,12 @@ import type { PropertySearchParams } from '../../api/v2/properties/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { safeLogger } from '../../logger.js'
 import { isISODateTime } from '../utils/date/format.js'
+// Entity extractors not needed in property tools
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
+import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
+import { generateSuggestions } from '../utils/suggestion-generator.js'
+import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolRegistration } from '../utils/types.js'
 import { findProperties } from './helper-tools.js'
 
@@ -203,11 +207,44 @@ Example response:
         if (sanitized.includeInOut !== undefined) mappedParams.includeInOut = sanitized.includeInOut
 
         const result = await getClient().properties.listProperties(mappedParams)
+
+        // Safely validate and transform result
+        const { toApiResponseData, getPaginationHasNext, isPropertiesListResponse } = await import(
+          '../utils/type-guards.js'
+        )
+
+        if (!isPropertiesListResponse(result)) {
+          throw new Error('Invalid response structure from properties API')
+        }
+
+        // Generate summary for property list using safe type conversion
+        const summary = generateSummary(toApiResponseData(result), 'property_list')
+
+        // Generate suggestions if no properties found or for next steps
+        const suggestions =
+          result?.data?.length === 0
+            ? generateSuggestions('no_results', 'property', sanitized)
+            : generateSuggestions('success', 'property_list', {
+                count: result?.data?.length || 0,
+                hasMore: getPaginationHasNext(result),
+              })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(toApiResponseData(result), {
+          entityType: 'property',
+          operation: 'list',
+          inputParams: sanitized,
+          metadata: {
+            summary,
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -281,17 +318,50 @@ Example response:
         if (includeInOut !== undefined) params.includeInOut = includeInOut
 
         // Call with property ID and optional query params
-        const result = await getClient().properties.getProperty(
-          id.toString(),
-          Object.keys(params).length > 0 ? params : undefined,
-        )
-        return {
-          content: [
+        try {
+          const result = await getClient().properties.getProperty(
+            id.toString(),
+            Object.keys(params).length > 0 ? params : undefined,
+          )
+
+          // Use enhanceResponse to build the response with summaries
+          const enhanced = enhanceResponseBuilder(result, {
+            entityType: 'property',
+            operation: 'get',
+            inputParams: sanitized,
+          })
+
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify(enhanced, null, 2),
+              },
+            ],
+          }
+        } catch (error: unknown) {
+          // Generate helpful suggestions for property not found
+          const errorObj = error as Record<string, unknown>
+          const suggestions =
+            errorObj?.statusCode === 404
+              ? generateSuggestions('not_found', 'property', { propertyId: id })
+              : generateSuggestions('error', 'property', { error: errorObj?.message })
+
+          const enhanced = enhanceResponseBuilder(
+            { error: errorObj?.message || 'Failed to get property' },
             {
-              type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              entityType: 'property',
+              operation: 'get',
+              status: 'failed',
+              inputParams: sanitized,
+              metadata: {
+                summary: `Failed to retrieve property ${id}`,
+                suggestions,
+              },
             },
-          ],
+          )
+
+          throw new McpError(ErrorCode.InternalError, JSON.stringify(enhanced, null, 2))
         }
       }, 'lodgify_get_property'),
     },
@@ -327,11 +397,27 @@ Example request:
         // Call the API with type-safe propertyId
         const result = await getClient().properties.listPropertyRooms(propertyId)
 
+        // Import type guards for safe conversion
+        const { toApiResponseData } = await import('../utils/type-guards.js')
+
+        // Generate room summary with capacity and availability info
+        const summary = generateSummary(toApiResponseData(result), 'room_list')
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'room',
+          operation: 'list',
+          inputParams: sanitized,
+          metadata: {
+            summary,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -422,11 +508,41 @@ Example response:
           normalizedInput.limit,
         )
 
+        // Import type guards for safe conversion
+        const { toApiResponseData } = await import('../utils/type-guards.js')
+
+        // Generate smart search suggestions based on results
+        const suggestions =
+          result.properties.length === 0
+            ? generateSuggestions(
+                'no_results',
+                'property_search',
+                toApiResponseData(normalizedInput),
+              )
+            : generateSuggestions('success', 'property_search', {
+                count: result.properties.length,
+                searchTerm: normalizedInput.searchTerm,
+                hasBookingIds: result.properties.some((p) => p.source === 'bookings'),
+              })
+
+        // Use enhanceResponse to build the response with search insights
+        const enhanced = enhanceResponseBuilder(
+          {
+            ...result,
+            suggestions: [...(result.suggestions || []), ...suggestions],
+          },
+          {
+            entityType: 'property',
+            operation: 'list',
+            inputParams: toApiResponseData(normalizedInput),
+          },
+        )
+
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -471,11 +587,40 @@ Example request:
         }
 
         const result = await getClient().properties.listDeletedProperties(params)
+
+        // Import type guards for safe conversion
+        const { toApiResponseData } = await import('../utils/type-guards.js')
+
+        // Generate summary for deleted properties
+        const summary = generateSummary(toApiResponseData(result), 'deleted_properties')
+
+        // Generate recovery suggestions for deleted properties
+        const suggestions =
+          result?.data?.length > 0
+            ? generateSuggestions('deleted_found', 'property', {
+                count: result?.data?.length || 0,
+                deletedSince: params?.deletedSince,
+              })
+            : generateSuggestions('no_deleted', 'property', params)
+
+        // Use enhanceResponse to build the response with deletion context
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'property',
+          operation: 'list_deleted',
+          inputParams: { params },
+          metadata: {
+            summary:
+              summary ||
+              'Properties in this list have been soft-deleted and may be recoverable through the Lodgify interface',
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }

@@ -16,9 +16,12 @@
 
 import { z } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { extractMessageDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
+import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
+import { generateSuggestions } from '../utils/suggestion-generator.js'
+import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Messaging & Communication'
@@ -72,18 +75,36 @@ For detailed usage instructions and examples, see the TOOL_CATALOG.md documentat
 
         const result = await getClient().messaging.getThread(threadGuid)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'read',
+        // Extract message details from the thread
+        const messageDetails = extractMessageDetails(result)
+
+        // Generate summary for the thread
+        const summary = generateSummary(result, 'thread')
+
+        // Generate suggestions based on the thread content
+        const suggestions = generateSuggestions('thread_retrieved', 'thread', {
+          threadGuid,
+          messageCount: result?.messages?.length || 0,
+          hasUnread: result?.unread || false,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'thread',
+          operation: 'get',
           inputParams: { threadGuid },
+          extractedInfo: messageDetails,
+          metadata: {
+            summary,
+            suggestions,
+          },
         })
 
         return {
           content: [
             {
               type: 'text',
-              text: formatMcpResponse(enhanced),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
