@@ -6,19 +6,23 @@ import type { ApiResponseData, EntityType, OperationType } from './response/type
 
 /**
  * Generate contextual suggestions based on entity and operation
+ * Accepts either OperationType or any string for flexibility
  */
 export function generateSuggestions(
-  operationType: OperationType,
-  entityType: EntityType,
+  operationType: OperationType | string,
+  entityType: EntityType | string,
   details: ApiResponseData,
 ): string[] {
   const suggestions: string[] = []
+
+  // Handle null or undefined details
+  const safeDetails = details || {}
 
   switch (entityType) {
     case 'booking':
       if (operationType === 'create') {
         suggestions.push(
-          `Send confirmation email to ${details.guestEmail || 'guest'}`,
+          `Send confirmation email to ${safeDetails.guestEmail || 'guest'}`,
           'Create payment link for deposit or full payment',
           'Update property access codes for check-in',
           'Review and confirm room availability',
@@ -99,9 +103,9 @@ export function generateSuggestions(
 
     case 'vacant_inventory': {
       // Check if any properties are available
-      const availableCount = Number(details.availableProperties || details.vacantCount || 0)
-      const checkedCount = Number(details.propertiesChecked || 0)
-      const hasDiagnostics = details.hasDiagnostics === true
+      const availableCount = Number(safeDetails.availableProperties || safeDetails.vacantCount || 0)
+      const checkedCount = Number(safeDetails.propertiesChecked || 0)
+      const hasDiagnostics = safeDetails.hasDiagnostics === true
 
       if (availableCount > 0) {
         suggestions.push(
@@ -110,9 +114,9 @@ export function generateSuggestions(
           'Consider pricing strategies for vacant properties',
           'Create special offers for last-minute bookings',
         )
-        if (details.includesRoomDetails && details.availableRooms) {
+        if (safeDetails.includesRoomDetails && safeDetails.availableRooms) {
           suggestions.push(
-            `${details.availableRooms} individual rooms available across properties`,
+            `${safeDetails.availableRooms} individual rooms available across properties`,
             'Check room-specific amenities and capacities',
           )
         }
@@ -134,7 +138,7 @@ export function generateSuggestions(
 
       // Add diagnostic-specific suggestions
       if (hasDiagnostics) {
-        const issuesIdentified = Number(details.issuesIdentified || 0)
+        const issuesIdentified = Number(safeDetails.issuesIdentified || 0)
         if (issuesIdentified > 0) {
           suggestions.push(
             `Review ${issuesIdentified} identified issues in diagnostics`,
@@ -142,17 +146,17 @@ export function generateSuggestions(
             'Verify property data structure matches expectations',
           )
         }
-        if (details.apiCallsCount) {
+        if (safeDetails.apiCallsCount) {
           suggestions.push(
-            `${details.apiCallsCount} API calls were made to gather availability data`,
+            `${safeDetails.apiCallsCount} API calls were made to gather availability data`,
           )
         }
       }
 
       // Add filter-specific suggestions
-      if (details.filteredByPropertyIds) {
+      if (safeDetails.filteredByPropertyIds) {
         suggestions.push(
-          `Search was limited to ${details.filteredByPropertyIds} specific properties`,
+          `Search was limited to ${safeDetails.filteredByPropertyIds} specific properties`,
         )
       }
       break

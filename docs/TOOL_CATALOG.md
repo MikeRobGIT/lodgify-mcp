@@ -2,6 +2,178 @@
 
 Complete reference for all available Lodgify MCP tools and their parameters.
 
+## Enhanced Response Format
+
+All MCP tools now return enhanced responses with structured metadata, contextual suggestions, and human-readable summaries. This provides better error handling, actionable guidance, and improved user experience.
+
+### Response Structure
+
+Every tool response follows this enhanced format:
+
+```javascript
+{
+  "operation": {
+    "type": "create|read|update|delete|list|action",
+    "entity": "booking|property|rate|webhook|message|etc",
+    "status": "success|failed|partial",
+    "timestamp": "2024-01-01T00:00:00Z"
+  },
+  "summary": "Human-readable summary of the operation result",
+  "details": {
+    // Entity-specific extracted details
+    "bookingId": "BK001",
+    "guestName": "John Doe",
+    // ... other relevant fields
+  },
+  "data": {
+    // Original API response data
+  },
+  "suggestions": [
+    // Contextual suggestions for next steps
+    "Send confirmation email to guest",
+    "Create payment link for deposit",
+    "Update property access codes"
+  ],
+  "warnings": [
+    // Any warnings or important notices
+    "Property has limited availability",
+    "Rate changes may affect existing bookings"
+  ]
+}
+```
+
+### Success Response Example
+
+```javascript
+// Request: Create a booking
+{
+  "property_id": 684855,
+  "room_type_id": 751902,
+  "arrival": "2025-08-27",
+  "departure": "2025-08-28",
+  "guest_name": "Test Guest",
+  "adults": 2
+}
+
+// Enhanced Response:
+{
+  "operation": {
+    "type": "create",
+    "entity": "booking",
+    "status": "success",
+    "timestamp": "2024-03-15T10:00:00Z"
+  },
+  "summary": "Successfully created booking BK12345 for Test Guest",
+  "details": {
+    "bookingId": "BK12345",
+    "guest": "Test Guest",
+    "checkIn": "August 27, 2025",
+    "checkOut": "August 28, 2025",
+    "status": "Confirmed"
+  },
+  "data": {
+    "id": "BK12345",
+    "status": "confirmed",
+    // ... full API response
+  },
+  "suggestions": [
+    "Send confirmation email to guest",
+    "Create payment link for deposit or full payment",
+    "Update property access codes for check-in",
+    "Review and confirm room availability"
+  ]
+}
+```
+
+### Error Response Example
+
+```javascript
+// Request: Invalid date range
+{
+  "propertyId": "123",
+  "from": "2024-03-20",
+  "to": "2024-03-15"  // End date before start date
+}
+
+// Enhanced Error Response:
+{
+  "operation": {
+    "type": "read",
+    "entity": "availability",
+    "status": "failed",
+    "timestamp": "2024-03-15T10:00:00Z"
+  },
+  "summary": "Failed to check availability: Invalid date range",
+  "details": {
+    "errorCode": "VALIDATION_ERROR",
+    "field": "dates",
+    "reason": "End date must be after start date"
+  },
+  "data": {
+    "error": "Validation failed",
+    "statusCode": 400
+  },
+  "suggestions": [
+    "Ensure the 'to' date is after the 'from' date",
+    "Use format YYYY-MM-DD for dates",
+    "Check if the dates are in the future"
+  ],
+  "warnings": [
+    "Invalid date range: end date (2024-03-15) is before start date (2024-03-20)"
+  ]
+}
+```
+
+### Entity-Specific Details
+
+Different entity types provide relevant extracted information:
+
+#### Booking Details
+- `bookingId`: Unique booking identifier
+- `guest`: Guest name
+- `checkIn`: Formatted check-in date
+- `checkOut`: Formatted check-out date
+- `amount`: Formatted total amount with currency
+- `status`: Booking status (Confirmed, Tentative, etc.)
+
+#### Property Details
+- `id`: Property identifier
+- `name`: Property name
+- `location`: Property location
+- `status`: Property status (active, inactive)
+- `rooms`: Number of rooms
+- `capacity`: Maximum occupancy
+
+#### Rate Details
+- `property`: Property name or ID
+- `rateType`: Type of rate (daily, weekly, etc.)
+- `amount`: Formatted rate amount
+- `period`: Rate validity period
+- `currency`: Currency code
+
+### Contextual Suggestions
+
+The system provides intelligent suggestions based on:
+
+1. **Operation Type**: What action was just performed
+2. **Entity Type**: What kind of data was processed
+3. **Operation Result**: Success, partial success, or failure
+4. **Common Workflows**: Typical next steps in the process
+
+Examples:
+- After creating a booking: "Send confirmation email", "Create payment link"
+- After rate update: "Notify existing bookings if affected", "Review competitor pricing"
+- After error: "Check API credentials", "Verify data format", "Contact support"
+
+### Warning Messages
+
+Warnings are provided for:
+- Potential conflicts or issues
+- Important limitations or restrictions
+- Deprecation notices
+- Rate limiting or quota warnings
+- Data validation concerns
+
 ## Property Management
 
 ### `lodgify_list_properties`

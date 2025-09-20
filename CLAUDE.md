@@ -31,7 +31,8 @@ This is a Model Context Protocol (MCP) server that exposes Lodgify Public API v2
    - **Error Handling** (`src/mcp/errors/`): Centralized error processing and sanitization
    - **Server Setup** (`src/mcp/server-setup.ts`): Server initialization and configuration
    - **Schemas** (`src/mcp/schemas/`): Shared Zod validation schemas
-   - **Utils** (`src/mcp/utils/`): TypeScript types and interfaces
+   - **Utils** (`src/mcp/utils/`): TypeScript types and response enhancement utilities
+   - **Response Enhancement** (`src/mcp/utils/response/`): Response builder, summary generator, suggestion generator
 
 3. **Lodgify Orchestrator** (`src/lodgify-orchestrator.ts`)
    - Unified API for all Lodgify endpoints (v1 and v2)
@@ -85,6 +86,7 @@ When implementing new Lodgify tools, follow this modular pattern:
    - Define Zod schema for input validation
    - Create tool registration object with name, category, config, and handler
    - Use closure-based `getClient()` to access the Lodgify orchestrator
+   - Use `flexibleEnhanceResponse()` or `enhanceResponse()` for response formatting
    - Export tool registration for the registry
 
 2. **Registry Integration** in `src/mcp/tools/register-all.ts`:
@@ -97,8 +99,16 @@ When implementing new Lodgify tools, follow this modular pattern:
    - Pass query parameters through bracket notation flattener
    - Handle response and errors consistently
 
-4. **Error Handling**:
+4. **Response Enhancement**:
+   - Use `flexibleEnhanceResponse()` for backward-compatible response building
+   - Extract entity-specific details with `extractEntityDetails()`
+   - Generate contextual suggestions with `generateSuggestions()`
+   - Create human-readable summaries with `generateSummary()`
+   - Errors are automatically processed with enhanced context and suggestions
+
+5. **Error Handling**:
    - Errors are automatically processed through centralized error handler
+   - Enhanced errors include suggestions for resolution
    - Sanitization removes sensitive data before returning to user
    - McpError codes are applied based on error type
 
@@ -158,10 +168,13 @@ params = {
 
 - All tools must have Zod validation schemas
 - TypeScript strict mode enabled
-- Comprehensive error handling with typed errors
+- Comprehensive error handling with typed errors and enhanced responses
+- Response enhancement utilities provide consistent user experience
 - Unit test coverage target: ≥90% for client code
-- Integration tests for all MCP tools
+- Integration tests for all MCP tools with enhanced response validation
 - Clear separation between MCP server and HTTP client layers
+- Type-safe response building with `EnhancedResponse` interface
+- Contextual suggestions and summaries for better user guidance
 
 ## Debugging
 

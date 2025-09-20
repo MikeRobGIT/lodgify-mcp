@@ -65,7 +65,7 @@ describe('lodgify_list_vacant_inventory Integration Tests', () => {
       // Also verify enhanced response structure
       expect(content.operation).toEqual(
         expect.objectContaining({
-          type: 'read',
+          type: 'list',
           entity: 'vacant_inventory',
           status: 'success',
         }),

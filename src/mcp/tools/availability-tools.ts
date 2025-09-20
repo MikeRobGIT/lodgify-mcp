@@ -8,9 +8,13 @@ import { z } from 'zod'
 import type { AvailabilityQueryParams } from '../../api/v2/availability/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { createValidator, DateToolCategory } from '../utils/date/validator.js'
+import { extractVacantInventoryDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
-import { enhanceResponse } from '../utils/response/builder.js'
+import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
+import type { ApiResponseData } from '../utils/response/types.js'
+import { generateSuggestions } from '../utils/suggestion-generator.js'
+import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolRegistration } from '../utils/types.js'
 
 /**
@@ -99,11 +103,34 @@ Example request:
           propertyId,
           queryParams,
         )
+
+        // Generate summary for availability data
+        const summary = generateSummary(result as unknown as ApiResponseData, 'availability')
+
+        // Generate suggestions based on availability status
+        const suggestions = generateSuggestions('availability_check', 'property', {
+          propertyId,
+          from: fromNorm,
+          to: toNorm,
+          available: (result as Record<string, unknown>)?.available,
+        })
+
+        // Use enhanceResponse to build the response with availability context
+        const enhanced = enhanceResponseBuilder(result as unknown, {
+          entityType: 'availability',
+          operation: 'check',
+          inputParams: { propertyId, ...queryParams },
+          metadata: {
+            summary,
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -199,12 +226,38 @@ Example request:
         const status =
           hasIssues && !hasProperties ? 'failed' : hasProperties ? 'success' : 'partial'
 
+        // Extract vacant inventory details
+        const inventoryDetails = extractVacantInventoryDetails(result)
+
+        // Generate summary for vacant inventory
+        const summary = generateSummary(result as unknown as ApiResponseData, 'vacant_inventory')
+
+        // Generate suggestions based on results
+        const suggestions = hasProperties
+          ? generateSuggestions('list', 'vacant_inventory', {
+              availableProperties: inventoryDetails.availableProperties,
+              vacantCount: inventoryDetails.vacantCount,
+              propertiesChecked: inventoryDetails.propertiesChecked,
+              from: fromNorm,
+              to: toNorm,
+            })
+          : generateSuggestions('list', 'vacant_inventory', {
+              availableProperties: 0,
+              vacantCount: 0,
+              propertiesChecked: inventoryDetails.propertiesChecked || 0,
+            })
+
         // Use response enhancer for better formatting
-        const enhanced = enhanceResponse(result, {
-          operationType: 'read',
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'vacant_inventory',
+          operation: 'list',
           status,
           inputParams: sanitized,
+          extractedInfo: inventoryDetails,
+          metadata: {
+            summary,
+            suggestions,
+          },
         })
 
         // Remove diagnostics from the enhanced response if debug is not enabled
