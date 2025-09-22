@@ -20,35 +20,38 @@ export function extractBookingDetails(data: unknown, inputParams?: unknown): Api
   // Handle both response formats (with 'id' or specific fields)
   // Use getStringOrNumber for IDs since API returns numeric IDs
   details.bookingId =
-    getStringOrNumber(responseData.id) ||
-    getStringOrNumber(responseData.bookingId) ||
-    getStringOrNumber(responseData.booking_id) ||
+    getStringOrNumber(responseData?.id) ||
+    getStringOrNumber(responseData?.bookingId) ||
+    getStringOrNumber(responseData?.booking_id) ||
     getStringOrNumber(params?.id) ||
     getStringOrNumber(params?.bookingId) // Also check for bookingId in inputParams (used by quote creation)
   details.guest =
-    getString(responseData.guest_name) ||
-    getString(responseData.guestName) ||
+    getString(responseData?.guest_name) ||
+    getString(responseData?.guestName) ||
     getString(params?.guest_name) ||
     'Guest'
   details.guestEmail =
-    getString(responseData.guest_email) ||
-    getString(responseData.guestEmail) ||
+    getString(responseData?.guest_email) ||
+    getString(responseData?.guestEmail) ||
     getString(params?.guest_email)
 
-  const propertyName = getString(responseData.propertyName) || getString(responseData.property_name)
+  const propertyName =
+    getString(responseData?.propertyName) || getString(responseData?.property_name)
   const propertyId =
-    getStringOrNumber(responseData.property_id) ||
-    getStringOrNumber(responseData.propertyId) ||
+    getStringOrNumber(responseData?.property_id) ||
+    getStringOrNumber(responseData?.propertyId) ||
     getStringOrNumber(params?.property_id)
   details.property = propertyName || (propertyId ? `Property ${propertyId}` : 'Property')
   details.propertyId = propertyId
 
   // Format dates
   const checkIn =
-    getString(responseData.arrival) || getString(responseData.checkIn) || getString(params?.arrival)
+    getString(responseData?.arrival) ||
+    getString(responseData?.checkIn) ||
+    getString(params?.arrival)
   const checkOut =
-    getString(responseData.departure) ||
-    getString(responseData.checkOut) ||
+    getString(responseData?.departure) ||
+    getString(responseData?.checkOut) ||
     getString(params?.departure)
 
   if (checkIn) details.checkIn = formatDate(checkIn)
@@ -58,9 +61,9 @@ export function extractBookingDetails(data: unknown, inputParams?: unknown): Api
   }
 
   // Guest counts
-  const adults = getNumber(responseData.adults) || getNumber(params?.adults)
-  const children = getNumber(responseData.children) || getNumber(params?.children) || 0
-  const infants = getNumber(responseData.infants) || getNumber(params?.infants) || 0
+  const adults = getNumber(responseData?.adults) || getNumber(params?.adults)
+  const children = getNumber(responseData?.children) || getNumber(params?.children) || 0
+  const infants = getNumber(responseData?.infants) || getNumber(params?.infants) || 0
   const totalGuests = (adults || 0) + children + infants
 
   if (totalGuests > 0) {
@@ -71,21 +74,21 @@ export function extractBookingDetails(data: unknown, inputParams?: unknown): Api
   }
 
   // Financial details
-  const amount = getNumber(responseData.amount) || getNumber(responseData.totalAmount)
-  const currency = getString(responseData.currency)
+  const amount = getNumber(responseData?.amount) || getNumber(responseData?.totalAmount)
+  const currency = getString(responseData?.currency)
   if (amount !== undefined) {
     details.amount = formatCurrency(amount, currency)
   }
 
   // Status
-  const status = getString(responseData.status)
+  const status = getString(responseData?.status)
   if (status) {
     details.status = formatStatus(status)
   }
 
   // Room details
   const roomTypeId =
-    getStringOrNumber(responseData.room_type_id) || getStringOrNumber(params?.room_type_id)
+    getStringOrNumber(responseData?.room_type_id) || getStringOrNumber(params?.room_type_id)
   if (roomTypeId) {
     details.roomTypeId = roomTypeId
   }
@@ -104,28 +107,28 @@ export function extractPaymentLinkDetails(data: unknown, inputParams?: unknown):
   const params = inputParams as ApiResponseData
 
   // Handle numeric booking IDs
-  details.bookingId = getStringOrNumber(params?.id) || getStringOrNumber(responseData.bookingId)
+  details.bookingId = getStringOrNumber(params?.id) || getStringOrNumber(responseData?.bookingId)
   const payloadAmount = getNumber(getNestedValue(params, 'payload.amount'))
   const payloadCurrency = getString(getNestedValue(params, 'payload.currency'))
   details.amount = formatCurrency(
-    getNumber(responseData.amount) || payloadAmount,
-    getString(responseData.currency) || payloadCurrency,
+    getNumber(responseData?.amount) || payloadAmount,
+    getString(responseData?.currency) || payloadCurrency,
   )
-  details.currency = getString(responseData.currency) || payloadCurrency || 'USD'
+  details.currency = getString(responseData?.currency) || payloadCurrency || 'USD'
 
-  const paymentUrl = getString(responseData.paymentUrl) || getString(responseData.url)
+  const paymentUrl = getString(responseData?.paymentUrl) || getString(responseData?.url)
   if (paymentUrl) {
     details.paymentUrl = paymentUrl
   }
 
-  const expiresAt = getString(responseData.expiresAt) || getString(responseData.validUntil)
+  const expiresAt = getString(responseData?.expiresAt) || getString(responseData?.validUntil)
   if (expiresAt) {
     details.expiresAt = formatDate(expiresAt, true)
   }
 
   const payloadDescription = getString(getNestedValue(params, 'payload.description'))
   details.description =
-    getString(responseData.description) || payloadDescription || 'Payment for booking'
+    getString(responseData?.description) || payloadDescription || 'Payment for booking'
 
   return details
 }
@@ -180,19 +183,15 @@ export function extractWebhookDetails(data: unknown, inputParams?: unknown): Api
 
   // Handle numeric webhook IDs
   details.webhookId =
-    (responseData ? getStringOrNumber(responseData.id) : undefined) ||
-    (responseData ? getStringOrNumber(responseData.webhookId) : undefined)
-  details.event =
-    getString(params?.event) ||
-    (responseData ? getString(responseData.event) : undefined) ||
-    'unknown'
+    getStringOrNumber(responseData?.id) || getStringOrNumber(responseData?.webhookId)
+  details.event = getString(params?.event) || getString(responseData?.event) || 'unknown'
   details.targetUrl =
     getString(params?.target_url) ||
-    (responseData ? getString(responseData.targetUrl) : undefined) ||
-    (responseData ? getString(responseData.url) : undefined)
-  details.status = (responseData ? getString(responseData.status) : undefined) || 'active'
+    getString(responseData?.targetUrl) ||
+    getString(responseData?.url)
+  details.status = getString(responseData?.status) || 'active'
 
-  const createdAt = responseData ? getString(responseData.createdAt) : undefined
+  const createdAt = getString(responseData?.createdAt)
   if (createdAt) {
     details.createdAt = formatDate(createdAt, true)
   }
@@ -214,8 +213,8 @@ export function extractVacantInventoryDetails(
   const params = inputParams as ApiResponseData
 
   // Date range
-  const from = getString(responseData.from) || getString(params?.from)
-  const to = getString(responseData.to) || getString(params?.to)
+  const from = getString(responseData?.from) || getString(params?.from)
+  const to = getString(responseData?.to) || getString(params?.to)
   if (from && to) {
     details.dateRange = `${formatDate(from)} to ${formatDate(to)}`
     details.from = formatDate(from)
@@ -319,17 +318,17 @@ export function extractMessageDetails(data: unknown, inputParams?: unknown): Api
 
   // Handle both string GUIDs and numeric IDs
   details.threadId =
-    getStringOrNumber(params?.threadGuid) || getStringOrNumber(responseData.threadId)
+    getStringOrNumber(params?.threadGuid) || getStringOrNumber(responseData?.threadId)
   details.messageId =
-    getStringOrNumber(responseData.id) || getStringOrNumber(responseData.messageId)
+    getStringOrNumber(responseData?.id) || getStringOrNumber(responseData?.messageId)
   details.recipient =
-    getString(responseData.recipientName) || getString(responseData.recipient) || 'recipient'
+    getString(responseData?.recipientName) || getString(responseData?.recipient) || 'recipient'
   const messageContent = getString(getNestedValue(params, 'message.content'))
   details.messageSent = messageContent
     ? `"${messageContent.substring(0, 50)}${messageContent.length > 50 ? '...' : ''}"`
     : 'message'
 
-  const sentAt = getString(responseData.sentAt)
+  const sentAt = getString(responseData?.sentAt)
   if (sentAt) {
     details.sentAt = formatDate(sentAt, true)
   }

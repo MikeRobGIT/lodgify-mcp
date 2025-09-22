@@ -167,7 +167,7 @@ Example request:
         // Use enhanceResponse to build the response
         const enhanced = enhanceResponseBuilder(result as unknown, {
           entityType: 'webhook',
-          operation: 'subscribe',
+          operation: 'create',
           inputParams: subscribeData as unknown as Record<string, unknown>,
           extractedInfo: webhookDetails,
           metadata: {
@@ -226,7 +226,7 @@ Example request:
         // Use enhanceResponse to build the response
         const enhanced = enhanceResponseBuilder(result as unknown, {
           entityType: 'webhook',
-          operation: 'unsubscribe',
+          operation: 'delete',
           inputParams: { webhookId: id },
           metadata: {
             summary,
