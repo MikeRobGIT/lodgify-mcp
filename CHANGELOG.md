@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.22] - 2025-09-22
+
+### Added
+
+- **HTTP Bridge Server**: Introduced a new HTTP bridge server mode for better containerization and deployment flexibility
+- **Docker Support**: Added dual Docker configurations with Dockerfile.mcp for MCP server and Dockerfile.http for HTTP bridge server
+- **Enhanced Test Suite**: Comprehensive unit tests for response builder utilities, suggestion generator, and summary generator with 100+ new test cases
+- **Type Guards**: New type guard utilities for safer runtime type checking of API responses
+
+### Changed
+
+- **Response Enhancement**: Improved MCP response system with better structured metadata and utilities for all tool operations
+- **Tool Catalog Documentation**: Significantly expanded documentation with detailed enhanced response format examples and entity-specific details
+- **Messaging Tools**: Refactored messaging endpoints to align with actual Lodgify API capabilities, removing non-functional endpoints
+- **Entity Extractors**: Refined entity extraction logic for better handling of booking, property, and rate data
+
+### Fixed
+
+- **PR Review Feedback**: Addressed all review comments for the enhanced MCP response system
+- **Messaging API**: Removed non-functional messaging endpoints and aligned with actual API capabilities
+- **DeepWiki Badge**: Fixed broken badge link in README documentation
+
+### Technical Details
+
+- Added 528 test cases for response builder covering success/error scenarios and entity extraction
+- Added 245 test cases for suggestion generator with context-aware recommendations
+- Added 310 test cases for summary generator with human-readable output formatting
+- Improved test server with proper mocking and response handling
+- Enhanced type safety with new type guard functions for API response validation
+
 ## [0.1.21] - 2025-09-19
 
 ### Added
