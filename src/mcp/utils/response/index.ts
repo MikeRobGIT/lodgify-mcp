@@ -11,13 +11,19 @@ export { formatCurrency } from '../currency-formatter.js'
 // Export date formatters
 export { calculateNights, formatDate } from '../date/formatter.js'
 // Export main enhancement functions
-export { enhanceResponse, extractEntityDetails, formatMcpResponse } from './builder.js'
+export {
+  enhanceResponse,
+  extractEntityDetails,
+  flexibleEnhanceResponse,
+  formatMcpResponse,
+} from './builder.js'
 // Export all types from response-types
 export type {
   ApiResponseData,
   EnhancedResponse,
   EnhanceOptions,
   EntityType,
+  FlexibleBuilderOptions,
   OperationStatus,
   OperationType,
 } from './types.js'

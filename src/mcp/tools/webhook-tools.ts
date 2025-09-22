@@ -7,11 +7,15 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { WebhookSubscribeRequest } from '../../api/v1/webhooks/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { extractWebhookDetails } from '../utils/entity-extractors.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported WebhookEventEnum from '../schemas/common.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
-import { enhanceResponse, formatMcpResponse } from '../utils/response/index.js'
+import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
+import type { ApiResponseData } from '../utils/response/types.js'
+import { generateSuggestions } from '../utils/suggestion-generator.js'
+import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 
 const CATEGORY: ToolCategory = 'Webhooks & Notifications'
@@ -50,11 +54,34 @@ Example response:
       },
       handler: wrapToolHandler(async () => {
         const result = await getClient().webhooks.listWebhooks()
+
+        // Extract webhook details
+        const webhookDetails = extractWebhookDetails(result)
+
+        // Generate summary for webhook list
+        const summary = generateSummary(result as unknown as ApiResponseData, 'webhook_list')
+
+        // Generate suggestions for webhook management
+        const suggestions = generateSuggestions('webhook_list', 'webhook', {
+          count: result?.webhooks?.length || 0,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result as unknown, {
+          entityType: 'webhook',
+          operation: 'list',
+          extractedInfo: webhookDetails,
+          metadata: {
+            summary,
+            suggestions,
+          },
+        })
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -125,18 +152,35 @@ Example request:
         }
         const result = await getClient().subscribeWebhook(subscribeData)
 
-        // Enhance the response with context
-        const enhanced = enhanceResponse(result, {
-          operationType: 'create',
+        // Extract webhook details from the result
+        const webhookDetails = extractWebhookDetails(result)
+
+        // Generate summary for webhook subscription
+        const summary = generateSummary(result as unknown as ApiResponseData, 'webhook_subscribe')
+
+        // Generate suggestions based on the webhook type
+        const suggestions = generateSuggestions('webhook_subscribed', 'webhook', {
+          event,
+          target_url,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result as unknown, {
           entityType: 'webhook',
+          operation: 'subscribe',
           inputParams: subscribeData as unknown as Record<string, unknown>,
+          extractedInfo: webhookDetails,
+          metadata: {
+            summary,
+            suggestions,
+          },
         })
 
         return {
           content: [
             {
               type: 'text',
-              text: formatMcpResponse(enhanced),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }
@@ -164,21 +208,37 @@ Example request:
         const { id } = sanitizeInput(input)
         await getClient().unsubscribeWebhook({ id })
 
-        // Enhance the response with context (unsubscribe returns void, so we create a success response)
-        const enhanced = enhanceResponse(
-          { success: true, webhookId: id },
-          {
-            operationType: 'delete',
-            entityType: 'webhook',
-            inputParams: { webhookId: id },
+        // Create a success response since unsubscribe returns void
+        const result = {
+          success: true,
+          webhookId: id,
+          message: 'Webhook unsubscribed successfully',
+        }
+
+        // Generate summary for the unsubscribe operation
+        const summary = generateSummary(result as unknown as ApiResponseData, 'webhook_unsubscribe')
+
+        // Generate suggestions after unsubscribing
+        const suggestions = generateSuggestions('webhook_unsubscribed', 'webhook', {
+          webhookId: id,
+        })
+
+        // Use enhanceResponse to build the response
+        const enhanced = enhanceResponseBuilder(result as unknown, {
+          entityType: 'webhook',
+          operation: 'unsubscribe',
+          inputParams: { webhookId: id },
+          metadata: {
+            summary,
+            suggestions,
           },
-        )
+        })
 
         return {
           content: [
             {
               type: 'text',
-              text: formatMcpResponse(enhanced),
+              text: JSON.stringify(enhanced, null, 2),
             },
           ],
         }

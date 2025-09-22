@@ -15,7 +15,13 @@ import {
 import { getNestedValue, getString, getStringOrNumber } from '../helpers.js'
 import { generateSuggestions } from '../suggestion-generator.js'
 import { generateSummary } from '../summary-generator.js'
-import type { ApiResponseData, EnhancedResponse, EnhanceOptions, EntityType } from './types.js'
+import type {
+  ApiResponseData,
+  EnhancedResponse,
+  EnhanceOptions,
+  EntityType,
+  FlexibleBuilderOptions,
+} from './types.js'
 import { toApiResponseData, toISO8601String } from './validators.js'
 
 /**
@@ -86,12 +92,14 @@ export function extractEntityDetails(
       break
     default: {
       // Generic details extraction
-      const id = getStringOrNumber(apiData.id) // Handle numeric IDs
-      const name = getString(apiData.name)
-      const statusValue = getString(apiData.status)
-      if (id) details.id = id
-      if (name) details.name = name
-      if (statusValue) details.status = statusValue
+      if (apiData && typeof apiData === 'object') {
+        const id = getStringOrNumber(apiData.id) // Handle numeric IDs
+        const name = getString(apiData.name)
+        const statusValue = getString(apiData.status)
+        if (id) details.id = id
+        if (name) details.name = name
+        if (statusValue) details.status = statusValue
+      }
     }
   }
 
@@ -109,6 +117,7 @@ export function enhanceResponse(data: unknown, options: EnhanceOptions): Enhance
     inputParams,
     customSuggestions,
     customWarnings,
+    customSummary,
   } = options
 
   // Safely convert data to ApiResponseData format with validation
@@ -117,8 +126,8 @@ export function enhanceResponse(data: unknown, options: EnhanceOptions): Enhance
   // Extract details based on entity type
   const details = extractEntityDetails(entityType, apiData, inputParams)
 
-  // Generate summary
-  const summary = generateSummary(operationType, entityType, details, status)
+  // Generate summary - use custom if provided, otherwise generate
+  const summary = customSummary || generateSummary(operationType, entityType, details, status)
 
   // Generate suggestions
   const suggestions = customSuggestions || generateSuggestions(operationType, entityType, details)
@@ -154,4 +163,43 @@ export function enhanceResponse(data: unknown, options: EnhanceOptions): Enhance
  */
 export function formatMcpResponse(enhanced: EnhancedResponse): string {
   return JSON.stringify(enhanced, null, 2)
+}
+
+/**
+ * Flexible builder wrapper that accepts various option formats
+ * This is the main function used by tools for response enhancement
+ */
+export function flexibleEnhanceResponse(
+  data: unknown,
+  options: FlexibleBuilderOptions | EnhanceOptions,
+): EnhancedResponse {
+  // Check if it's already in the old format
+  if ('operationType' in options && !('operation' in options)) {
+    return enhanceResponse(data, options as EnhanceOptions)
+  }
+
+  // Convert flexible options to standard options
+  const flexOptions = options as FlexibleBuilderOptions
+  const operationType = flexOptions.operation || 'read'
+
+  // Merge extracted info into the data if provided
+  let enhancedData = data
+  if (flexOptions.extractedInfo) {
+    enhancedData = {
+      ...(typeof data === 'object' && data !== null ? data : {}),
+      _extracted: flexOptions.extractedInfo,
+    }
+  }
+
+  const standardOptions: EnhanceOptions = {
+    operationType,
+    entityType: flexOptions.entityType,
+    status: flexOptions.status,
+    inputParams: flexOptions.inputParams,
+    customSuggestions: flexOptions.metadata?.suggestions,
+    customWarnings: flexOptions.metadata?.warnings,
+    customSummary: flexOptions.metadata?.summary,
+  }
+
+  return enhanceResponse(enhancedData, standardOptions)
 }

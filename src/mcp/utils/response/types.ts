@@ -16,7 +16,19 @@ export type ISO8601String = string & { readonly __brand: 'ISO8601' }
 /**
  * Operation types for API interactions
  */
-export type OperationType = 'create' | 'update' | 'delete' | 'action' | 'read'
+export type OperationType =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'action'
+  | 'read'
+  | 'list'
+  | 'get'
+  | 'check'
+  | 'subscribe'
+  | 'unsubscribe'
+  | 'list_deleted'
+  | 'calculate'
 
 /**
  * Entity types in the Lodgify system
@@ -26,11 +38,19 @@ export type EntityType =
   | 'payment_link'
   | 'quote'
   | 'rate'
+  | 'daily_rates'
+  | 'rate_settings'
   | 'webhook'
   | 'message'
   | 'thread'
   | 'key_codes'
   | 'vacant_inventory'
+  | 'property'
+  | 'room'
+  | 'availability'
+  | 'booking_checkin'
+  | 'booking_checkout'
+  | 'external_booking'
 
 /**
  * Status of the operation
@@ -68,4 +88,21 @@ export interface EnhanceOptions {
   inputParams?: ApiResponseData
   customSuggestions?: string[]
   customWarnings?: string[]
+  customSummary?: string
+}
+
+/**
+ * Flexible builder options for enhanced response creation
+ */
+export interface FlexibleBuilderOptions {
+  entityType: EntityType
+  operation?: OperationType
+  status?: OperationStatus
+  inputParams?: ApiResponseData
+  extractedInfo?: ApiResponseData
+  metadata?: {
+    summary?: string
+    suggestions?: string[]
+    warnings?: string[]
+  }
 }
