@@ -13,18 +13,18 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PORT=${DOCKER_PORT:-3000}
+      - PORT=${PORT:-3000}
     
     # Port mapping
     ports:
-      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
+      - "${PORT:-3000}:${PORT:-3000}"
     
     # Restart policy
     restart: unless-stopped
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${DOCKER_PORT:-3000}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3000}/health"]
       interval: 30s
       timeout: 10s
       start_period: 60s
@@ -55,14 +55,15 @@ services:
     profiles:
       - production
 
-  lodgify-mcp-http:
+
+  lodgify-mcp-bridge:
     build:
       context: .
-      dockerfile: Dockerfile.http
+      dockerfile: Dockerfile.bridge
       args:
-        - PORT=${DOCKER_PORT:-3000}
+        - PORT=${PORT:-3000}
 
-    container_name: lodgify-mcp-http
+    container_name: lodgify-mcp-bridge
 
     env_file:
       - .env
@@ -70,11 +71,11 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PORT=${DOCKER_PORT:-3000}
+      - PORT=${PORT:-3000}
       - MCP_TOKEN=${MCP_TOKEN}
 
     ports:
-      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
+      - "${PORT:-3000}:${PORT:-3000}"
 
     restart: unless-stopped
 
@@ -89,7 +90,7 @@ services:
       - mcp-network
 
     profiles:
-      - http
+      - bridge
 
   # Development configuration
   lodgify-mcp-dev:
@@ -98,7 +99,7 @@ services:
       dockerfile: Dockerfile
       target: production
       args:
-        - PORT=${DOCKER_PORT:-3000}
+        - PORT=${PORT:-3000}
     
     container_name: lodgify-mcp-dev
     
@@ -118,12 +119,12 @@ services:
     environment:
       - NODE_ENV=development
       - LOG_LEVEL=${LOG_LEVEL:-debug}
-      - PORT=${DOCKER_PORT:-3000}
+      - PORT=${PORT:-3000}
       - DEBUG_HTTP=${DEBUG_HTTP:-1}
     
     # Port mapping for development
     ports:
-      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
+      - "${PORT:-3000}:${PORT:-3000}"
     
     # Development command (uses bun dev for hot reload)
     command: ["bun", "run", "dev"]
@@ -133,7 +134,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${DOCKER_PORT:-3000}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3000}/health"]
       interval: 30s
       timeout: 10s
       start_period: 60s

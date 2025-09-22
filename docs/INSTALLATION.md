@@ -150,18 +150,6 @@ docker run -i \
   lodgify-mcp
 ```
 
-### HTTP Streamable Server Image
-
-Use the dedicated Dockerfile for the HTTP transport:
-
-```bash
-npm run docker:http:build
-docker run --rm \
-  -p 3000:3000 \
-  -e MCP_TOKEN=your_token \
-  -e LODGIFY_API_KEY="your_api_key_here" \
-  lodgify-mcp:http
-```
 
 ## Source Installation
 

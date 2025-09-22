@@ -21,11 +21,8 @@ log() {
 
 log "${GREEN}Starting Lodgify MCP Server entrypoint...${NC}"
 
-# Detect mode based on command
+# Default to stdio mode (MCP standard)
 MODE="stdio"
-if echo "$@" | grep -q "server-http"; then
-    MODE="http"
-fi
 
 # Run environment validation if script exists
 if [ -f "/app/scripts/env-check.sh" ]; then
@@ -72,14 +69,6 @@ if [ -z "$LODGIFY_API_KEY" ] || [ "$LODGIFY_API_KEY" = "your_lodgify_api_key_her
     exit 1
 fi
 
-# Additional check for HTTP mode
-if [ "$MODE" = "http" ]; then
-    if [ -z "$MCP_TOKEN" ] || [ "$MCP_TOKEN" = "your-secret-token-here" ] || [ "$MCP_TOKEN" = "test-token-123" ]; then
-        log "${RED}ERROR: MCP_TOKEN is not set or contains default/test value${NC}"
-        log "${RED}Please set MCP_TOKEN environment variable for HTTP mode${NC}"
-        exit 1
-    fi
-fi
 
 # Log startup configuration (without sensitive data)
 log "Configuration:"
@@ -88,9 +77,6 @@ log "  NODE_ENV: ${NODE_ENV:-production}"
 log "  PORT: ${PORT:-3000}"
 log "  LOG_LEVEL: ${LOG_LEVEL:-info}"
 log "  DEBUG_HTTP: ${DEBUG_HTTP:-0}"
-if [ "$MODE" = "http" ]; then
-    log "  MCP_TOKEN: [SET]"
-fi
 
 # Start MCP server directly in foreground
 log "${GREEN}Starting MCP server...${NC}"

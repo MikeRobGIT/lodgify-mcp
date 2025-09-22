@@ -1,11 +1,12 @@
-# Multi-stage Dockerfile for Lodgify MCP Server in HTTP mode
+# Multi-stage Dockerfile for HTTP-to-MCP Bridge Server
 FROM oven/bun:1-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
 # Install dependencies
-COPY package.json bun.lockb* ./
+COPY package.json ./
+COPY bun.lock* ./
 RUN bun install --frozen-lockfile
 
 # Copy source and build
@@ -16,7 +17,7 @@ RUN bun run build
 FROM oven/bun:1-alpine AS production
 
 LABEL maintainer="lodgify-mcp"
-LABEL description="Lodgify MCP Server - Streamable HTTP transport"
+LABEL description="Lodgify MCP Server - HTTP Bridge"
 
 # Install curl for healthchecks
 RUN apk add --no-cache curl
@@ -30,7 +31,8 @@ WORKDIR /app
 # Copy built files and dependencies
 COPY --from=builder --chown=mcpuser:mcpuser /app/node_modules ./node_modules
 COPY --from=builder --chown=mcpuser:mcpuser /app/dist ./dist
-COPY --chown=mcpuser:mcpuser package.json ./
+COPY --from=builder --chown=mcpuser:mcpuser /app/package.json ./package.json
+COPY --from=builder --chown=mcpuser:mcpuser /app/bun.lock* ./
 
 # Copy entrypoint and scripts
 COPY --chown=mcpuser:mcpuser docker-entrypoint.sh /app/
@@ -47,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -fsS http://localhost:${PORT}/health || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["bun", "dist/server-http.js"]
+CMD ["bun", "dist/server-http-bridge.js"]

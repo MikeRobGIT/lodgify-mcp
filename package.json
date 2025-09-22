@@ -16,10 +16,10 @@
   ],
   "scripts": {
     "dev": "bun src/server.ts",
-    "build": "tsc --strict && chmod +x dist/server.js",
+    "build": "tsc --strict && chmod +x dist/server.js && chmod +x dist/server-http-bridge.js",
     "start": "node dist/server.js",
-    "start:http": "bun src/server-http.ts",
-    "start:http:prod": "bun dist/server-http.js",
+    "start:bridge": "bun src/server-http-bridge.ts",
+    "start:bridge:prod": "bun dist/server-http-bridge.js",
     "check": "bun run lint --fix && bun run typecheck && bun run format && bun run build && bun run test",
     "test": "bun test",
     "test:watch": "bun test --watch",
@@ -35,7 +35,7 @@
     "pre-push": "bun test && bun run build",
     "sync-version": "node scripts/sync-version.js",
     "docker:mcp:build": "docker build -f Dockerfile.mcp -t lodgify-mcp:mcp .",
-    "docker:http:build": "docker build -f Dockerfile.http -t lodgify-mcp:http ."
+    "docker:bridge:build": "docker build -f Dockerfile.bridge -t lodgify-mcp:bridge ."
   },
   "keywords": [
     "mcp",
