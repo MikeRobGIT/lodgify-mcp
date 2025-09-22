@@ -118,7 +118,7 @@ Example request:
         // Use enhanceResponse to build the response with availability context
         const enhanced = enhanceResponseBuilder(result as unknown, {
           entityType: 'availability',
-          operation: 'check',
+          operation: 'read',
           inputParams: { propertyId, ...queryParams },
           metadata: {
             summary,

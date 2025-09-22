@@ -2,6 +2,7 @@
  * Summary generation logic for Response Enhancer
  */
 
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import type {
   ApiResponseData,
   EntityType,
@@ -35,8 +36,22 @@ export function generateSummary(
 
     // Generate context-specific summaries
     switch (contextType) {
-      case 'property_list':
-        return `Retrieved ${(data as Record<string, unknown>).properties ? (data.properties as unknown[]).length : 0} properties`
+      case 'property_list': {
+        const dataObj = data as Record<string, unknown>
+        // Check for data array (from PropertiesListResponse structure)
+        if (dataObj.data && Array.isArray(dataObj.data)) {
+          return `Retrieved ${dataObj.data.length} properties`
+        }
+        // Fallback for direct array
+        if (Array.isArray(data)) {
+          return `Retrieved ${data.length} properties`
+        }
+        // Fallback to check properties field (legacy)
+        if (dataObj.properties && Array.isArray(dataObj.properties)) {
+          return `Retrieved ${dataObj.properties.length} properties`
+        }
+        return `Retrieved 0 properties`
+      }
       case 'room_list':
         return `Retrieved room types for property`
       case 'deleted_properties':
@@ -94,7 +109,11 @@ export function generateSummary(
 
   // Explicitly handle undefined status - don't default to success
   if (status === undefined) {
-    throw new Error(`Operation status cannot be undefined for ${operationType} ${entityType}`)
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Operation status cannot be undefined for ${operationType} ${entityType}`,
+      { operationType, entityType },
+    )
   }
   const operationStatus = status
 
