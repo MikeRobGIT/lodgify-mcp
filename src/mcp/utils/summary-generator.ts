@@ -37,19 +37,24 @@ export function generateSummary(
     // Generate context-specific summaries
     switch (contextType) {
       case 'property_list': {
-        const dataObj = data as Record<string, unknown>
-        // Check for data array (from PropertiesListResponse structure)
-        if (dataObj.data && Array.isArray(dataObj.data)) {
-          return `Retrieved ${dataObj.data.length} properties`
-        }
-        // Fallback for direct array
+        // Handle direct array response first
         if (Array.isArray(data)) {
           return `Retrieved ${data.length} properties`
         }
-        // Fallback to check properties field (legacy)
-        if (dataObj.properties && Array.isArray(dataObj.properties)) {
-          return `Retrieved ${dataObj.properties.length} properties`
+
+        // Handle object responses safely
+        if (data && typeof data === 'object') {
+          const dataObj = data as Record<string, unknown>
+          // Check for data array (from PropertiesListResponse structure)
+          if (Array.isArray(dataObj.data)) {
+            return `Retrieved ${dataObj.data.length} properties`
+          }
+          // Fallback to check properties field (legacy)
+          if (Array.isArray(dataObj.properties)) {
+            return `Retrieved ${dataObj.properties.length} properties`
+          }
         }
+
         return `Retrieved 0 properties`
       }
       case 'room_list':

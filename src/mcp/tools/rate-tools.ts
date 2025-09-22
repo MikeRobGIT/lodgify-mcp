@@ -519,7 +519,12 @@ Example request:
         debugLogResponse('Update rates API response', result)
 
         // Generate summary for rate update
-        const summary = generateSummary(toApiResponseData(result, 'rate_update'), 'rate_update')
+        const summary = generateSummary(
+          'update',
+          'rate',
+          toApiResponseData(result, 'rate_update'),
+          'success',
+        )
 
         // Generate suggestions for rate updates
         const suggestions = generateSuggestions('rates_updated', 'rates', {
