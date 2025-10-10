@@ -65,6 +65,7 @@ export interface VacantInventoryParams {
   includeRooms?: boolean
   limit?: number
   wid?: number
+  timeoutSeconds?: number
 }
 
 export interface VacantInventoryRoomResult {
@@ -361,7 +362,19 @@ export class LodgifyOrchestrator {
       includeRooms = true,
       limit = PAGINATION.DEFAULT_VACANT_INVENTORY_LIMIT,
       wid,
+      timeoutSeconds = 180, // Default 3 minutes
     } = params
+
+    // Set up timeout for the entire operation
+    const timeoutMs = timeoutSeconds * 1000
+    const startTime = Date.now()
+
+    const checkTimeout = () => {
+      const elapsed = Date.now() - startTime
+      if (elapsed > timeoutMs) {
+        throw new Error(`Operation timeout after ${timeoutSeconds} seconds`)
+      }
+    }
 
     // Helper: exclusive-end overlap between [aStart, aEnd) and [bStart, bEnd)
     const toDateOnly = (s: string) => (s.includes('T') ? s.split('T')[0] : s)
@@ -395,6 +408,7 @@ export class LodgifyOrchestrator {
       const fetched: Property[] = []
       for (const pid of propertyIds.slice(0, limit)) {
         try {
+          checkTimeout()
           const p = await this.properties.getProperty(String(pid))
           if (p) fetched.push(p)
         } catch (e) {
@@ -407,6 +421,7 @@ export class LodgifyOrchestrator {
       propertiesToCheck = fetched
     } else {
       try {
+        checkTimeout()
         const list = await this.properties.listProperties({ limit, ...(wid ? { wid } : {}) })
 
         // Track API call
@@ -476,6 +491,7 @@ export class LodgifyOrchestrator {
           )
 
           try {
+            checkTimeout()
             const foundProps = await this.properties.findProperties(undefined, false, limit)
             diagnostics.apiCalls.push({
               endpoint: 'findProperties (fallback)',
@@ -487,6 +503,7 @@ export class LodgifyOrchestrator {
             // Convert found properties to Property objects
             for (const prop of foundProps.properties.slice(0, limit)) {
               try {
+                checkTimeout()
                 const fullProp = await this.properties.getProperty(prop.id)
                 if (fullProp) propertiesToCheck.push(fullProp)
               } catch (e) {
@@ -574,6 +591,7 @@ export class LodgifyOrchestrator {
 
       try {
         // Fetch availability with details for the given range
+        checkTimeout()
         const availabilityResponse = await this.availability.getAvailabilityForProperty(
           propertyId,
           {
@@ -689,6 +707,7 @@ export class LodgifyOrchestrator {
         }
 
         if (includeRooms) {
+          checkTimeout()
           const rooms = await this.properties.listPropertyRooms(propertyId)
           const roomResults: VacantInventoryRoomResult[] = []
           let anyRoomAvailable = false
@@ -712,84 +731,116 @@ export class LodgifyOrchestrator {
             entry.rooms = roomResults
             entry.available = false
           } else {
-            // Property is available at the property level, check individual rooms
-            for (const r of rooms) {
+            // Property is available at the property level, check individual rooms in parallel
+            // Check timeout before processing rooms
+            checkTimeout()
+
+            // Process all rooms in parallel for better performance
+            const roomCheckPromises = rooms.map(async (r) => {
               // Handle room data that could be just an ID or a full object
               const room =
                 typeof r === 'object'
                   ? (r as { id?: string | number; name?: string; maxOccupancy?: number })
                   : { id: r }
               const roomId = String(room.id ?? r)
-              // Fetch per-room availability to avoid over-reporting
-              const roomAvailability = (await this.availability.getAvailabilityForRoom(
-                propertyId,
-                roomId,
-                {
-                  from,
-                  to,
-                },
-              )) as unknown as {
-                periods?: Array<{
-                  start: string
-                  end: string
-                  available?: number | boolean
-                  bookings?: Array<{
-                    arrival?: string
-                    departure?: string
-                    checkIn?: string
-                    checkOut?: string
-                  }>
-                }>
-              }
 
-              // Track room availability API call
-              diagnostics.apiCalls.push({
-                endpoint: `getAvailabilityForRoom(${propertyId}/${roomId})`,
-                responseStructure: 'room_availability',
-                itemsFound: 1,
-              })
-
-              const rPeriods = roomAvailability?.periods ?? []
-              let roomUnavailable = false
-              for (const pr of rPeriods) {
-                // If any overlapped period is explicitly unavailable, mark room unavailable
-                if (typeof pr.available !== 'undefined') {
-                  const availBool =
-                    typeof pr.available === 'number' ? pr.available > 0 : !!pr.available
-                  if (!availBool && overlaps(pr.start, pr.end, from, to)) {
-                    roomUnavailable = true
-                    break
-                  }
-                }
-                if (Array.isArray(pr.bookings)) {
-                  for (const b of pr.bookings) {
-                    // Handle flexible booking date fields from different API versions
-                    const booking = b as {
+              try {
+                // Fetch per-room availability to avoid over-reporting
+                const roomAvailability = (await this.availability.getAvailabilityForRoom(
+                  propertyId,
+                  roomId,
+                  {
+                    from,
+                    to,
+                  },
+                )) as unknown as {
+                  periods?: Array<{
+                    start: string
+                    end: string
+                    available?: number | boolean
+                    bookings?: Array<{
                       arrival?: string
-                      checkIn?: string
                       departure?: string
+                      checkIn?: string
                       checkOut?: string
-                    }
-                    const bStart = booking.arrival || booking.checkIn
-                    const bEnd = booking.departure || booking.checkOut
-                    if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
+                    }>
+                  }>
+                }
+
+                // Track room availability API call
+                diagnostics.apiCalls.push({
+                  endpoint: `getAvailabilityForRoom(${propertyId}/${roomId})`,
+                  responseStructure: 'room_availability',
+                  itemsFound: 1,
+                })
+
+                const rPeriods = roomAvailability?.periods ?? []
+                let roomUnavailable = false
+                for (const pr of rPeriods) {
+                  // If any overlapped period is explicitly unavailable, mark room unavailable
+                  if (typeof pr.available !== 'undefined') {
+                    const availBool =
+                      typeof pr.available === 'number' ? pr.available > 0 : !!pr.available
+                    if (!availBool && overlaps(pr.start, pr.end, from, to)) {
                       roomUnavailable = true
                       break
                     }
                   }
+                  if (Array.isArray(pr.bookings)) {
+                    for (const b of pr.bookings) {
+                      // Handle flexible booking date fields from different API versions
+                      const booking = b as {
+                        arrival?: string
+                        checkIn?: string
+                        departure?: string
+                        checkOut?: string
+                      }
+                      const bStart = booking.arrival || booking.checkIn
+                      const bEnd = booking.departure || booking.checkOut
+                      if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
+                        roomUnavailable = true
+                        break
+                      }
+                    }
+                  }
+                  if (roomUnavailable) break
                 }
-                if (roomUnavailable) break
-              }
 
-              const roomAvailable = !roomUnavailable
-              if (roomAvailable) anyRoomAvailable = true
-              roomResults.push({
-                id: roomId,
-                name: room.name,
-                maxOccupancy: room.maxOccupancy,
-                available: roomAvailable,
-              })
-            }
+                const roomAvailable = !roomUnavailable
+                return {
+                  id: roomId,
+                  name: room.name,
+                  maxOccupancy: room.maxOccupancy,
+                  available: roomAvailable,
+                }
+              } catch (error) {
+                // Log error but return room as unavailable to avoid breaking the entire check
+                safeLogger.warn('Failed to check room availability', {
+                  propertyId,
+                  roomId,
+                  error: (error as Error)?.message,
+                })
+                return {
+                  id: roomId,
+                  name: room.name,
+                  maxOccupancy: room.maxOccupancy,
+                  available: false,
+                }
+              }
+            })
+
+            // Wait for all room checks to complete in parallel with timeout enforcement
+            const roomsChecked = await Promise.race([
+              Promise.all(roomCheckPromises),
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`Operation timeout after ${timeoutSeconds} seconds`)),
+                  Math.max(0, timeoutMs - (Date.now() - startTime)),
+                ),
+              ),
+            ])
+            roomResults.push(...roomsChecked)
+            anyRoomAvailable = roomsChecked.some((r) => r.available)
 
             entry.rooms = roomResults
             entry.available = anyRoomAvailable

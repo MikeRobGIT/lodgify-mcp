@@ -91,6 +91,41 @@ services:
     profiles:
       - http
 
+  lodgify-mcp-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.http
+      args:
+        - PORT=3076
+
+    container_name: lodgify-mcp-bridge
+
+    env_file:
+      - .env
+
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=3076
+
+    ports:
+      - "3076:3076"
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3076/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+    networks:
+      - mcp-network
+
+    profiles:
+      - bridge
+
   # Development configuration
   lodgify-mcp-dev:
     build:
