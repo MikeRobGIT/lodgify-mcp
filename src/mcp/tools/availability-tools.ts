@@ -147,13 +147,17 @@ Example request:
 
 Use this to find available inventory in one call instead of checking each property separately.
 
+**Performance Note**: With many properties and includeRooms=true, this operation makes multiple API calls
+and may take 60-120 seconds. The default timeout is 180 seconds (3 minutes).
+
 Example request:
 {
   "from": "2025-11-20",
   "to": "2025-11-25",
   "propertyIds": ["435705", "435706"],  // Optional: filter to these properties
   "includeRooms": true,                    // Include room types in the result (default: true)
-  "limit": 25                              // Max number of properties when propertyIds not provided (default: 25)
+  "limit": 25,                             // Max number of properties when propertyIds not provided (default: 25)
+  "timeoutSeconds": 180                    // Optional: timeout in seconds (default: 180, max: 600)
 }`,
         inputSchema: {
           from: z.string().min(1).describe('Start date (YYYY-MM-DD)'),
@@ -172,6 +176,14 @@ Example request:
             .describe('Max number of properties when propertyIds not provided'),
           wid: z.number().int().optional().describe('Website ID filter (if supported)'),
           debug: z.boolean().optional().describe('Include diagnostic information in response'),
+          timeoutSeconds: z
+            .number()
+            .int()
+            .min(30)
+            .max(600)
+            .default(180)
+            .optional()
+            .describe('Timeout in seconds for the entire operation (default: 180, max: 600)'),
         },
       },
       handler: wrapToolHandler(async (input) => {
@@ -183,8 +195,9 @@ Example request:
           limit?: number
           wid?: number
           debug?: boolean
+          timeoutSeconds?: number
         }
-        const { from, to, propertyIds, includeRooms, limit, wid, debug } = sanitized
+        const { from, to, propertyIds, includeRooms, limit, wid, debug, timeoutSeconds } = sanitized
 
         // Validate and normalize dates
         const validator = createValidator(DateToolCategory.AVAILABILITY)
@@ -217,6 +230,7 @@ Example request:
           includeRooms,
           limit,
           wid,
+          timeoutSeconds,
         })
 
         // Determine if operation was successful based on the result
