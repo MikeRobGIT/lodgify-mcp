@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.23] - 2025-10-10
+
+### Added
+
+- **Enhanced GitHub Releases**: Automated changelog extraction system that includes version-specific changes directly in GitHub release bodies
+- **Changelog Extraction Script**: New `scripts/extract-changelog.sh` utility for extracting version-specific sections from CHANGELOG.md
+- **Configurable Timeout for Vacant Inventory**: Added `timeoutSeconds` parameter to `lodgify_list_vacant_inventory` tool (default: 180s, min: 30s, max: 600s) for better control over long-running availability operations
+
+### Changed
+
+- **GitHub Release Workflow**: Enhanced `.github/workflows/release.yml` to automatically extract and display changelog content in release bodies instead of just linking to CHANGELOG.md
+- **Release Body Format**: Improved GitHub release notes with structured sections, emoji icons, and comprehensive installation instructions
+- **Documentation**: Updated tool documentation with timeout configuration guidance and usage examples for vacant inventory operations
+
+### Technical Details
+
+- Implemented AWK-based changelog parsing script with version-specific section extraction
+- Enhanced release workflow with changelog extraction step and multiline output handling
+- Added timeout parameter validation with min/max constraints to vacant inventory tool schema
+- Improved GitHub release presentation with formatted markdown, code blocks, and resource links
+- Maintained backward compatibility with all existing MCP tools and API endpoints
+
 ## [0.1.22] - 2025-09-22
 
 ### Added
