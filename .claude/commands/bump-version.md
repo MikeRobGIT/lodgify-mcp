@@ -14,22 +14,33 @@ Usage:
 
 **IMPORTANT**: The actual npm package publishing to `@mikerob/lodgify-mcp` is handled automatically by GitHub Actions CI/CD when version tags (e.g., v0.1.11) are pushed.
 
+**CRITICAL REQUIREMENT**: Stable releases MUST be performed from the `main` branch. Feature branches must be merged to main before running this command. Pre-releases can be created from any branch.
+
 ## Steps (Stable Release)
 
-1. **Validate Input**
+1. **Branch Validation** ⚠️ CRITICAL
+   - Check current git branch using `git branch --show-current`
+   - MUST be on `main` branch (or `master` as fallback)
+   - If on any other branch (e.g., `feat/`, `feature/`, `develop`, etc.):
+     - Display clear error message with current branch name
+     - Abort the version bump immediately
+     - Instruct user to merge their branch to main first
+   - Exception: Pre-release mode can run from any branch (beta/alpha workflows)
+
+2. **Validate Input**
    - If no argument provided, default to `patch`
    - Ensure argument is one of: `patch`, `minor`, or `major`
 
-2. **Pre-bump Validation**
+3. **Pre-bump Validation**
    - Run `bun check` to ensure code quality, type checking passes, build passes, and all tests pass
    - If any fail, abort the version bump
 
-3. **Bump Version**
+4. **Bump Version**
    - Manually update the version in package.json based on the bump type
    - Calculate new version: patch (0.1.10 → 0.1.11), minor (0.1.10 → 0.2.0), major (0.1.10 → 1.0.0)
    - Edit package.json directly to update the "version" field
 
-4. **Analyze Changes for Changelog**
+5. **Analyze Changes for Changelog**
    - Use `git log --oneline` to get commits since last version tag
    - Use `git diff --name-only` and `git diff --stat` to understand scope of changes
    - Categorize changes into:
@@ -40,21 +51,21 @@ Usage:
      - **Security**: Security-related improvements
      - **Technical Details**: Internal improvements, refactoring
 
-5. **Update CHANGELOG.md**
+6. **Update CHANGELOG.md**
    - Add new version entry at the top (after "## [Unreleased]" if present)
    - Use format: `## [X.X.X] - YYYY-MM-DD`
    - Add categorized changes based on git analysis
    - Move any "Unreleased" items to the new version if applicable
    - Keep the changelog following [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format
 
-6. **Git Operations**
+7. **Git Operations**
    - Stage all changes: `git add .`
    - Commit changes: `git commit -m "chore: bump version to X.X.X"`
    - Create git tag: `git tag vX.X.X`
    - Push changes: `git push`
    - Push tags: `git push --tags`
 
-7. **Confirmation**
+8. **Confirmation**
    - Display the new version number
    - Show changelog entries that were added
    - Confirm git tag was created
@@ -93,6 +104,7 @@ Key points:
 1. Validate command
    - Command format: `/bump-version pre <alpha|beta> [prerelease|prepatch|preminor|premajor]`
    - Defaults: `<beta>` and `prerelease` when omitted
+   - **Note**: Pre-releases can be created from ANY branch (bypasses main branch requirement)
 
 2. Run safety checks
    - `bun test` and `bun run build` should pass
@@ -131,6 +143,28 @@ Key points:
 
 ## Error Handling
 
+- **If not on main branch (stable releases)**, show error and abort immediately:
+  ```
+  ❌ ERROR: Version bumps must be performed from the 'main' branch
+
+  Current branch: feat/configurable-timeout
+
+  To proceed with a stable release:
+  1. Merge your feature branch to main:
+     Option A - Via GitHub PR (recommended):
+       - Create a PR and merge via GitHub
+       - Then: git checkout main && git pull origin main
+
+     Option B - Direct merge (use with caution):
+       - git checkout main
+       - git pull origin main
+       - git merge feat/configurable-timeout
+
+  2. Run /bump-version again from main
+
+  Alternative: Create a pre-release from current branch:
+  /bump-version pre <alpha|beta>
+  ```
 - If `bun check` fails, show the error and stop
 - If tests fail, show the error and stop
 - If build fails, show the error and stop
@@ -141,7 +175,41 @@ Key points:
 
 For pre-releases specifically:
 - If workflow dispatch is not permitted, request a maintainer to run the workflow from the Actions UI.
-- Avoid local version/tag creation for pre-releases to prevent conflicts with the workflow’s versioning.
+- Avoid local version/tag creation for pre-releases to prevent conflicts with the workflow's versioning.
+
+## Recommended Workflow
+
+### Feature Development → Stable Release
+1. **Develop on feature branch**: `git checkout -b feat/my-feature`
+2. **Make changes and commit**: Regular development workflow
+3. **Create PR and merge to main**: Via GitHub PR process (with code review)
+4. **Checkout main and pull**: `git checkout main && git pull origin main`
+5. **Run version bump**: `/bump-version [patch|minor|major]`
+6. **Automated CI/CD**: Tag push triggers npm publishing
+
+### Quick Hotfix → Stable Release
+1. **Checkout main**: `git checkout main && git pull origin main`
+2. **Make fix directly on main**: For critical production fixes only
+3. **Commit fix**: `git add . && git commit -m "fix: critical issue"`
+4. **Run version bump**: `/bump-version patch`
+5. **Automated CI/CD**: Tag push triggers npm publishing
+
+### Pre-release Testing (Any Branch)
+- **Can be run from ANY branch** (develop, feature/*, etc.)
+- **Use**: `/bump-version pre <alpha|beta>`
+- **Does not create stable release** or git tags locally
+- **Useful for**: Testing changes before merging to main
+- **Published to npm with tag**: @mikerob/lodgify-mcp@alpha or @beta
+
+### Branch Strategy Summary
+```
+main              → Stable releases only (patch/minor/major)
+  ↑
+  └── feat/*      → Pre-releases allowed (alpha/beta)
+  └── feature/*   → Pre-releases allowed (alpha/beta)
+  └── develop     → Pre-releases allowed (alpha/beta)
+  └── hotfix/*    → Merge to main, then release
+```
 
 ## Changelog Analysis Guidelines
 
@@ -156,6 +224,12 @@ For pre-releases specifically:
   - Security-related changes → "Security"
 
 ## Release Checklist
+
+Before running this command:
+
+- ✅ **Branch Validation**: Currently on `main` branch (verify with `git branch --show-current`)
+- ✅ **Changes Merged**: All feature branch changes merged to main via PR
+- ✅ **Working Directory**: Clean git status (no uncommitted changes)
 
 After running this command successfully:
 
