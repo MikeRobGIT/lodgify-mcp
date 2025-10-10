@@ -182,7 +182,6 @@ Example request:
             .min(30)
             .max(600)
             .default(180)
-            .optional()
             .describe('Timeout in seconds for the entire operation (default: 180, max: 600)'),
         },
       },

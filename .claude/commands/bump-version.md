@@ -144,7 +144,7 @@ Key points:
 ## Error Handling
 
 - **If not on main branch (stable releases)**, show error and abort immediately:
-  ```
+  ```text
   ❌ ERROR: Version bumps must be performed from the 'main' branch
 
   Current branch: feat/configurable-timeout
@@ -202,7 +202,8 @@ For pre-releases specifically:
 - **Published to npm with tag**: @mikerob/lodgify-mcp@alpha or @beta
 
 ### Branch Strategy Summary
-```
+
+```text
 main              → Stable releases only (patch/minor/major)
   ↑
   └── feat/*      → Pre-releases allowed (alpha/beta)

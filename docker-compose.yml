@@ -107,7 +107,6 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - PORT=3076
-      - MCP_TOKEN=${MCP_TOKEN}
 
     ports:
       - "3076:3076"

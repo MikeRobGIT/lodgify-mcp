@@ -408,6 +408,7 @@ export class LodgifyOrchestrator {
       const fetched: Property[] = []
       for (const pid of propertyIds.slice(0, limit)) {
         try {
+          checkTimeout()
           const p = await this.properties.getProperty(String(pid))
           if (p) fetched.push(p)
         } catch (e) {
@@ -420,6 +421,7 @@ export class LodgifyOrchestrator {
       propertiesToCheck = fetched
     } else {
       try {
+        checkTimeout()
         const list = await this.properties.listProperties({ limit, ...(wid ? { wid } : {}) })
 
         // Track API call
@@ -489,6 +491,7 @@ export class LodgifyOrchestrator {
           )
 
           try {
+            checkTimeout()
             const foundProps = await this.properties.findProperties(undefined, false, limit)
             diagnostics.apiCalls.push({
               endpoint: 'findProperties (fallback)',
@@ -500,6 +503,7 @@ export class LodgifyOrchestrator {
             // Convert found properties to Property objects
             for (const prop of foundProps.properties.slice(0, limit)) {
               try {
+                checkTimeout()
                 const fullProp = await this.properties.getProperty(prop.id)
                 if (fullProp) propertiesToCheck.push(fullProp)
               } catch (e) {
@@ -587,6 +591,7 @@ export class LodgifyOrchestrator {
 
       try {
         // Fetch availability with details for the given range
+        checkTimeout()
         const availabilityResponse = await this.availability.getAvailabilityForProperty(
           propertyId,
           {
@@ -702,6 +707,7 @@ export class LodgifyOrchestrator {
         }
 
         if (includeRooms) {
+          checkTimeout()
           const rooms = await this.properties.listPropertyRooms(propertyId)
           const roomResults: VacantInventoryRoomResult[] = []
           let anyRoomAvailable = false
@@ -823,8 +829,16 @@ export class LodgifyOrchestrator {
               }
             })
 
-            // Wait for all room checks to complete in parallel
-            const roomsChecked = await Promise.all(roomCheckPromises)
+            // Wait for all room checks to complete in parallel with timeout enforcement
+            const roomsChecked = await Promise.race([
+              Promise.all(roomCheckPromises),
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`Operation timeout after ${timeoutSeconds} seconds`)),
+                  Math.max(0, timeoutMs - (Date.now() - startTime)),
+                ),
+              ),
+            ])
             roomResults.push(...roomsChecked)
             anyRoomAvailable = roomsChecked.some((r) => r.available)
 
