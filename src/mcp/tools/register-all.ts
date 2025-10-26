@@ -49,7 +49,8 @@ export function registerAllTools(
   getClient: () => LodgifyOrchestrator,
   options: RegisterAllToolsOptions = {},
 ): void {
-  const enabledSet = options.enabledToolSets ? new Set(options.enabledToolSets) : undefined
+  const enabledValues = options.enabledToolSets ? Array.from(options.enabledToolSets) : undefined
+  const enabledSet = enabledValues && enabledValues.length > 0 ? new Set(enabledValues) : undefined
 
   const shouldRegister = (tool: Parameters<IToolRegistry['register']>[0]): boolean => {
     if (!enabledSet) {

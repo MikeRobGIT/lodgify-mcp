@@ -170,6 +170,15 @@ describe('Environment Loading with Boolean Normalization', () => {
     expect(config.LODGIFY_ENABLED_TOOL_SETS).toEqual(['bookings', 'rates', 'quotes'])
   })
 
+  it('should treat blank tool set configuration as undefined', () => {
+    process.env.LODGIFY_API_KEY =
+      'valid-sandbox-api-key-that-is-long-enough-to-pass-validation-12345'
+    process.env.LODGIFY_ENABLED_TOOL_SETS = '   '
+
+    const config = loadEnvironment({ allowTestKeys: true })
+    expect(config.LODGIFY_ENABLED_TOOL_SETS).toBeUndefined()
+  })
+
   it('should throw for unknown tool set identifiers', () => {
     process.env.LODGIFY_API_KEY =
       'valid-sandbox-api-key-that-is-long-enough-to-pass-validation-12345'
@@ -198,5 +207,10 @@ describe('getEnabledToolSetsFromEnv', () => {
   it('should parse values without requiring other env vars', () => {
     process.env.LODGIFY_ENABLED_TOOL_SETS = 'properties, messaging'
     expect(getEnabledToolSetsFromEnv()).toEqual(['properties', 'messaging'])
+  })
+
+  it('should ignore empty values', () => {
+    process.env.LODGIFY_ENABLED_TOOL_SETS = '  '
+    expect(getEnabledToolSetsFromEnv()).toBeUndefined()
   })
 })

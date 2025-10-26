@@ -168,7 +168,10 @@ const readOnlySchema = z.unknown().optional().default(false).transform(normalize
 /**
  * Enabled tool set CSV schema
  */
-const toolSetCsvSchema = z.string().transform((value, ctx) => parseToolSetCsv(value, ctx))
+const toolSetCsvSchema = z.string().transform((value, ctx) => {
+  const result = parseToolSetCsv(value, ctx)
+  return result.length > 0 ? result : undefined
+})
 
 /**
  * Complete environment schema
@@ -440,6 +443,10 @@ export function getEnabledToolSetsFromEnv(): ToolSetIdentifier[] | undefined {
     throw new EnvironmentError('Invalid LODGIFY_ENABLED_TOOL_SETS configuration', {
       errors: parseResult.error.errors,
     })
+  }
+
+  if (!parseResult.data || parseResult.data.length === 0) {
+    return undefined
   }
 
   return parseResult.data

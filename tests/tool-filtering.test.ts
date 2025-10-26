@@ -60,10 +60,14 @@ describe('Tool set filtering', () => {
     expect(tools.every((tool) => tool.name.toLowerCase().includes('quote'))).toBe(true)
   })
 
-  test('disables all tools when configuration is empty', () => {
+  test('treats empty configuration as allowing all tools', () => {
     process.env.LODGIFY_ENABLED_TOOL_SETS = '   '
     const { toolRegistry } = setupServer(createDummyClient())
-    expect(toolRegistry.getTools()).toHaveLength(0)
+    const tools = toolRegistry.getTools()
+
+    expect(tools.length).toBeGreaterThan(0)
+    expect(tools.some((tool) => tool.category === 'Property Management')).toBe(true)
+    expect(tools.some((tool) => tool.category === 'Booking & Reservation Management')).toBe(true)
   })
 
   test('honors tool restrictions while running in read-only mode', () => {
