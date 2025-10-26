@@ -56,6 +56,7 @@ Optional settings:
 
 ```env
 LODGIFY_READ_ONLY="1"   # Prevent write operations (recommended for testing)
+LODGIFY_ENABLED_TOOL_SETS="bookings,rates" # Restrict exposed tool sets (comma separated)
 LOG_LEVEL="info"        # Options: error | warn | info | debug
 DEBUG_HTTP="0"          # Set to "1" for verbose HTTP debugging
 MCP_TOKEN="your_secret_token" # Required for HTTP mode
