@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'bun:test'
-import { loadEnvironment, normalizeBoolean } from '../src/env.js'
+import { getEnabledToolSetsFromEnv, loadEnvironment, normalizeBoolean } from '../src/env.js'
 
 // Test the normalizeBoolean function directly
 describe('Boolean Normalization', () => {
@@ -158,5 +158,45 @@ describe('Environment Loading with Boolean Normalization', () => {
     const config = loadEnvironment({ allowTestKeys: true })
     expect(config.DEBUG_HTTP).toBe(false)
     expect(config.LODGIFY_READ_ONLY).toBe(false)
+    expect(config.LODGIFY_ENABLED_TOOL_SETS).toBeUndefined()
+  })
+
+  it('should parse LODGIFY_ENABLED_TOOL_SETS csv list with deduplication', () => {
+    process.env.LODGIFY_API_KEY =
+      'valid-sandbox-api-key-that-is-long-enough-to-pass-validation-12345'
+    process.env.LODGIFY_ENABLED_TOOL_SETS = 'bookings, rates , quotes, bookings'
+
+    const config = loadEnvironment({ allowTestKeys: true })
+    expect(config.LODGIFY_ENABLED_TOOL_SETS).toEqual(['bookings', 'rates', 'quotes'])
+  })
+
+  it('should throw for unknown tool set identifiers', () => {
+    process.env.LODGIFY_API_KEY =
+      'valid-sandbox-api-key-that-is-long-enough-to-pass-validation-12345'
+    process.env.LODGIFY_ENABLED_TOOL_SETS = 'bookings,unknown'
+
+    expect(() => loadEnvironment({ allowTestKeys: true })).toThrow(/Unknown tool set/)
+  })
+})
+
+describe('getEnabledToolSetsFromEnv', () => {
+  const originalValue = process.env.LODGIFY_ENABLED_TOOL_SETS
+
+  afterEach(() => {
+    if (originalValue === undefined) {
+      delete process.env.LODGIFY_ENABLED_TOOL_SETS
+    } else {
+      process.env.LODGIFY_ENABLED_TOOL_SETS = originalValue
+    }
+  })
+
+  it('should return undefined when not configured', () => {
+    delete process.env.LODGIFY_ENABLED_TOOL_SETS
+    expect(getEnabledToolSetsFromEnv()).toBeUndefined()
+  })
+
+  it('should parse values without requiring other env vars', () => {
+    process.env.LODGIFY_ENABLED_TOOL_SETS = 'properties, messaging'
+    expect(getEnabledToolSetsFromEnv()).toEqual(['properties', 'messaging'])
   })
 })

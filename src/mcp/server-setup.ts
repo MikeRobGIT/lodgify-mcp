@@ -6,7 +6,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import pkg from '../../package.json' with { type: 'json' }
-import { loadEnvironment } from '../env.js'
+import { getEnabledToolSetsFromEnv, loadEnvironment } from '../env.js'
 import { LodgifyOrchestrator } from '../lodgify-orchestrator.js'
 import { safeLogger } from '../logger.js'
 import { ResourceRegistry } from './resources/registry.js'
@@ -67,8 +67,16 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
     return client
   }
 
-  // Register all tools
-  registerAllTools(toolRegistry, getClient)
+  // Determine enabled tool sets from environment (optional restriction)
+  const enabledToolSets = getEnabledToolSetsFromEnv()
+  if (enabledToolSets !== undefined) {
+    safeLogger.info('Tool set restrictions enabled', {
+      enabledToolSets,
+    })
+  }
+
+  // Register all tools (respecting optional restrictions)
+  registerAllTools(toolRegistry, getClient, { enabledToolSets })
   toolRegistry.registerAll(server)
 
   // Register resources

@@ -3,7 +3,7 @@
  * Provides secure environment variable handling with validation and sanitization
  */
 
-import { z } from 'zod'
+import { ZodIssueCode, z } from 'zod'
 import { safeLogger } from './logger.js'
 
 /**
@@ -38,6 +38,103 @@ export function normalizeBoolean(val: unknown): boolean {
 }
 
 /**
+ * Supported tool set identifiers for restricting tool registration
+ */
+export const TOOL_SET_KEYS = [
+  'properties',
+  'bookings',
+  'availability',
+  'rates',
+  'quotes',
+  'webhooks',
+  'messaging',
+] as const
+
+/**
+ * Tool set identifier type
+ */
+export type ToolSetIdentifier = (typeof TOOL_SET_KEYS)[number]
+
+/**
+ * Lookup table mapping environment aliases to canonical tool set identifiers
+ */
+const TOOL_SET_ALIAS_MAP: Record<string, ToolSetIdentifier> = {
+  properties: 'properties',
+  property: 'properties',
+  'property-management': 'properties',
+  'property-managements': 'properties',
+  'property-discovery': 'properties',
+  'property-discovery-search': 'properties',
+  bookings: 'bookings',
+  booking: 'bookings',
+  'booking-management': 'bookings',
+  rates: 'rates',
+  rate: 'rates',
+  pricing: 'rates',
+  price: 'rates',
+  quotes: 'quotes',
+  quote: 'quotes',
+  availability: 'availability',
+  calendar: 'availability',
+  webhooks: 'webhooks',
+  webhook: 'webhooks',
+  notifications: 'webhooks',
+  messaging: 'messaging',
+  message: 'messaging',
+  communication: 'messaging',
+  communications: 'messaging',
+}
+
+/**
+ * Parse a comma separated list of tool set identifiers
+ * @param raw - Raw CSV string from environment
+ * @param ctx - Zod refinement context for reporting issues
+ * @returns Array of canonical tool set identifiers
+ */
+function parseToolSetCsv(raw: string, ctx: z.RefinementCtx): ToolSetIdentifier[] {
+  const normalized = raw.trim()
+  if (normalized.length === 0) {
+    return []
+  }
+
+  const tokens = normalized
+    .split(',')
+    .map((part) => part.trim().toLowerCase())
+    .filter((part) => part.length > 0)
+
+  if (tokens.length === 0) {
+    return []
+  }
+
+  const invalidTokens: string[] = []
+  const seen = new Set<ToolSetIdentifier>()
+  const result: ToolSetIdentifier[] = []
+
+  for (const token of tokens) {
+    const mapped = TOOL_SET_ALIAS_MAP[token]
+    if (!mapped) {
+      invalidTokens.push(token)
+      continue
+    }
+
+    if (!seen.has(mapped)) {
+      seen.add(mapped)
+      result.push(mapped)
+    }
+  }
+
+  if (invalidTokens.length > 0) {
+    ctx.addIssue({
+      code: ZodIssueCode.custom,
+      message: `Unknown tool set(s): ${invalidTokens.join(', ')}. Supported sets: ${TOOL_SET_KEYS.join(', ')}`,
+    })
+    return z.NEVER
+  }
+
+  return result
+}
+
+/**
  * Lodgify API key validation schema
  * Validates format, length, and basic structure
  */
@@ -69,6 +166,11 @@ const debugHttpSchema = z.unknown().optional().default(false).transform(normaliz
 const readOnlySchema = z.unknown().optional().default(false).transform(normalizeBoolean)
 
 /**
+ * Enabled tool set CSV schema
+ */
+const toolSetCsvSchema = z.string().transform((value, ctx) => parseToolSetCsv(value, ctx))
+
+/**
  * Complete environment schema
  */
 const envSchema = z.object({
@@ -76,6 +178,7 @@ const envSchema = z.object({
   LOG_LEVEL: logLevelSchema,
   DEBUG_HTTP: debugHttpSchema,
   LODGIFY_READ_ONLY: readOnlySchema,
+  LODGIFY_ENABLED_TOOL_SETS: toolSetCsvSchema.optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).optional().default('development'),
 })
 
@@ -198,6 +301,10 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
       ),
     }
 
+    if (process.env.LODGIFY_ENABLED_TOOL_SETS !== undefined) {
+      rawEnv.LODGIFY_ENABLED_TOOL_SETS = process.env.LODGIFY_ENABLED_TOOL_SETS
+    }
+
     // Debug logging for read-only mode via structured logger
     if (process.env.LODGIFY_READ_ONLY !== undefined) {
       safeLogger.debug('[ENV DEBUG] loadEnvironment received LODGIFY_READ_ONLY', {
@@ -235,6 +342,7 @@ export function loadEnvironment(securityConfig: Partial<SecurityConfig> = {}): E
       debugHttp: config.DEBUG_HTTP,
       readOnly: config.LODGIFY_READ_ONLY,
       nodeEnv: config.NODE_ENV,
+      enabledToolSets: config.LODGIFY_ENABLED_TOOL_SETS,
       apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
       warnings: apiKeyValidation.warnings.length > 0 ? apiKeyValidation.warnings : undefined,
     })
@@ -295,6 +403,7 @@ export function getSafeEnvInfo(config: EnvConfig): Record<string, unknown> {
     logLevel: config.LOG_LEVEL,
     debugHttp: config.DEBUG_HTTP,
     readOnly: config.LODGIFY_READ_ONLY,
+    enabledToolSets: config.LODGIFY_ENABLED_TOOL_SETS,
     apiKeyPresent: !!config.LODGIFY_API_KEY,
     apiKeyLength: config.LODGIFY_API_KEY.length,
     apiKeyMask: sanitizeApiKey(config.LODGIFY_API_KEY),
@@ -312,6 +421,28 @@ export class EnvironmentError extends Error {
     super(message)
     this.name = 'EnvironmentError'
   }
+}
+
+/**
+ * Get enabled tool set configuration from environment without requiring full validation
+ */
+export function getEnabledToolSetsFromEnv(): ToolSetIdentifier[] | undefined {
+  const rawValue = process.env.LODGIFY_ENABLED_TOOL_SETS
+
+  if (rawValue === undefined) {
+    return undefined
+  }
+
+  const parseResult = toolSetCsvSchema.safeParse(rawValue)
+  if (!parseResult.success) {
+    const message = parseResult.error.errors.map((issue) => issue.message).join('; ')
+    safeLogger.error('Invalid LODGIFY_ENABLED_TOOL_SETS configuration', { message })
+    throw new EnvironmentError('Invalid LODGIFY_ENABLED_TOOL_SETS configuration', {
+      errors: parseResult.error.errors,
+    })
+  }
+
+  return parseResult.data
 }
 
 // Export the schemas for testing
