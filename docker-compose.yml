@@ -55,42 +55,9 @@ services:
     profiles:
       - production
 
-  lodgify-mcp-http:
-    build:
-      context: .
-      dockerfile: Dockerfile.http
-      args:
-        - PORT=${DOCKER_PORT:-3000}
-
-    container_name: lodgify-mcp-http
-
-    env_file:
-      - .env
-
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PORT=${DOCKER_PORT:-3000}
-      - MCP_TOKEN=${MCP_TOKEN}
-
-    ports:
-      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
-
-    restart: unless-stopped
-
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:$${PORT:-3000}/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      start_period: 60s
-      retries: 3
-
-    networks:
-      - mcp-network
-
-    profiles:
-      - http
-
+  # Primary HTTP MCP Server (Streamable HTTP Transport)
+  # Use this for production deployments
+  # Command: docker compose --profile bridge build && docker compose --profile bridge up -d
   lodgify-mcp-bridge:
     build:
       context: .

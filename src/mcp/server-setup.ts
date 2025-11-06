@@ -22,6 +22,7 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
   getClient: () => LodgifyOrchestrator
   toolRegistry: ToolRegistry
   resourceRegistry: ResourceRegistry
+  cleanup: () => Promise<void>
 } {
   // Create the MCP server instance with proper configuration
   const server = new McpServer(
@@ -67,6 +68,13 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
     return client
   }
 
+  // Cleanup function for session cleanup
+  const cleanup = async () => {
+    // Clean up any resources if needed
+    // Currently no-op but can be extended for resource cleanup
+    safeLogger.debug('Cleaning up server resources')
+  }
+
   // Register all tools
   registerAllTools(toolRegistry, getClient)
   toolRegistry.registerAll(server)
@@ -80,6 +88,7 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
     getClient,
     toolRegistry,
     resourceRegistry,
+    cleanup,
   }
 }
 
