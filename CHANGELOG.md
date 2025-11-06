@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.24] - 2025-11-06
+
+### Added
+
+- **Stateful HTTP Session Management**: Implemented official MCP SDK stateful session pattern with per-session server instances and event stores for session resumability
+- **Session Reconnection Support**: InMemoryEventStore enables clients to reconnect and resume existing sessions after disconnection
+- **CORS Support**: Full CORS middleware implementation with proper header exposure (`mcp-session-id`, `last-event-id`) for browser-based MCP clients
+- **Session Lifecycle Management**: Comprehensive session cleanup with configurable timeout management (30-minute default) and proper resource disposal
+
+### Changed
+
+- **HTTP Server Architecture**: Refactored HTTP transport to use per-session McpServer instances following official MCP SDK patterns
+- **Docker Configuration**: Simplified `docker-compose.yml` with streamlined HTTP server setup
+- **Server Setup Module**: Exported `createMcpServer` function for better modularity and reusability
+- **Dependencies**: Added `cors` (^2.8.5) and `@types/cors` (^2.8.19) for browser client support
+
+### Technical Details
+
+- Implemented official MCP stateful session pattern with isolated server instances per HTTP session
+- Added InMemoryEventStore for session persistence and reconnection capabilities
+- Enhanced CORS middleware with proper preflight handling and header exposure for browser compatibility
+- Improved session cleanup mechanism with 30-minute timeout and graceful resource disposal
+- Enhanced error handling and logging throughout HTTP transport layer
+- Maintained full backward compatibility with existing MCP stdio transport
+- All 218 existing tests passing with new HTTP session management features
+
 ## [0.1.23] - 2025-10-10
 
 ### Added
