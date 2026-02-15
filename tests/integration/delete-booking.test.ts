@@ -227,9 +227,7 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
 
     it('should handle negative booking IDs', async () => {
       // Zod allows negative integers by default, but the API might reject them
-      mockClient.deleteBookingV1.mockRejectedValue(
-        new Error('Invalid booking ID')
-      )
+      mockClient.deleteBookingV1.mockRejectedValue(new Error('Invalid booking ID'))
 
       await expect(deleteBookingTool?.handler({ id: -123 })).rejects.toThrow('Invalid booking ID')
     })
@@ -297,9 +295,9 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
 
       mockClient.deleteBookingV1.mockRejectedValueOnce(alreadyDeletedError)
 
-      await expect(
-        deleteBookingTool?.handler({ id: 444 }),
-      ).rejects.toThrow('Booking already deleted')
+      await expect(deleteBookingTool?.handler({ id: 444 })).rejects.toThrow(
+        'Booking already deleted',
+      )
     })
 
     it('should track deletion request in input params of response', async () => {
@@ -355,9 +353,9 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
       )
       mockClient.deleteBookingV1.mockRejectedValue(readOnlyError)
 
-      await expect(
-        deleteBookingTool?.handler({ id: 999 }),
-      ).rejects.toThrow('Operation not permitted in read-only mode')
+      await expect(deleteBookingTool?.handler({ id: 999 })).rejects.toThrow(
+        'Operation not permitted in read-only mode',
+      )
 
       expect(mockClient.deleteBookingV1).toHaveBeenCalledWith(999)
     })

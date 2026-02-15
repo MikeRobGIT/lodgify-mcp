@@ -5,9 +5,9 @@
  * Users depend on this to verify if properties are available before booking.
  */
 
-import { describe, expect, it, beforeEach, jest } from 'bun:test'
-import { AvailabilityClient } from '../src/api/v2/availability/client'
+import { beforeEach, describe, expect, it, jest } from 'bun:test'
 import type { BaseApiClient } from '../src/api/base-client'
+import { AvailabilityClient } from '../src/api/v2/availability/client'
 import type { AvailabilityQueryParams } from '../src/api/v2/availability/types'
 
 describe('AvailabilityClient - Critical user-facing availability checking', () => {
@@ -41,36 +41,33 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
             end: '2025-08-10',
             available: 1,
             min_stay: 3,
-            changeover: 'flexible'
+            changeover: 'flexible',
           },
           {
             start: '2025-08-11',
             end: '2025-08-20',
             available: 0,
-            bookingId: 'BK456'
-          }
-        ]
+            bookingId: 'BK456',
+          },
+        ],
       }
 
       // Mock the base module's request method
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockResolvedValue(mockResponse)
 
-      const result = await availabilityClient.getAvailabilityForProperty(
-        'PROP123',
-        {
-          from: '2025-08-01',
-          to: '2025-08-20'
-        }
-      )
+      const result = await availabilityClient.getAvailabilityForProperty('PROP123', {
+        from: '2025-08-01',
+        to: '2025-08-20',
+      })
 
       // Verify the API was called correctly
       expect(requestSpy).toHaveBeenCalledWith('GET', 'PROP123', {
         params: {
           start: '2025-08-01T00:00:00Z',
           end: '2025-08-20T23:59:59Z',
-          includeDetails: true
-        }
+          includeDetails: true,
+        },
       })
 
       expect(result).toEqual(mockResponse)
@@ -83,21 +80,18 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockResolvedValue({ periods: [] })
 
-      await availabilityClient.getAvailabilityForProperty(
-        'PROP123',
-        {
-          from: '2025-08-01T10:00:00Z',
-          to: '2025-08-20T18:00:00Z'
-        }
-      )
+      await availabilityClient.getAvailabilityForProperty('PROP123', {
+        from: '2025-08-01T10:00:00Z',
+        to: '2025-08-20T18:00:00Z',
+      })
 
       // Should preserve ISO dates when already in that format
       expect(requestSpy).toHaveBeenCalledWith('GET', 'PROP123', {
         params: {
           start: '2025-08-01T10:00:00Z',
           end: '2025-08-20T18:00:00Z',
-          includeDetails: true
-        }
+          includeDetails: true,
+        },
       })
     })
 
@@ -106,7 +100,7 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       const mockResponse = {
         property_id: 'PROP123',
         status: 'active',
-        default_availability: 'available'
+        default_availability: 'available',
       }
 
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
@@ -123,16 +117,13 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockResolvedValue({ periods: [] })
 
-      await availabilityClient.getAvailabilityForProperty(
-        'PROP123',
-        { from: '2025-08-01' }
-      )
+      await availabilityClient.getAvailabilityForProperty('PROP123', { from: '2025-08-01' })
 
       expect(requestSpy).toHaveBeenCalledWith('GET', 'PROP123', {
         params: {
-          start: '2025-08-01T00:00:00Z'
+          start: '2025-08-01T00:00:00Z',
           // No end date, no includeDetails
-        }
+        },
       })
     })
 
@@ -141,23 +132,20 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockResolvedValue({ periods: [] })
 
-      await availabilityClient.getAvailabilityForProperty(
-        'PROP123',
-        { to: '2025-08-20' }
-      )
+      await availabilityClient.getAvailabilityForProperty('PROP123', { to: '2025-08-20' })
 
       expect(requestSpy).toHaveBeenCalledWith('GET', 'PROP123', {
         params: {
-          end: '2025-08-20T23:59:59Z'
+          end: '2025-08-20T23:59:59Z',
           // No start date, no includeDetails
-        }
+        },
       })
     })
 
     it('should throw error when property ID is missing', async () => {
       // Safety check for required parameter
       await expect(
-        availabilityClient.getAvailabilityForProperty('', { from: '2025-08-01' })
+        availabilityClient.getAvailabilityForProperty('', { from: '2025-08-01' }),
       ).rejects.toThrow('Property ID is required')
     })
 
@@ -169,8 +157,8 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       await expect(
         availabilityClient.getAvailabilityForProperty('INVALID', {
           from: '2025-08-01',
-          to: '2025-08-20'
-        })
+          to: '2025-08-20',
+        }),
       ).rejects.toThrow('API Error: Property not found')
     })
 
@@ -185,14 +173,14 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
             available: 1,
             min_stay: 2,
             changeover: 'saturday',
-            rate: 150.00
+            rate: 150.0,
           },
           {
             start: '2025-08-06',
             end: '2025-08-10',
             available: 0,
             bookingId: 'BK789',
-            guestName: 'John Doe'
+            guestName: 'John Doe',
           },
           {
             start: '2025-08-11',
@@ -200,27 +188,24 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
             available: 1,
             min_stay: 3,
             changeover: 'flexible',
-            rate: 175.00
-          }
+            rate: 175.0,
+          },
         ],
         totalAvailableDays: 10,
-        totalBookedDays: 5
+        totalBookedDays: 5,
       }
 
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockResolvedValue(mockResponse)
 
-      const result = await availabilityClient.getAvailabilityForProperty(
-        'PROP123',
-        {
-          from: '2025-08-01',
-          to: '2025-08-15'
-        }
-      )
+      const result = await availabilityClient.getAvailabilityForProperty('PROP123', {
+        from: '2025-08-01',
+        to: '2025-08-15',
+      })
 
       expect(result.periods).toHaveLength(3)
-      expect(result.periods.filter(p => p.available === 1)).toHaveLength(2)
-      expect(result.periods.filter(p => p.available === 0)).toHaveLength(1)
+      expect(result.periods.filter((p) => p.available === 1)).toHaveLength(2)
+      expect(result.periods.filter((p) => p.available === 0)).toHaveLength(1)
       expect(result.totalAvailableDays).toBe(10)
     })
   })
@@ -237,29 +222,25 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
             start: '2025-08-01',
             end: '2025-08-10',
             available: 1,
-            units_available: 2
-          }
-        ]
+            units_available: 2,
+          },
+        ],
       }
 
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockResolvedValue(mockResponse)
 
-      const result = await availabilityClient.getAvailabilityForRoom(
-        'PROP123',
-        'ROOM456',
-        {
-          from: '2025-08-01',
-          to: '2025-08-10'
-        }
-      )
+      const result = await availabilityClient.getAvailabilityForRoom('PROP123', 'ROOM456', {
+        from: '2025-08-01',
+        to: '2025-08-10',
+      })
 
       expect(requestSpy).toHaveBeenCalledWith('GET', 'PROP123/ROOM456', {
         params: {
           start: '2025-08-01T00:00:00Z',
           end: '2025-08-10T23:59:59Z',
-          includeDetails: true
-        }
+          includeDetails: true,
+        },
       })
 
       expect(result.room_type_id).toBe('ROOM456')
@@ -267,15 +248,15 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
     })
 
     it('should throw error when room type ID is missing', async () => {
-      await expect(
-        availabilityClient.getAvailabilityForRoom('PROP123', '')
-      ).rejects.toThrow('Property ID and Room Type ID are required')
+      await expect(availabilityClient.getAvailabilityForRoom('PROP123', '')).rejects.toThrow(
+        'Property ID and Room Type ID are required',
+      )
     })
 
     it('should throw error when property ID is missing', async () => {
-      await expect(
-        availabilityClient.getAvailabilityForRoom('', 'ROOM456')
-      ).rejects.toThrow('Property ID and Room Type ID are required')
+      await expect(availabilityClient.getAvailabilityForRoom('', 'ROOM456')).rejects.toThrow(
+        'Property ID and Room Type ID are required',
+      )
     })
   })
 
@@ -287,16 +268,16 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
           {
             property_id: 'PROP1',
             name: 'Beach House',
-            available: true
+            available: true,
           },
           {
             property_id: 'PROP2',
             name: 'Mountain Cabin',
-            available: false
-          }
+            available: false,
+          },
         ],
         total_available: 1,
-        total_properties: 2
+        total_properties: 2,
       }
 
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
@@ -304,19 +285,19 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
       const result = await availabilityClient.getAvailabilityAll({
         from: '2025-08-01',
-        to: '2025-08-10'
+        to: '2025-08-10',
       })
 
       expect(requestSpy).toHaveBeenCalledWith('GET', '', {
         params: {
           start: '2025-08-01T00:00:00Z',
           end: '2025-08-10T23:59:59Z',
-          includeDetails: true
-        }
+          includeDetails: true,
+        },
       })
 
       expect(result.total_available).toBe(1)
-      expect(result.properties.filter(p => p.available)).toHaveLength(1)
+      expect(result.properties.filter((p) => p.available)).toHaveLength(1)
     })
 
     it('should filter by specific property when requested', async () => {
@@ -327,7 +308,7 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       await availabilityClient.getAvailabilityAll({
         propertyId: 'PROP123',
         from: '2025-08-01',
-        to: '2025-08-10'
+        to: '2025-08-10',
       })
 
       expect(requestSpy).toHaveBeenCalledWith('GET', '', {
@@ -335,8 +316,8 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
           propertyId: 'PROP123',
           start: '2025-08-01T00:00:00Z',
           end: '2025-08-10T23:59:59Z',
-          includeDetails: true
-        }
+          includeDetails: true,
+        },
       })
     })
 
@@ -348,7 +329,7 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       await availabilityClient.getAvailabilityAll({
         roomTypeId: 'ROOM456',
         from: '2025-08-01',
-        to: '2025-08-10'
+        to: '2025-08-10',
       })
 
       expect(requestSpy).toHaveBeenCalledWith('GET', '', {
@@ -356,8 +337,8 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
           roomTypeId: 'ROOM456',
           start: '2025-08-01T00:00:00Z',
           end: '2025-08-10T23:59:59Z',
-          includeDetails: true
-        }
+          includeDetails: true,
+        },
       })
     })
 
@@ -381,9 +362,9 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
             start: '2025-08-15',
             end: '2025-08-17',
             available: false,
-            reason: 'Maintenance'
-          }
-        ]
+            reason: 'Maintenance',
+          },
+        ],
       }
 
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
@@ -391,28 +372,26 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
       await availabilityClient.updatePropertyAvailability('PROP123', payload)
 
-      expect(requestSpy).toHaveBeenCalledWith(
-        'PUT',
-        '../properties/PROP123/availability',
-        { body: payload }
-      )
+      expect(requestSpy).toHaveBeenCalledWith('PUT', '../properties/PROP123/availability', {
+        body: payload,
+      })
     })
 
     it('should throw error when property ID is missing', async () => {
       await expect(
-        availabilityClient.updatePropertyAvailability('', { periods: [] })
+        availabilityClient.updatePropertyAvailability('', { periods: [] }),
       ).rejects.toThrow('Property ID is required')
     })
 
     it('should throw error when payload is missing', async () => {
       await expect(
-        availabilityClient.updatePropertyAvailability('PROP123', null as any)
+        availabilityClient.updatePropertyAvailability('PROP123', null as any),
       ).rejects.toThrow('Payload is required')
     })
 
     it('should throw error when payload is not an object', async () => {
       await expect(
-        availabilityClient.updatePropertyAvailability('PROP123', 'invalid' as any)
+        availabilityClient.updatePropertyAvailability('PROP123', 'invalid' as any),
       ).rejects.toThrow('Payload is required')
     })
 
@@ -425,24 +404,24 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
             end: '2025-08-05',
             available: true,
             min_stay: 2,
-            changeover: 'saturday'
+            changeover: 'saturday',
           },
           {
             start: '2025-08-06',
             end: '2025-08-10',
             available: false,
-            reason: 'Owner use'
+            reason: 'Owner use',
           },
           {
             start: '2025-08-11',
             end: '2025-08-31',
             available: true,
             min_stay: 7,
-            changeover: 'flexible'
-          }
+            changeover: 'flexible',
+          },
         ],
         default_min_stay: 3,
-        default_changeover: 'flexible'
+        default_changeover: 'flexible',
       }
 
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
@@ -470,19 +449,21 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockRejectedValue(new Error('Request timeout'))
 
-      await expect(
-        availabilityClient.getAvailabilityForProperty('PROP123')
-      ).rejects.toThrow('Request timeout')
+      await expect(availabilityClient.getAvailabilityForProperty('PROP123')).rejects.toThrow(
+        'Request timeout',
+      )
     })
 
     it('should handle malformed date in response', async () => {
       // API returns unexpected date format
       const mockResponse = {
-        periods: [{
-          start: '08/01/2025', // Wrong format
-          end: '08/10/2025',
-          available: 1
-        }]
+        periods: [
+          {
+            start: '08/01/2025', // Wrong format
+            end: '08/10/2025',
+            available: 1,
+          },
+        ],
       }
 
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
@@ -499,20 +480,17 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       const requestSpy = jest.spyOn(availabilityClient as any, 'request')
       requestSpy.mockResolvedValue({ periods: [] })
 
-      await availabilityClient.getAvailabilityForProperty(
-        'PROP123',
-        {
-          from: '2025-01-01',
-          to: '2025-12-31'
-        }
-      )
+      await availabilityClient.getAvailabilityForProperty('PROP123', {
+        from: '2025-01-01',
+        to: '2025-12-31',
+      })
 
       expect(requestSpy).toHaveBeenCalledWith('GET', 'PROP123', {
         params: {
           start: '2025-01-01T00:00:00Z',
           end: '2025-12-31T23:59:59Z',
-          includeDetails: true
-        }
+          includeDetails: true,
+        },
       })
     })
   })

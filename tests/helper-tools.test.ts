@@ -4,9 +4,9 @@
  * when they don't know the exact property IDs
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test'
-import { findProperties } from '../src/mcp/tools/helper-tools.js'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
+import { findProperties } from '../src/mcp/tools/helper-tools.js'
 
 // Create mock client with realistic API responses
 function createMockClient(options: {
@@ -26,11 +26,11 @@ function createMockClient(options: {
           data: [
             {
               count: null,
-              items: options.properties || []
-            }
-          ]
+              items: options.properties || [],
+            },
+          ],
         }
-      }
+      },
     },
     bookings: {
       listBookings: async () => {
@@ -38,10 +38,10 @@ function createMockClient(options: {
           throw options.bookingsError
         }
         return {
-          items: options.bookings || []
+          items: options.bookings || [],
         }
-      }
-    }
+      },
+    },
   } as unknown as LodgifyOrchestrator
 }
 
@@ -53,8 +53,8 @@ describe('findProperties - User-facing property discovery', () => {
         properties: [
           { id: 123, name: 'Beach House Villa' },
           { id: 456, name: 'Mountain Cabin Retreat' },
-          { id: 789, name: 'City Beach Apartment' }
-        ]
+          { id: 789, name: 'City Beach Apartment' },
+        ],
       })
 
       const result = await findProperties(mockClient, 'beach')
@@ -63,16 +63,16 @@ describe('findProperties - User-facing property discovery', () => {
       expect(result.properties[0]).toEqual({
         id: '123',
         name: 'Beach House Villa',
-        source: 'properties'
+        source: 'properties',
       })
       expect(result.properties[1]).toEqual({
         id: '789',
         name: 'City Beach Apartment',
-        source: 'properties'
+        source: 'properties',
       })
       expect(result.message).toBe('Found 2 property(ies) matching "beach"')
       expect(result.suggestions).toContain(
-        'Use one of these property IDs with availability tools like lodgify_get_property_availability'
+        'Use one of these property IDs with availability tools like lodgify_get_property_availability',
       )
     })
 
@@ -82,8 +82,8 @@ describe('findProperties - User-facing property discovery', () => {
         properties: [
           { id: 123, name: 'Beach House' },
           { id: 456, name: 'Mountain Cabin' },
-          { id: 789, name: 'City Apartment' }
-        ]
+          { id: 789, name: 'City Apartment' },
+        ],
       })
 
       const result = await findProperties(mockClient, undefined, true, 10)
@@ -100,14 +100,14 @@ describe('findProperties - User-facing property discovery', () => {
           { id: 2, name: 'Property 2' },
           { id: 3, name: 'Property 3' },
           { id: 4, name: 'Property 4' },
-          { id: 5, name: 'Property 5' }
-        ]
+          { id: 5, name: 'Property 5' },
+        ],
       })
 
       const result = await findProperties(mockClient, undefined, true, 3)
 
       expect(result.properties).toHaveLength(3)
-      expect(result.properties.map(p => p.id)).toEqual(['1', '2', '3'])
+      expect(result.properties.map((p) => p.id)).toEqual(['1', '2', '3'])
     })
   })
 
@@ -117,8 +117,8 @@ describe('findProperties - User-facing property discovery', () => {
       const mockClient = createMockClient({
         properties: [
           { id: 123, internal_name: 'Villa Internal Name' },
-          { id: 456, name: 'Normal Property Name' }
-        ]
+          { id: 456, name: 'Normal Property Name' },
+        ],
       })
 
       const result = await findProperties(mockClient)
@@ -132,8 +132,8 @@ describe('findProperties - User-facing property discovery', () => {
       const mockClient = createMockClient({
         properties: [
           { id: 123, title: 'Villa Title' },
-          { id: 456 } // No name at all
-        ]
+          { id: 456 }, // No name at all
+        ],
       })
 
       const result = await findProperties(mockClient)
@@ -151,8 +151,8 @@ describe('findProperties - User-facing property discovery', () => {
         bookings: [
           { id: 'BK001', property_id: 999 },
           { id: 'BK002', property_id: 888 },
-          { id: 'BK003', property_id: 777 }
-        ]
+          { id: 'BK003', property_id: 777 },
+        ],
       })
 
       const result = await findProperties(mockClient, undefined, true)
@@ -161,21 +161,19 @@ describe('findProperties - User-facing property discovery', () => {
       expect(result.properties[0]).toEqual({
         id: '999',
         name: 'Property 999',
-        source: 'bookings'
+        source: 'bookings',
       })
     })
 
     it('should not include duplicate property IDs from bookings', async () => {
       // Tests deduplication logic - important for data quality
       const mockClient = createMockClient({
-        properties: [
-          { id: 123, name: 'Beach House' }
-        ],
+        properties: [{ id: 123, name: 'Beach House' }],
         bookings: [
           { id: 'BK001', property_id: 123 }, // Duplicate
           { id: 'BK002', property_id: 456 },
-          { id: 'BK003', property_id: 456 }  // Another duplicate
-        ]
+          { id: 'BK003', property_id: 456 }, // Another duplicate
+        ],
       })
 
       const result = await findProperties(mockClient, undefined, true)
@@ -189,9 +187,7 @@ describe('findProperties - User-facing property discovery', () => {
       // Tests configuration option - user might want only direct property listings
       const mockClient = createMockClient({
         properties: [],
-        bookings: [
-          { id: 'BK001', property_id: 999 }
-        ]
+        bookings: [{ id: 'BK001', property_id: 999 }],
       })
 
       const result = await findProperties(mockClient, undefined, false)
@@ -206,9 +202,7 @@ describe('findProperties - User-facing property discovery', () => {
       // Tests resilience when properties API fails but bookings work
       const mockClient = createMockClient({
         propertiesError: new Error('API Error'),
-        bookings: [
-          { id: 'BK001', property_id: 555 }
-        ]
+        bookings: [{ id: 'BK001', property_id: 555 }],
       })
 
       const result = await findProperties(mockClient, undefined, true)
@@ -222,7 +216,7 @@ describe('findProperties - User-facing property discovery', () => {
       // Tests complete failure scenario - guides user to troubleshoot
       const mockClient = createMockClient({
         propertiesError: new Error('Properties API Error'),
-        bookingsError: new Error('Bookings API Error')
+        bookingsError: new Error('Bookings API Error'),
       })
 
       const result = await findProperties(mockClient, undefined, true)
@@ -231,7 +225,9 @@ describe('findProperties - User-facing property discovery', () => {
       expect(result.message).toBe('No properties found')
       expect(result.suggestions).toContain('Property list API may not be available or accessible')
       expect(result.suggestions).toContain('Could not retrieve property IDs from bookings')
-      expect(result.suggestions).toContain('No properties found. Try using lodgify_list_properties to see all properties.')
+      expect(result.suggestions).toContain(
+        'No properties found. Try using lodgify_list_properties to see all properties.',
+      )
     })
 
     it('should provide helpful suggestions when no properties found with search term', async () => {
@@ -239,15 +235,17 @@ describe('findProperties - User-facing property discovery', () => {
       const mockClient = createMockClient({
         properties: [
           { id: 123, name: 'Beach House' },
-          { id: 456, name: 'Mountain Cabin' }
-        ]
+          { id: 456, name: 'Mountain Cabin' },
+        ],
       })
 
       const result = await findProperties(mockClient, 'ocean')
 
       expect(result.properties).toHaveLength(0)
       expect(result.message).toBe('No properties found matching "ocean"')
-      expect(result.suggestions).toContain('No properties found. Try using lodgify_list_properties to see all properties.')
+      expect(result.suggestions).toContain(
+        'No properties found. Try using lodgify_list_properties to see all properties.',
+      )
     })
   })
 
@@ -258,12 +256,12 @@ describe('findProperties - User-facing property discovery', () => {
         properties: {
           listProperties: async () => [
             { id: 123, name: 'Beach House' },
-            { id: 456, name: 'Mountain Cabin' }
-          ]
+            { id: 456, name: 'Mountain Cabin' },
+          ],
         },
         bookings: {
-          listBookings: async () => ({ items: [] })
-        }
+          listBookings: async () => ({ items: [] }),
+        },
       } as unknown as LodgifyOrchestrator
 
       const result = await findProperties(mockClient)
@@ -279,13 +277,13 @@ describe('findProperties - User-facing property discovery', () => {
           listProperties: async () => ({
             items: [
               { id: 123, name: 'Beach House' },
-              { id: 456, name: 'Mountain Cabin' }
-            ]
-          })
+              { id: 456, name: 'Mountain Cabin' },
+            ],
+          }),
         },
         bookings: {
-          listBookings: async () => ({ items: [] })
-        }
+          listBookings: async () => ({ items: [] }),
+        },
       } as unknown as LodgifyOrchestrator
 
       const result = await findProperties(mockClient)

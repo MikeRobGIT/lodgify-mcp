@@ -6,7 +6,7 @@
  * and departures, making them essential for operational workflows.
  */
 
-import { describe, expect, test, beforeEach, mock } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createTestServer } from '../test-server'
 
 describe('Check-in/Check-out Integration Tests', () => {
@@ -55,12 +55,12 @@ describe('Check-in/Check-out Integration Tests', () => {
         id: 'booking_123',
         status: 'checked_in',
         checkin_date: '2024-03-15T15:00:00Z',
-        message: 'Guest has been successfully checked in'
+        message: 'Guest has been successfully checked in',
       })
 
       const response = await testServer.callTool('lodgify_checkin_booking', {
         id: 123,
-        time: '2024-03-15T15:00:00Z'
+        time: '2024-03-15T15:00:00Z',
       })
 
       expect(mockClient.checkinBooking).toHaveBeenCalledWith('123')
@@ -75,7 +75,7 @@ describe('Check-in/Check-out Integration Tests', () => {
 
       const response = await testServer.callTool('lodgify_checkin_booking', {
         id: 999,
-        time: '2024-03-15T15:00:00Z'
+        time: '2024-03-15T15:00:00Z',
       })
 
       expect(response.isError).toBe(true)
@@ -87,7 +87,7 @@ describe('Check-in/Check-out Integration Tests', () => {
 
       const response = await testServer.callTool('lodgify_checkin_booking', {
         id: 123,
-        time: '2024-03-15T15:00:00Z'
+        time: '2024-03-15T15:00:00Z',
       })
 
       expect(response.isError).toBe(true)
@@ -102,12 +102,12 @@ describe('Check-in/Check-out Integration Tests', () => {
         id: 'booking_123',
         status: 'checked_in',
         checkin_date: futureTime,
-        note: 'Early check-in recorded'
+        note: 'Early check-in recorded',
       })
 
       const response = await testServer.callTool('lodgify_checkin_booking', {
         id: 123,
-        time: futureTime
+        time: futureTime,
       })
 
       expect(response.content[0].type).toBe('text')
@@ -124,12 +124,12 @@ describe('Check-in/Check-out Integration Tests', () => {
         id: 'booking_123',
         status: 'checked_out',
         checkout_date: '2024-03-22T11:00:00Z',
-        message: 'Guest has been successfully checked out'
+        message: 'Guest has been successfully checked out',
       })
 
       const response = await testServer.callTool('lodgify_checkout_booking', {
         id: 123,
-        time: '2024-03-22T11:00:00Z'
+        time: '2024-03-22T11:00:00Z',
       })
 
       expect(mockClient.checkoutBooking).toHaveBeenCalledWith('123')
@@ -144,7 +144,7 @@ describe('Check-in/Check-out Integration Tests', () => {
 
       const response = await testServer.callTool('lodgify_checkout_booking', {
         id: 999,
-        time: '2024-03-22T11:00:00Z'
+        time: '2024-03-22T11:00:00Z',
       })
 
       expect(response.isError).toBe(true)
@@ -156,7 +156,7 @@ describe('Check-in/Check-out Integration Tests', () => {
 
       const response = await testServer.callTool('lodgify_checkout_booking', {
         id: 123,
-        time: '2024-03-22T11:00:00Z'
+        time: '2024-03-22T11:00:00Z',
       })
 
       expect(response.isError).toBe(true)
@@ -169,12 +169,12 @@ describe('Check-in/Check-out Integration Tests', () => {
         id: 'booking_123',
         status: 'checked_out',
         checkout_date: '2024-03-22T14:00:00Z',
-        note: 'Late checkout - additional charges may apply'
+        note: 'Late checkout - additional charges may apply',
       })
 
       const response = await testServer.callTool('lodgify_checkout_booking', {
         id: 123,
-        time: '2024-03-22T14:00:00Z' // 3 hours after standard checkout
+        time: '2024-03-22T14:00:00Z', // 3 hours after standard checkout
       })
 
       expect(response.content[0].type).toBe('text')
@@ -190,12 +190,12 @@ describe('Check-in/Check-out Integration Tests', () => {
         status: 'checked_out',
         checkout_date: '2024-03-22T11:00:00Z',
         nextCheckIn: '2024-03-23T15:00:00Z',
-        turnoverHours: 28
+        turnoverHours: 28,
       })
 
       const response = await testServer.callTool('lodgify_checkout_booking', {
         id: 123,
-        time: '2024-03-22T11:00:00Z'
+        time: '2024-03-22T11:00:00Z',
       })
 
       expect(response.content[0].type).toBe('text')
@@ -213,12 +213,12 @@ describe('Check-in/Check-out Integration Tests', () => {
         checkout_date: '2024-03-22T11:00:00Z',
         urgentTurnover: true,
         nextGuestArrival: '2024-03-22T15:00:00Z',
-        cleaningWindowHours: 4
+        cleaningWindowHours: 4,
       })
 
       const response = await testServer.callTool('lodgify_checkout_booking', {
         id: 123,
-        time: '2024-03-22T11:00:00Z'
+        time: '2024-03-22T11:00:00Z',
       })
 
       expect(response.content[0].type).toBe('text')

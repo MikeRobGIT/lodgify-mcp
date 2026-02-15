@@ -66,10 +66,10 @@ describe('lodgify_get_property_availability - User-facing availability checking'
       })
 
       // Verify API was called correctly
-      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith(
-        '684855',
-        { from: '2025-06-01', to: '2025-06-15' },
-      )
+      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith('684855', {
+        from: '2025-06-01',
+        to: '2025-06-15',
+      })
 
       const content = JSON.parse(result.content[0].text)
 
@@ -115,10 +115,10 @@ describe('lodgify_get_property_availability - User-facing availability checking'
         // No date params - checking general availability
       })
 
-      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith(
-        '123456',
-        { from: undefined, to: undefined },
-      )
+      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith('123456', {
+        from: undefined,
+        to: undefined,
+      })
 
       const content = JSON.parse(result.content[0].text)
       expect(content.data.periods).toBeDefined()
@@ -142,10 +142,10 @@ describe('lodgify_get_property_availability - User-facing availability checking'
       })
 
       // Should normalize to date-only format
-      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith(
-        '789',
-        { from: '2025-07-15', to: '2025-07-20' },
-      )
+      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith('789', {
+        from: '2025-07-15',
+        to: '2025-07-20',
+      })
     })
 
     it('should reject invalid date format with helpful error message', async () => {
@@ -188,10 +188,10 @@ describe('lodgify_get_property_availability - User-facing availability checking'
         },
       })
 
-      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith(
-        '999',
-        { from: '2025-09-15', to: '2025-09-15' },
-      )
+      expect(mockClient.availability.getAvailabilityForProperty).toHaveBeenCalledWith('999', {
+        from: '2025-09-15',
+        to: '2025-09-15',
+      })
 
       const content = JSON.parse(result.content[0].text)
       expect(content.operation.status).toBe('success')

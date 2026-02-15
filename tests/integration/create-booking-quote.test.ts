@@ -5,8 +5,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
-import { getRateTools } from '../../src/mcp/tools/rate-tools.js'
 import { ReadOnlyModeError } from '../../src/core/errors/read-only-error.js'
+import { getRateTools } from '../../src/mcp/tools/rate-tools.js'
 
 describe('lodgify_create_booking_quote - User-facing custom quote creation', () => {
   let mockClient: {
@@ -42,7 +42,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         id: 'Q12345',
         bookingId: 'BK12345',
         status: 'created',
-        totalPrice: 1500.00,
+        totalPrice: 1500.0,
         currency: 'USD',
         createdAt: '2024-03-15T10:00:00Z',
         validUntil: '2024-03-31T23:59:59Z',
@@ -53,14 +53,14 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BK12345',
         payload: {
-          totalPrice: 1500.00,
+          totalPrice: 1500.0,
           currency: 'USD',
         },
       })
 
       // Verify API was called correctly
       expect(mockClient.createBookingQuote).toHaveBeenCalledWith('BK12345', {
-        totalPrice: 1500.00,
+        totalPrice: 1500.0,
         currency: 'USD',
       })
 
@@ -78,7 +78,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       // Verify quote details in response
       expect(content.data.id).toBe('Q12345')
       expect(content.data.bookingId).toBe('BK12345')
-      expect(content.data.totalPrice).toBe(1500.00)
+      expect(content.data.totalPrice).toBe(1500.0)
       expect(content.data.guestViewUrl).toBeDefined()
       expect(content.data.paymentUrl).toBeDefined()
 
@@ -99,26 +99,26 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         id: 'Q67890',
         bookingId: 'BK67890',
         status: 'created',
-        totalPrice: 2500.00,
+        totalPrice: 2500.0,
         currency: 'EUR',
         breakdown: {
-          accommodation: 2000.00,
-          taxes: 300.00,
-          fees: 150.00,
-          discount: 50.00,
+          accommodation: 2000.0,
+          taxes: 300.0,
+          fees: 150.0,
+          discount: 50.0,
         },
       })
 
       const result = await createQuoteTool.handler({
         bookingId: 'BK67890',
         payload: {
-          totalPrice: 2500.00,
+          totalPrice: 2500.0,
           currency: 'EUR',
           breakdown: {
-            accommodation: 2000.00,
-            taxes: 300.00,
-            fees: 150.00,
-            discount: 50.00,
+            accommodation: 2000.0,
+            taxes: 300.0,
+            fees: 150.0,
+            discount: 50.0,
           },
         },
       })
@@ -126,17 +126,17 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       expect(mockClient.createBookingQuote).toHaveBeenCalledWith(
         'BK67890',
         expect.objectContaining({
-          totalPrice: 2500.00,
+          totalPrice: 2500.0,
           breakdown: expect.objectContaining({
-            accommodation: 2000.00,
-            taxes: 300.00,
+            accommodation: 2000.0,
+            taxes: 300.0,
           }),
         }),
       )
 
       const content = JSON.parse(result.content[0].text)
       expect(content.data.breakdown).toBeDefined()
-      expect(content.data.breakdown.accommodation).toBe(2000.00)
+      expect(content.data.breakdown.accommodation).toBe(2000.0)
     })
 
     it('should create a quote with validity period and send to guest', async () => {
@@ -145,7 +145,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         id: 'Q99999',
         bookingId: 'BK99999',
         status: 'sent',
-        totalPrice: 3000.00,
+        totalPrice: 3000.0,
         validUntil: '2024-12-31T23:59:59Z',
         sentToGuest: true,
         guestEmail: 'guest@example.com',
@@ -154,7 +154,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BK99999',
         payload: {
-          totalPrice: 3000.00,
+          totalPrice: 3000.0,
           currency: 'USD',
           validUntil: '2024-12-31T23:59:59Z',
           sendToGuest: true,
@@ -184,7 +184,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         createQuoteTool.handler({
           bookingId: 'BK001',
           payload: {
-            totalPrice: -100.00,
+            totalPrice: -100.0,
             currency: 'USD',
           },
         }),
@@ -215,7 +215,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BK003',
         payload: {
-          totalPrice: 1000.00,
+          totalPrice: 1000.0,
           currency: 'GBP',
         },
       })
@@ -230,7 +230,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         createQuoteTool.handler({
           bookingId: 'BK004',
           payload: {
-            totalPrice: 1500.00,
+            totalPrice: 1500.0,
             validUntil: '2024/12/31', // Wrong format
           },
         }),
@@ -247,7 +247,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BK005',
         payload: {
-          totalPrice: 2000.00,
+          totalPrice: 2000.0,
           validUntil: '2025-06-30T15:00:00Z',
         },
       })
@@ -268,7 +268,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: '',
         payload: {
-          totalPrice: 1000.00,
+          totalPrice: 1000.0,
         },
       })
 
@@ -286,12 +286,12 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       // Adjustments field for future use - currently may not be processed by API
       mockClient.createBookingQuote.mockResolvedValue({
         id: 'QADJ001',
-        totalPrice: 1450.00,
+        totalPrice: 1450.0,
         adjustments: [
           {
             type: 'discount',
             description: 'Early booking discount',
-            amount: 50.00,
+            amount: 50.0,
             isPercentage: false,
           },
         ],
@@ -300,12 +300,12 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BKADJ001',
         payload: {
-          totalPrice: 1450.00,
+          totalPrice: 1450.0,
           adjustments: [
             {
               type: 'discount',
               description: 'Early booking discount',
-              amount: 50.00,
+              amount: 50.0,
               isPercentage: false,
             },
           ],
@@ -313,7 +313,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.data.totalPrice).toBe(1450.00)
+      expect(content.data.totalPrice).toBe(1450.0)
       // Adjustments may be preserved in response even if not fully processed
       if (content.data.adjustments) {
         expect(content.data.adjustments[0].type).toBe('discount')
@@ -332,7 +332,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BKTERMS001',
         payload: {
-          totalPrice: 5000.00,
+          totalPrice: 5000.0,
           customTerms: 'Special event booking terms apply',
           policyId: 'POL123',
           rentalAgreementId: 'RA456',
@@ -360,7 +360,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BKREPLACE001',
         payload: {
-          totalPrice: 1800.00,
+          totalPrice: 1800.0,
           replaceExisting: true,
         },
       })
@@ -412,7 +412,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         createQuoteTool.handler({
           bookingId: 'BKRO001',
           payload: {
-            totalPrice: 1500.00,
+            totalPrice: 1500.0,
           },
         }),
       ).rejects.toThrow('Write operation')
@@ -430,7 +430,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BKWR001',
         payload: {
-          totalPrice: 2000.00,
+          totalPrice: 2000.0,
         },
       })
 
@@ -448,7 +448,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         createQuoteTool.handler({
           bookingId: 'BKNET001',
           payload: {
-            totalPrice: 1500.00,
+            totalPrice: 1500.0,
           },
         }),
       ).rejects.toThrow('Network timeout')
@@ -456,15 +456,13 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
 
     it('should handle booking not found error', async () => {
       // Booking doesn't exist
-      mockClient.createBookingQuote.mockRejectedValue(
-        new Error('404: Booking not found'),
-      )
+      mockClient.createBookingQuote.mockRejectedValue(new Error('404: Booking not found'))
 
       await expect(
         createQuoteTool.handler({
           bookingId: 'NONEXISTENT',
           payload: {
-            totalPrice: 1000.00,
+            totalPrice: 1000.0,
           },
         }),
       ).rejects.toThrow('404: Booking not found')
@@ -472,9 +470,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
 
     it('should handle API validation errors', async () => {
       // API rejects the payload
-      mockClient.createBookingQuote.mockRejectedValue(
-        new Error('400: Invalid quote parameters'),
-      )
+      mockClient.createBookingQuote.mockRejectedValue(new Error('400: Invalid quote parameters'))
 
       await expect(
         createQuoteTool.handler({
@@ -496,7 +492,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BK-2024_001#USD',
         payload: {
-          totalPrice: 1750.00,
+          totalPrice: 1750.0,
         },
       })
 
@@ -509,29 +505,29 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
     it('should handle very large price breakdown', async () => {
       // Complex breakdown with many line items
       const largeBreakdown = {
-        accommodation: 10000.00,
-        taxes: 1500.00,
-        fees: 500.00,
-        extras: 250.00,
-        discount: 1000.00,
+        accommodation: 10000.0,
+        taxes: 1500.0,
+        fees: 500.0,
+        extras: 250.0,
+        discount: 1000.0,
       }
 
       mockClient.createBookingQuote.mockResolvedValue({
         id: 'QLARGE001',
-        totalPrice: 10250.00,
+        totalPrice: 10250.0,
         breakdown: largeBreakdown,
       })
 
       const result = await createQuoteTool.handler({
         bookingId: 'BKLARGE001',
         payload: {
-          totalPrice: 10250.00,
+          totalPrice: 10250.0,
           breakdown: largeBreakdown,
         },
       })
 
       const content = JSON.parse(result.content[0].text)
-      expect(content.data.breakdown.accommodation).toBe(10000.00)
+      expect(content.data.breakdown.accommodation).toBe(10000.0)
     })
   })
 
@@ -541,14 +537,14 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         id: 'QUX001',
         bookingId: 'BKUX001',
         status: 'created',
-        totalPrice: 1500.00,
+        totalPrice: 1500.0,
         guestViewUrl: 'https://lodgify.com/quote/view/QUX001',
       })
 
       const result = await createQuoteTool.handler({
         bookingId: 'BKUX001',
         payload: {
-          totalPrice: 1500.00,
+          totalPrice: 1500.0,
           sendToGuest: true,
         },
       })
@@ -577,7 +573,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BKSUG001',
         payload: {
-          totalPrice: 2000.00,
+          totalPrice: 2000.0,
           sendToGuest: false, // Not sent to guest
         },
       })
@@ -603,7 +599,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       const result = await createQuoteTool.handler({
         bookingId: 'BKPAY001',
         payload: {
-          totalPrice: 3500.00,
+          totalPrice: 3500.0,
           sendToGuest: true,
         },
       })
