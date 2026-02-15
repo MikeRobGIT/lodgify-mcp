@@ -160,6 +160,31 @@ export class BookingsV1Client extends BaseApiModule {
         adults: booking.adults,
       })
 
+      // Set booking status via separate endpoint (Lodgify ignores status in POST body)
+      if (booking.status) {
+        const statusEndpoint =
+          booking.status === 'booked' || booking.status === 'confirmed'
+            ? 'book'
+            : booking.status === 'tentative'
+              ? 'tentative'
+              : booking.status === 'declined'
+                ? 'decline'
+                : null
+
+        if (statusEndpoint) {
+          try {
+            await this.request('PUT', `${bookingId}/${statusEndpoint}`)
+            safeLogger.info('Booking status updated', { bookingId, status: booking.status })
+          } catch (statusError) {
+            safeLogger.warn('Failed to update booking status', {
+              bookingId,
+              status: booking.status,
+              error: statusError instanceof Error ? statusError.message : String(statusError),
+            })
+          }
+        }
+      }
+
       // Return a proper booking response by spreading the original request and adding the new ID
       return {
         ...booking,
