@@ -40,10 +40,12 @@ describe('lodgify_update_booking MCP Tool', () => {
           email: 'john@example.com',
         },
         status: 'Booked',
-        rooms: [{
-          room_type_id: 456,
-          guest_breakdown: { adults: 2, children: 0 }
-        }],
+        rooms: [
+          {
+            room_type_id: 456,
+            guest_breakdown: { adults: 2, children: 0 },
+          },
+        ],
       }
 
       mockClient.updateBookingV1.mockResolvedValue(mockUpdatedBooking)
@@ -83,10 +85,12 @@ describe('lodgify_update_booking MCP Tool', () => {
         id: 789,
         property_id: 12345,
         status: 'Booked',
-        rooms: [{
-          room_type_id: 456,
-          guest_breakdown: { adults: 3, children: 2 }
-        }],
+        rooms: [
+          {
+            room_type_id: 456,
+            guest_breakdown: { adults: 3, children: 2 },
+          },
+        ],
       }
 
       mockClient.updateBookingV1.mockResolvedValue(mockUpdatedBooking)
@@ -118,12 +122,12 @@ describe('lodgify_update_booking MCP Tool', () => {
 
       const result = await updateBookingTool?.handler({
         id: 789,
-        status: 'booked',  // Input uses lowercase
+        status: 'booked', // Input uses lowercase
       })
 
       const response = JSON.parse(result?.content[0]?.text || '{}')
       expect(response.operation.status).toBe('success')
-      expect(response.data.status).toBe('Booked')  // API returns capitalized
+      expect(response.data.status).toBe('Booked') // API returns capitalized
       expect(mockClient.updateBookingV1).toHaveBeenCalledWith(789, {
         status: 'booked',
       })
@@ -194,8 +198,8 @@ describe('lodgify_update_booking MCP Tool', () => {
         updateBookingTool?.handler({
           id: 789,
           arrival: '2024-06-20',
-          departure: '2024-06-15',  // Invalid: departure before arrival
-        })
+          departure: '2024-06-15', // Invalid: departure before arrival
+        }),
       ).rejects.toThrow('Invalid date range')
 
       expect(mockClient.updateBookingV1).not.toHaveBeenCalled()
@@ -213,7 +217,7 @@ describe('lodgify_update_booking MCP Tool', () => {
 
       const result = await updateBookingTool?.handler({
         id: 789,
-        arrival: '2024-06-16',  // Only updating arrival
+        arrival: '2024-06-16', // Only updating arrival
       })
 
       const response = JSON.parse(result?.content[0]?.text || '{}')
@@ -230,7 +234,7 @@ describe('lodgify_update_booking MCP Tool', () => {
 
       const result = await updateBookingTool?.handler({
         id: 789,
-        adults: 0,  // Business rule: should have at least 1 adult (but schema currently allows it)
+        adults: 0, // Business rule: should have at least 1 adult (but schema currently allows it)
       })
 
       // If we get here, the schema allows 0, which may need fixing
@@ -253,10 +257,12 @@ describe('lodgify_update_booking MCP Tool', () => {
           name: 'Updated Guest',
           email: 'new@example.com',
         },
-        rooms: [{
-          room_type_id: 888,
-          guest_breakdown: { adults: 4, children: 1, infants: 1 }
-        }],
+        rooms: [
+          {
+            room_type_id: 888,
+            guest_breakdown: { adults: 4, children: 1, infants: 1 },
+          },
+        ],
         status: 'Tentative',
         source_text: 'Phone Booking',
         notes: 'VIP guest - special treatment',
@@ -297,7 +303,7 @@ describe('lodgify_update_booking MCP Tool', () => {
         updateBookingTool?.handler({
           id: 99999,
           adults: 2,
-        })
+        }),
       ).rejects.toThrow('Booking not found')
     })
 
@@ -310,7 +316,7 @@ describe('lodgify_update_booking MCP Tool', () => {
           id: 789,
           arrival: '2024-07-01',
           departure: '2024-07-07',
-        })
+        }),
       ).rejects.toThrow('Network timeout')
     })
 
@@ -321,7 +327,7 @@ describe('lodgify_update_booking MCP Tool', () => {
 
       const result = await updateBookingTool?.handler({
         id: 789,
-        guest_email: 'not-an-email',  // Invalid email format (but schema may allow it for updates)
+        guest_email: 'not-an-email', // Invalid email format (but schema may allow it for updates)
       })
 
       const response = JSON.parse(result?.content[0]?.text || '{}')
@@ -354,9 +360,11 @@ describe('lodgify_update_booking MCP Tool', () => {
       expect(response.operation.status).toBe('success')
       // Suggestions may not be generated for all operations yet
       if (response.suggestions) {
-        expect(response.suggestions.some((s: string) =>
-          s.includes('Send confirmation email') || s.includes('updated')
-        )).toBe(true)
+        expect(
+          response.suggestions.some(
+            (s: string) => s.includes('Send confirmation email') || s.includes('updated'),
+          ),
+        ).toBe(true)
       }
     })
 
@@ -427,11 +435,14 @@ describe('lodgify_update_booking MCP Tool', () => {
       const response = JSON.parse(result?.content[0]?.text || '{}')
       // Suggestions may not be generated for all operations yet
       if (response.suggestions) {
-        expect(response.suggestions.some((s: string) =>
-          s.toLowerCase().includes('confirm') ||
-          s.toLowerCase().includes('email') ||
-          s.toLowerCase().includes('availability')
-        )).toBe(true)
+        expect(
+          response.suggestions.some(
+            (s: string) =>
+              s.toLowerCase().includes('confirm') ||
+              s.toLowerCase().includes('email') ||
+              s.toLowerCase().includes('availability'),
+          ),
+        ).toBe(true)
       }
     })
 
@@ -447,8 +458,8 @@ describe('lodgify_update_booking MCP Tool', () => {
 
       const result = await updateBookingTool?.handler({
         id: 789,
-        guest_name: "O'Connor",  // Contains apostrophe
-        notes: 'Guest said: "Late arrival"',  // Contains quotes
+        guest_name: "O'Connor", // Contains apostrophe
+        notes: 'Guest said: "Late arrival"', // Contains quotes
       })
 
       const response = JSON.parse(result?.content[0]?.text || '{}')

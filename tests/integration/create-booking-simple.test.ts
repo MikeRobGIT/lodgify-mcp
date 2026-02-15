@@ -67,8 +67,8 @@ describe('Booking Creation Simple Integration Tests', () => {
         adults: 2,
         status: 'booked',
         currency: 'USD',
-        amount: 500.00,
-        message: 'Booking created successfully'
+        amount: 500.0,
+        message: 'Booking created successfully',
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -77,7 +77,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: '2025-07-15',
         departure: '2025-07-20',
         guest_name: 'John Smith',
-        adults: 2
+        adults: 2,
       })
 
       expect(mockClient.createBooking).toHaveBeenCalledWith(
@@ -87,8 +87,8 @@ describe('Booking Creation Simple Integration Tests', () => {
           arrival: '2025-07-15',
           departure: '2025-07-20',
           guest_name: 'John Smith',
-          adults: 2
-        })
+          adults: 2,
+        }),
       )
 
       expect(response.content[0].type).toBe('text')
@@ -116,7 +116,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         source: 'Airbnb',
         notes: 'Late arrival expected',
         currency: 'EUR',
-        amount: 1500.00
+        amount: 1500.0,
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -132,7 +132,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         infants: 1,
         status: 'tentative',
         source: 'Airbnb',
-        notes: 'Late arrival expected'
+        notes: 'Late arrival expected',
       })
 
       const result = JSON.parse(response.content[0].text)
@@ -145,7 +145,7 @@ describe('Booking Creation Simple Integration Tests', () => {
 
     test('should handle API errors gracefully', async () => {
       mockClient.createBooking.mockRejectedValue(
-        new Error('Property not available for selected dates')
+        new Error('Property not available for selected dates'),
       )
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -154,7 +154,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: '2025-06-01',
         departure: '2025-06-07',
         guest_name: 'Test Guest',
-        adults: 2
+        adults: 2,
       })
 
       expect(response.isError).toBe(true)
@@ -170,7 +170,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: '2025-06-01',
         departure: '2025-06-07',
         guest_name: 'Test Guest',
-        adults: 2
+        adults: 2,
       })
 
       expect(response.isError).toBe(true)
@@ -190,7 +190,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         infants: 1,
         status: 'booked',
         currency: 'USD',
-        amount: 3500.00
+        amount: 3500.0,
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -201,7 +201,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         guest_name: 'Family Robinson',
         adults: 2,
         children: 3,
-        infants: 1
+        infants: 1,
       })
 
       const result = JSON.parse(response.content[0].text)
@@ -209,7 +209,7 @@ describe('Booking Creation Simple Integration Tests', () => {
       expect(result.adults).toBe(2)
       expect(result.children).toBe(3)
       expect(result.infants).toBe(1)
-      expect(result.amount).toBe(3500.00)
+      expect(result.amount).toBe(3500.0)
     })
 
     test('should handle special characters in guest names', async () => {
@@ -223,7 +223,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         adults: 2,
         status: 'booked',
         currency: 'USD',
-        amount: 500.00
+        amount: 500.0,
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -232,7 +232,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: '2025-06-01',
         departure: '2025-06-07',
         guest_name: "O'Brien-Smith & Family",
-        adults: 2
+        adults: 2,
       })
 
       const result = JSON.parse(response.content[0].text)
@@ -250,7 +250,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         adults: 2,
         status: 'tentative',
         currency: 'USD',
-        amount: 500.00
+        amount: 500.0,
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -260,7 +260,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         departure: '2025-06-07',
         guest_name: 'Tentative Guest',
         adults: 2,
-        status: 'tentative'
+        status: 'tentative',
       })
 
       const result = JSON.parse(response.content[0].text)
@@ -281,7 +281,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         adults: 2,
         status: 'booked',
         currency: 'USD',
-        amount: 200.00
+        amount: 200.0,
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -290,7 +290,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: today,
         departure: tomorrow,
         guest_name: 'Rush Guest',
-        adults: 2
+        adults: 2,
       })
 
       const result = JSON.parse(response.content[0].text)
@@ -309,7 +309,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         adults: 1,
         status: 'booked',
         currency: 'USD',
-        amount: 9000.00
+        amount: 9000.0,
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -318,12 +318,12 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: '2025-06-01',
         departure: '2025-08-31',
         guest_name: 'Long Term Guest',
-        adults: 1
+        adults: 1,
       })
 
       const result = JSON.parse(response.content[0].text)
       expect(result.id).toBe(77777)
-      expect(result.amount).toBe(9000.00)
+      expect(result.amount).toBe(9000.0)
     })
 
     test('should handle booking with source information', async () => {
@@ -338,7 +338,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         status: 'booked',
         source: 'Direct Website',
         currency: 'USD',
-        amount: 500.00
+        amount: 500.0,
       })
 
       const response = await testServer.callTool('lodgify_create_booking', {
@@ -348,7 +348,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         departure: '2025-06-07',
         guest_name: 'Direct Guest',
         adults: 2,
-        source: 'Direct Website'
+        source: 'Direct Website',
       })
 
       const result = JSON.parse(response.content[0].text)
@@ -356,9 +356,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle rate limiting errors', async () => {
-      mockClient.createBooking.mockRejectedValue(
-        new Error('429 Too Many Requests')
-      )
+      mockClient.createBooking.mockRejectedValue(new Error('429 Too Many Requests'))
 
       const response = await testServer.callTool('lodgify_create_booking', {
         property_id: 123,
@@ -366,7 +364,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: '2025-06-01',
         departure: '2025-06-07',
         guest_name: 'Test Guest',
-        adults: 2
+        adults: 2,
       })
 
       expect(response.isError).toBe(true)
@@ -382,7 +380,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         arrival: '2025-06-01',
         departure: '2025-06-07',
         guest_name: 'Test Guest',
-        adults: 2
+        adults: 2,
       })
 
       const result = JSON.parse(response.content[0].text)
@@ -398,7 +396,7 @@ describe('Booking Creation Simple Integration Tests', () => {
       expect(toolNames).toContain('lodgify_create_booking')
 
       const createBookingTool = response.tools.find(
-        (t: { name: string }) => t.name === 'lodgify_create_booking'
+        (t: { name: string }) => t.name === 'lodgify_create_booking',
       )
       expect(createBookingTool).toBeDefined()
       expect(createBookingTool.description).toContain('Create booking')

@@ -90,9 +90,7 @@ describe('lodgify_update_key_codes Integration Test', () => {
 
     // Either the handler validates and returns error, or the client fails
     // Either way, the operation should not succeed
-    const hasError = result.error ||
-                     result.operation?.status === 'failed' ||
-                     !result.success
+    const hasError = result.error || result.operation?.status === 'failed' || !result.success
     expect(hasError).toBeTruthy()
   })
 
