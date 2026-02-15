@@ -193,7 +193,7 @@ describe('lodgify_get_external_bookings Handler - Critical OTA Integration Featu
       expect(response.operation.status).toBe('success')
       // Verify sanitized value was passed
       expect(mockClient.bookings.getExternalBookings).toHaveBeenCalledWith(
-        expect.not.stringContaining('<script>')
+        expect.not.stringContaining('<script>'),
       )
     })
   })

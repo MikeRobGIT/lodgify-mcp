@@ -64,7 +64,7 @@ describe('validateQuoteParams - Critical Quote Parameter Validation', () => {
       }
 
       expect(() => validateQuoteParams(params)).toThrow(
-        'Quote requires both "arrival" and "departure" date parameters'
+        'Quote requires both "arrival" and "departure" date parameters',
       )
     })
 
@@ -75,7 +75,7 @@ describe('validateQuoteParams - Critical Quote Parameter Validation', () => {
       }
 
       expect(() => validateQuoteParams(params)).toThrow(
-        'Quote requires both "arrival" and "departure" date parameters'
+        'Quote requires both "arrival" and "departure" date parameters',
       )
     })
 
@@ -85,7 +85,7 @@ describe('validateQuoteParams - Critical Quote Parameter Validation', () => {
       }
 
       expect(() => validateQuoteParams(params)).toThrow(
-        'Quote requires both "arrival" and "departure" date parameters'
+        'Quote requires both "arrival" and "departure" date parameters',
       )
     })
   })
