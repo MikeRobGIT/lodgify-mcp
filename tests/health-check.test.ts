@@ -9,9 +9,9 @@
  * - Providing diagnostic information for troubleshooting
  */
 
-import { describe, expect, it, beforeEach, jest, afterEach } from 'bun:test'
-import { checkDependencies } from '../src/mcp/resources/health-check'
+import { afterEach, beforeEach, describe, expect, it, jest } from 'bun:test'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator'
+import { checkDependencies } from '../src/mcp/resources/health-check'
 
 describe('Health Check - Critical User-Facing Monitoring', () => {
   let originalEnv: NodeJS.ProcessEnv
@@ -83,7 +83,7 @@ describe('Health Check - Critical User-Facing Monitoring', () => {
         properties: {
           listProperties: jest.fn().mockImplementation(async () => {
             // Simulate 100ms API delay
-            await new Promise(resolve => setTimeout(resolve, 100))
+            await new Promise((resolve) => setTimeout(resolve, 100))
             resolvePromise!()
             return delayedPromise
           }),
@@ -236,8 +236,7 @@ describe('Health Check - Critical User-Facing Monitoring', () => {
 
       // All systems should be go for operations
       const canProceed =
-        health.lodgifyApi.status === 'healthy' &&
-        health.environment.status === 'healthy'
+        health.lodgifyApi.status === 'healthy' && health.environment.status === 'healthy'
 
       expect(canProceed).toBe(true)
     })
@@ -246,9 +245,9 @@ describe('Health Check - Critical User-Facing Monitoring', () => {
       // User scenario: User needs to diagnose connection issues
       const mockClient = {
         properties: {
-          listProperties: jest.fn().mockRejectedValue(
-            new Error('ECONNREFUSED: Connection refused to api.lodgify.com')
-          ),
+          listProperties: jest
+            .fn()
+            .mockRejectedValue(new Error('ECONNREFUSED: Connection refused to api.lodgify.com')),
         },
       } as unknown as LodgifyOrchestrator
 
@@ -269,7 +268,7 @@ describe('Health Check - Critical User-Facing Monitoring', () => {
         properties: {
           listProperties: jest.fn().mockImplementation(async () => {
             // Simulate quick API response
-            await new Promise(resolve => setTimeout(resolve, 10))
+            await new Promise((resolve) => setTimeout(resolve, 10))
             return { data: [] }
           }),
         },

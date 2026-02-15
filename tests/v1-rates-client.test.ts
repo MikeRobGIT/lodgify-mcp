@@ -3,9 +3,9 @@
  * This tests critical user-facing pricing management functionality
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test'
-import { RatesV1Client } from '../src/api/v1/rates/client'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import type { BaseApiClient } from '../src/api/base-client'
+import { RatesV1Client } from '../src/api/v1/rates/client'
 import type { RateUpdateV1Request, RateUpdateV1Response } from '../src/api/v1/rates/types'
 
 // Mock BaseApiClient for testing
@@ -59,14 +59,16 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-08-31',
-            price_per_day: 250.00,
-            min_stay: 3,
-            currency: 'USD'
-          }]
+          rates: [
+            {
+              room_type_id: 67890,
+              start_date: '2025-06-01',
+              end_date: '2025-08-31',
+              price_per_day: 250.0,
+              min_stay: 3,
+              currency: 'USD',
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -94,24 +96,24 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
               room_type_id: 111,
               start_date: '2025-07-01',
               end_date: '2025-07-15',
-              price_per_day: 300.00,
-              min_stay: 5
+              price_per_day: 300.0,
+              min_stay: 5,
             },
             {
               room_type_id: 222,
               start_date: '2025-07-01',
               end_date: '2025-07-15',
-              price_per_day: 450.00,
-              min_stay: 5
+              price_per_day: 450.0,
+              min_stay: 5,
             },
             {
               room_type_id: 333,
               start_date: '2025-07-01',
               end_date: '2025-07-15',
-              price_per_day: 600.00,
-              min_stay: 7
-            }
-          ]
+              price_per_day: 600.0,
+              min_stay: 7,
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -127,12 +129,14 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 54321,
-          rates: [{
-            room_type_id: 77777,
-            start_date: '2025-05-01',
-            end_date: '2025-05-31',
-            price_per_day: 199.99
-          }]
+          rates: [
+            {
+              room_type_id: 77777,
+              start_date: '2025-05-01',
+              end_date: '2025-05-31',
+              price_per_day: 199.99,
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -147,13 +151,15 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 88888,
-          rates: [{
-            room_type_id: 44444,
-            start_date: '2025-11-20',
-            end_date: '2025-11-21',
-            price_per_day: 0,
-            min_stay: 1
-          }]
+          rates: [
+            {
+              room_type_id: 44444,
+              start_date: '2025-11-20',
+              end_date: '2025-11-21',
+              price_per_day: 0,
+              min_stay: 1,
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -167,13 +173,15 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 11111,
-          rates: [{
-            room_type_id: 22222,
-            start_date: '2025-12-20',
-            end_date: '2025-12-31',
-            price_per_day: 1234.567,
-            currency: 'EUR'
-          }]
+          rates: [
+            {
+              room_type_id: 22222,
+              start_date: '2025-12-20',
+              end_date: '2025-12-31',
+              price_per_day: 1234.567,
+              currency: 'EUR',
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -184,188 +192,250 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
     describe('Input Validation - Protecting Users from Errors', () => {
       it('should reject missing rate data', async () => {
-        await expect(client.updateRatesV1(null as any))
-          .rejects.toThrow('Rate data is required')
+        await expect(client.updateRatesV1(null as any)).rejects.toThrow('Rate data is required')
 
-        await expect(client.updateRatesV1(undefined as any))
-          .rejects.toThrow('Rate data is required')
+        await expect(client.updateRatesV1(undefined as any)).rejects.toThrow(
+          'Rate data is required',
+        )
       })
 
       it('should reject invalid property ID', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 0,
-          rates: []
-        })).rejects.toThrow('Property ID must be a positive integer')
+        await expect(
+          client.updateRatesV1({
+            property_id: 0,
+            rates: [],
+          }),
+        ).rejects.toThrow('Property ID must be a positive integer')
 
-        await expect(client.updateRatesV1({
-          property_id: -1,
-          rates: []
-        })).rejects.toThrow('Property ID must be a positive integer')
+        await expect(
+          client.updateRatesV1({
+            property_id: -1,
+            rates: [],
+          }),
+        ).rejects.toThrow('Property ID must be a positive integer')
 
-        await expect(client.updateRatesV1({
-          property_id: 1.5,
-          rates: []
-        })).rejects.toThrow('Property ID must be a positive integer')
+        await expect(
+          client.updateRatesV1({
+            property_id: 1.5,
+            rates: [],
+          }),
+        ).rejects.toThrow('Property ID must be a positive integer')
 
-        await expect(client.updateRatesV1({
-          property_id: NaN,
-          rates: []
-        })).rejects.toThrow('Property ID must be a positive integer')
+        await expect(
+          client.updateRatesV1({
+            property_id: NaN,
+            rates: [],
+          }),
+        ).rejects.toThrow('Property ID must be a positive integer')
       })
 
       it('should reject empty rates array', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: []
-        })).rejects.toThrow('At least one rate entry is required')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [],
+          }),
+        ).rejects.toThrow('At least one rate entry is required')
       })
 
       it('should reject invalid room type ID', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 0,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Room type ID must be a positive integer')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 0,
+                start_date: '2025-06-01',
+                end_date: '2025-06-30',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Room type ID must be a positive integer')
 
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: -999,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Room type ID must be a positive integer')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: -999,
+                start_date: '2025-06-01',
+                end_date: '2025-06-30',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Room type ID must be a positive integer')
       })
 
       it('should reject missing dates', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '',
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Start date and end date are required')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '',
+                end_date: '2025-06-30',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Start date and end date are required')
 
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Start date and end date are required')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-06-01',
+                end_date: '',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Start date and end date are required')
       })
 
       it('should reject invalid date formats', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '06/01/2025', // US format not allowed
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Dates must be in YYYY-MM-DD format')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '06/01/2025', // US format not allowed
+                end_date: '2025-06-30',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Dates must be in YYYY-MM-DD format')
 
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-6-1', // Missing leading zeros
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Dates must be in YYYY-MM-DD format')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-6-1', // Missing leading zeros
+                end_date: '2025-06-30',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Dates must be in YYYY-MM-DD format')
 
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025/06/01', // Wrong separator
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Dates must be in YYYY-MM-DD format')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025/06/01', // Wrong separator
+                end_date: '2025-06-30',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Dates must be in YYYY-MM-DD format')
       })
 
       it('should reject end date before start date', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-30',
-            end_date: '2025-06-01',
-            price_per_day: 100
-          }]
-        })).rejects.toThrow('Start date must be before end date')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-06-30',
+                end_date: '2025-06-01',
+                price_per_day: 100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Start date must be before end date')
       })
 
       it('should reject negative price per day', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: -100
-          }]
-        })).rejects.toThrow('Valid price per day is required')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-06-01',
+                end_date: '2025-06-30',
+                price_per_day: -100,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Valid price per day is required')
       })
 
       it('should reject invalid price types', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 'free' as any
-          }]
-        })).rejects.toThrow('Valid price per day is required')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-06-01',
+                end_date: '2025-06-30',
+                price_per_day: 'free' as any,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Valid price per day is required')
 
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: null as any
-          }]
-        })).rejects.toThrow('Valid price per day is required')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-06-01',
+                end_date: '2025-06-30',
+                price_per_day: null as any,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Valid price per day is required')
       })
 
       it('should reject negative min_stay', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100,
-            min_stay: -1
-          }]
-        })).rejects.toThrow('Min stay must be a non-negative number')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-06-01',
+                end_date: '2025-06-30',
+                price_per_day: 100,
+                min_stay: -1,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Min stay must be a non-negative number')
       })
 
       it('should reject non-numeric min_stay', async () => {
-        await expect(client.updateRatesV1({
-          property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100,
-            min_stay: 'two' as any
-          }]
-        })).rejects.toThrow('Min stay must be a non-negative number')
+        await expect(
+          client.updateRatesV1({
+            property_id: 12345,
+            rates: [
+              {
+                room_type_id: 67890,
+                start_date: '2025-06-01',
+                end_date: '2025-06-30',
+                price_per_day: 100,
+                min_stay: 'two' as any,
+              },
+            ],
+          }),
+        ).rejects.toThrow('Min stay must be a non-negative number')
       })
     })
 
@@ -376,12 +446,14 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 55555,
-          rates: [{
-            room_type_id: 66666,
-            start_date: '2025-12-31',
-            end_date: '2025-12-31',
-            price_per_day: 999.00
-          }]
+          rates: [
+            {
+              room_type_id: 66666,
+              start_date: '2025-12-31',
+              end_date: '2025-12-31',
+              price_per_day: 999.0,
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -395,13 +467,15 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 77777,
-          rates: [{
-            room_type_id: 88888,
-            start_date: '2025-01-01',
-            end_date: '2025-12-31',
-            price_per_day: 175.00,
-            min_stay: 2
-          }]
+          rates: [
+            {
+              room_type_id: 88888,
+              start_date: '2025-01-01',
+              end_date: '2025-12-31',
+              price_per_day: 175.0,
+              min_stay: 2,
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -420,24 +494,24 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
               room_type_id: 111,
               start_date: '2025-07-01',
               end_date: '2025-07-31',
-              price_per_day: 200.00,
-              currency: 'USD'
+              price_per_day: 200.0,
+              currency: 'USD',
             },
             {
               room_type_id: 222,
               start_date: '2025-07-01',
               end_date: '2025-07-31',
-              price_per_day: 180.00,
-              currency: 'EUR'
+              price_per_day: 180.0,
+              currency: 'EUR',
             },
             {
               room_type_id: 333,
               start_date: '2025-07-01',
               end_date: '2025-07-31',
-              price_per_day: 150.00,
-              currency: 'GBP'
-            }
-          ]
+              price_per_day: 150.0,
+              currency: 'GBP',
+            },
+          ],
         }
 
         const result = await client.updateRatesV1(request)
@@ -453,16 +527,17 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
+          rates: [
+            {
+              room_type_id: 67890,
+              start_date: '2025-06-01',
+              end_date: '2025-06-30',
+              price_per_day: 100,
+            },
+          ],
         }
 
-        await expect(client.updateRatesV1(request))
-          .rejects.toThrow('Network request failed')
+        await expect(client.updateRatesV1(request)).rejects.toThrow('Network request failed')
       })
 
       it('should handle API validation errors', async () => {
@@ -470,16 +545,17 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 99999,
-          rates: [{
-            room_type_id: 11111,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
+          rates: [
+            {
+              room_type_id: 11111,
+              start_date: '2025-06-01',
+              end_date: '2025-06-30',
+              price_per_day: 100,
+            },
+          ],
         }
 
-        await expect(client.updateRatesV1(request))
-          .rejects.toThrow('Invalid property access')
+        await expect(client.updateRatesV1(request)).rejects.toThrow('Invalid property access')
       })
 
       it('should handle rate limit errors', async () => {
@@ -487,16 +563,17 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         const request: RateUpdateV1Request = {
           property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
+          rates: [
+            {
+              room_type_id: 67890,
+              start_date: '2025-06-01',
+              end_date: '2025-06-30',
+              price_per_day: 100,
+            },
+          ],
         }
 
-        await expect(client.updateRatesV1(request))
-          .rejects.toThrow('Too many requests')
+        await expect(client.updateRatesV1(request)).rejects.toThrow('Too many requests')
       })
     })
 
@@ -517,12 +594,14 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
         await client.updateRatesV1({
           property_id: 12345,
-          rates: [{
-            room_type_id: 67890,
-            start_date: '2025-06-01',
-            end_date: '2025-06-30',
-            price_per_day: 100
-          }]
+          rates: [
+            {
+              room_type_id: 67890,
+              start_date: '2025-06-01',
+              end_date: '2025-06-30',
+              price_per_day: 100,
+            },
+          ],
         })
 
         const lastRequest = mockApiClient.getLastRequest()
