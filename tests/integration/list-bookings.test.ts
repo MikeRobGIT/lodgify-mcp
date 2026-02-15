@@ -3,7 +3,7 @@
  * Tests the critical user-facing functionality for viewing and managing bookings
  */
 
-import { describe, expect, test, beforeEach, mock } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createTestServer } from '../test-server.js'
 
 describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
@@ -69,11 +69,11 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             guest: {
               name: 'John Smith',
               email: 'john@example.com',
-              phone: '+1234567890'
+              phone: '+1234567890',
             },
-            totalAmount: 1750.00,
+            totalAmount: 1750.0,
             currency: 'USD',
-            paymentStatus: 'paid'
+            paymentStatus: 'paid',
           },
           {
             id: 'BK002',
@@ -85,19 +85,19 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             guests: { adults: 4, children: 2 },
             guest: {
               name: 'Jane Doe',
-              email: 'jane@example.com'
+              email: 'jane@example.com',
             },
-            totalAmount: 2500.00,
+            totalAmount: 2500.0,
             currency: 'USD',
-            paymentStatus: 'pending'
-          }
+            paymentStatus: 'pending',
+          },
         ],
         pagination: {
           total: 45,
           limit: 10,
           offset: 0,
-          hasNext: true
-        }
+          hasNext: true,
+        },
       })
 
       const params = {
@@ -114,8 +114,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
           limit: 10,
           offset: 0,
           stayFilter: 'Upcoming',
-          includeCount: true
-        })
+          includeCount: true,
+        }),
       )
 
       expect(response.content[0].type).toBe('text')
@@ -142,16 +142,16 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             guests: { adults: 2, children: 1 },
             guest: {
               name: 'Current Guest',
-              email: 'current@example.com'
+              email: 'current@example.com',
             },
-            totalAmount: 1200.00,
-            currency: 'USD'
-          }
+            totalAmount: 1200.0,
+            currency: 'USD',
+          },
         ],
         pagination: {
           limit: 20,
-          offset: 0
-        }
+          offset: 0,
+        },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -162,8 +162,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           stayFilter: 'Current',
-          limit: 20
-        })
+          limit: 20,
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -180,10 +180,10 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             checkIn: '2024-03-15',
             checkOut: '2024-03-18',
             propertyId: 126,
-            guest: { name: 'Arriving Guest' }
-          }
+            guest: { name: 'Arriving Guest' },
+          },
         ],
-        pagination: { limit: 5, offset: 0 }
+        pagination: { limit: 5, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -195,8 +195,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           stayFilter: 'ArrivalDate',
-          stayFilterDate: '2024-03-15T00:00:00Z'
-        })
+          stayFilterDate: '2024-03-15T00:00:00Z',
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -212,10 +212,10 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             checkIn: '2024-03-19',
             checkOut: '2024-03-22',
             propertyId: 127,
-            guest: { name: 'Departing Guest' }
-          }
+            guest: { name: 'Departing Guest' },
+          },
         ],
-        pagination: { limit: 10, offset: 0 }
+        pagination: { limit: 10, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -227,8 +227,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           stayFilter: 'DepartureDate',
-          stayFilterDate: '2024-03-22T00:00:00Z'
-        })
+          stayFilterDate: '2024-03-22T00:00:00Z',
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -244,19 +244,19 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             status: 'completed',
             checkIn: '2024-02-15',
             checkOut: '2024-02-20',
-            totalAmount: 1500.00,
-            paymentStatus: 'paid'
+            totalAmount: 1500.0,
+            paymentStatus: 'paid',
           },
           {
             id: 'BK007',
             status: 'completed',
             checkIn: '2024-02-10',
             checkOut: '2024-02-14',
-            totalAmount: 1000.00,
-            paymentStatus: 'paid'
-          }
+            totalAmount: 1000.0,
+            paymentStatus: 'paid',
+          },
         ],
-        pagination: { total: 150, limit: 25, offset: 0 }
+        pagination: { total: 150, limit: 25, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -280,10 +280,10 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
           {
             id: 'BK008',
             updatedAt: '2024-03-02T10:00:00Z',
-            status: 'modified'
-          }
+            status: 'modified',
+          },
         ],
-        pagination: { limit: 15, offset: 0 }
+        pagination: { limit: 15, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -294,8 +294,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          updatedSince: '2024-03-01T00:00:00Z'
-        })
+          updatedSince: '2024-03-01T00:00:00Z',
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -308,14 +308,14 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         data: [
           {
             id: 'BK009',
-            totalAmount: 2000.00,
+            totalAmount: 2000.0,
             transactions: [
-              { type: 'payment', amount: 500.00, date: '2024-03-01' },
-              { type: 'payment', amount: 1500.00, date: '2024-03-10' }
-            ]
-          }
+              { type: 'payment', amount: 500.0, date: '2024-03-01' },
+              { type: 'payment', amount: 1500.0, date: '2024-03-10' },
+            ],
+          },
         ],
-        pagination: { limit: 10, offset: 0 }
+        pagination: { limit: 10, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -326,8 +326,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          includeTransactions: true
-        })
+          includeTransactions: true,
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -340,9 +340,9 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       mockClient.bookings.listBookings.mockResolvedValue({
         data: new Array(20).fill(null).map((_, i) => ({
           id: `BK${100 + i}`,
-          status: 'confirmed'
+          status: 'confirmed',
         })),
-        pagination: { total: 200, limit: 20, offset: 20, hasNext: true }
+        pagination: { total: 200, limit: 20, offset: 20, hasNext: true },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -355,8 +355,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           offset: 20, // Page 2 with size 20
-          limit: 20
-        })
+          limit: 20,
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -372,16 +372,16 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             id: 'BK-AIRBNB-001',
             source: 'Airbnb',
             external: true,
-            propertyId: 128
+            propertyId: 128,
           },
           {
             id: 'BK-BOOKING-001',
             source: 'Booking.com',
             external: true,
-            propertyId: 129
-          }
+            propertyId: 129,
+          },
         ],
-        pagination: { limit: 20, offset: 0 }
+        pagination: { limit: 20, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -392,8 +392,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          includeExternal: true
-        })
+          includeExternal: true,
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -418,7 +418,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       // Important for user experience when no bookings match filters
       mockClient.bookings.listBookings.mockResolvedValue({
         data: [],
-        pagination: { total: 0, limit: 10, offset: 0 }
+        pagination: { total: 0, limit: 10, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -434,9 +434,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should handle API errors gracefully', async () => {
       // Network issues shouldn't crash the application
-      mockClient.bookings.listBookings.mockRejectedValue(
-        new Error('Network timeout')
-      )
+      mockClient.bookings.listBookings.mockRejectedValue(new Error('Network timeout'))
 
       const response = await testServer.callTool('lodgify_list_bookings', {
         stayFilter: 'Upcoming',
@@ -454,10 +452,10 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
           {
             id: 'BK-DELETED-001',
             status: 'deleted',
-            deletedAt: '2024-03-01T10:00:00Z'
-          }
+            deletedAt: '2024-03-01T10:00:00Z',
+          },
         ],
-        pagination: { limit: 10, offset: 0 }
+        pagination: { limit: 10, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -468,8 +466,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
       expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          trash: 'True'
-        })
+          trash: 'True',
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -488,19 +486,17 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
             propertyId: 130,
             checkIn: '2024-02-01',
             checkOut: '2024-02-28',
-            totalAmount: 5000.00,
-            transactions: [
-              { type: 'payment', amount: 5000.00 }
-            ],
+            totalAmount: 5000.0,
+            transactions: [{ type: 'payment', amount: 5000.0 }],
             quoteDetails: {
-              originalQuote: 5500.00,
-              discount: 500.00
+              originalQuote: 5500.0,
+              discount: 500.0,
             },
             external: false,
-            source: 'Direct'
-          }
+            source: 'Direct',
+          },
         ],
-        pagination: { total: 100, limit: 50, offset: 0 }
+        pagination: { total: 100, limit: 50, offset: 0 },
       })
 
       const response = await testServer.callTool('lodgify_list_bookings', {
@@ -517,8 +513,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
           includeTransactions: true,
           includeQuoteDetails: true,
           includeExternal: true,
-          includeCount: true
-        })
+          includeCount: true,
+        }),
       )
 
       const result = JSON.parse(response.content[0].text)
@@ -529,9 +525,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should handle rate limiting with appropriate error message', async () => {
       // Rate limiting shouldn't cause confusion
-      mockClient.bookings.listBookings.mockRejectedValue(
-        new Error('429 Too Many Requests')
-      )
+      mockClient.bookings.listBookings.mockRejectedValue(new Error('429 Too Many Requests'))
 
       const response = await testServer.callTool('lodgify_list_bookings', {
         stayFilter: 'All',
@@ -551,7 +545,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       expect(toolNames).toContain('lodgify_list_bookings')
 
       const listBookingsTool = response.tools.find(
-        (t: { name: string }) => t.name === 'lodgify_list_bookings'
+        (t: { name: string }) => t.name === 'lodgify_list_bookings',
       )
       expect(listBookingsTool).toBeDefined()
       expect(listBookingsTool.description).toContain('List Bookings')
