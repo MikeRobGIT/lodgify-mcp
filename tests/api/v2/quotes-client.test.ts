@@ -169,9 +169,9 @@ describe('QuotesClient - Critical Quote Calculation Feature', () => {
       await expect(
         client.getQuote('property-123', null as unknown as QuoteRequest),
       ).rejects.toThrow('Valid quote request object is required')
-      await expect(client.getQuote('property-123', undefined as any)).rejects.toThrow(
-        'Valid quote request object is required',
-      )
+      await expect(
+        client.getQuote('property-123', undefined as unknown as QuoteRequest),
+      ).rejects.toThrow('Valid quote request object is required')
       await expect(client.getQuote('property-123', 'invalid' as any)).rejects.toThrow(
         'Valid quote request object is required',
       )
