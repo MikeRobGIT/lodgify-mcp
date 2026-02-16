@@ -10,9 +10,9 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { BaseApiClient } from '../../../src/api/base-client.js'
 import { QuotesClient } from '../../../src/api/v2/quotes/client.js'
 import type { QuoteRequest } from '../../../src/api/v2/quotes/types.js'
-import type { BaseApiClient } from '../../../src/api/base-client.js'
 
 describe('QuotesClient - Critical Quote Calculation Feature', () => {
   let client: QuotesClient
@@ -166,9 +166,9 @@ describe('QuotesClient - Critical Quote Calculation Feature', () => {
     })
 
     it('should reject quote with invalid request object', async () => {
-      await expect(client.getQuote('property-123', null as any)).rejects.toThrow(
-        'Valid quote request object is required',
-      )
+      await expect(
+        client.getQuote('property-123', null as unknown as QuoteRequest),
+      ).rejects.toThrow('Valid quote request object is required')
       await expect(client.getQuote('property-123', undefined as any)).rejects.toThrow(
         'Valid quote request object is required',
       )
