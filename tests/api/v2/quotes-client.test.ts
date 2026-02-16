@@ -12,10 +12,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QuotesClient } from '../../../src/api/v2/quotes/client.js'
 import type { QuoteRequest } from '../../../src/api/v2/quotes/types.js'
+import type { BaseApiClient } from '../../../src/api/base-client.js'
 
 describe('QuotesClient - Critical Quote Calculation Feature', () => {
   let client: QuotesClient
-  let mockBaseClient: any
+  let mockBaseClient: Pick<BaseApiClient, 'request' | 'getFullUrl' | 'getHeaders'>
 
   beforeEach(() => {
     // Create mock base client
