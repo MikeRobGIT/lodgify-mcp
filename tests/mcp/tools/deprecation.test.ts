@@ -79,7 +79,7 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
     let mockServer: McpServer
     let mockHandler: ToolCallback
     let originalDeprecatedTools: Record<string, DeprecationInfo>
-    let registerToolSpy: any
+    let registerToolSpy: ReturnType<typeof mock>
 
     beforeEach(() => {
       // Save original state
@@ -103,7 +103,9 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
 
     afterEach(() => {
       // Restore original state
-      Object.keys(DEPRECATED_TOOLS).forEach((key) => delete DEPRECATED_TOOLS[key])
+      Object.keys(DEPRECATED_TOOLS).forEach((key) => {
+        delete DEPRECATED_TOOLS[key]
+      })
       Object.assign(DEPRECATED_TOOLS, originalDeprecatedTools)
     })
 
@@ -123,7 +125,7 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
 
     it('should add deprecation warning to deprecated tool description', () => {
       // Add a deprecated tool
-      DEPRECATED_TOOLS['old_booking_tool'] = {
+      DEPRECATED_TOOLS.old_booking_tool = {
         since: '1.0.0',
         removeIn: '2.0.0',
         reason: 'Use v2 API instead',
@@ -139,7 +141,10 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
       registerToolWithDeprecation(mockServer, 'old_booking_tool', toolConfig, mockHandler)
 
       expect(registerToolSpy).toHaveBeenCalledTimes(1)
-      const [, registeredConfig] = registerToolSpy.mock.calls[0] as any
+      const [, registeredConfig] = registerToolSpy.mock.calls[0] as unknown as [
+        string,
+        { description: string },
+      ]
 
       expect(registeredConfig.description).toContain('⚠️ **DEPRECATED**')
       expect(registeredConfig.description).toContain('Use v2 API instead')
@@ -150,9 +155,10 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
     it('should wrap handler to log deprecation warnings', async () => {
       // Spy on logger.warn
       const warnSpy = spyOn(safeLogger, 'warn')
+      warnSpy.mockClear() // Clear any previous calls
 
       // Add a deprecated tool
-      DEPRECATED_TOOLS['deprecated_rate_tool'] = {
+      DEPRECATED_TOOLS.deprecated_rate_tool = {
         since: '1.5.0',
         removeIn: '3.0.0',
         reason: 'Performance improvements in new version',
@@ -169,7 +175,11 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
       registerToolWithDeprecation(mockServer, 'deprecated_rate_tool', toolConfig, mockHandler)
 
       // Get the wrapped handler
-      const [, , wrappedHandler] = registerToolSpy.mock.calls[0] as any
+      const [, , wrappedHandler] = registerToolSpy.mock.calls[0] as unknown as [
+        string,
+        unknown,
+        (args: { propertyId: string }) => Promise<unknown>,
+      ]
 
       // Call the wrapped handler
       await wrappedHandler({ propertyId: '123' })
@@ -198,7 +208,7 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
       warnSpy.mockClear() // Clear any previous calls
 
       // Add a deprecated tool with logging disabled
-      DEPRECATED_TOOLS['quiet_deprecated_tool'] = {
+      DEPRECATED_TOOLS.quiet_deprecated_tool = {
         since: '1.0.0',
         reason: 'Silent deprecation',
         logWarnings: false,
@@ -213,7 +223,11 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
       registerToolWithDeprecation(mockServer, 'quiet_deprecated_tool', toolConfig, mockHandler)
 
       // Get and call the wrapped handler
-      const [, , wrappedHandler] = registerToolSpy.mock.calls[0] as any
+      const [, , wrappedHandler] = registerToolSpy.mock.calls[0] as unknown as [
+        string,
+        unknown,
+        (args: Record<string, never>) => Promise<unknown>,
+      ]
       await wrappedHandler({})
 
       // Check that no warning was logged
@@ -233,11 +247,15 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
 
     beforeEach(() => {
       originalDeprecatedTools = { ...DEPRECATED_TOOLS }
-      Object.keys(DEPRECATED_TOOLS).forEach((key) => delete DEPRECATED_TOOLS[key])
+      Object.keys(DEPRECATED_TOOLS).forEach((key) => {
+        delete DEPRECATED_TOOLS[key]
+      })
     })
 
     afterEach(() => {
-      Object.keys(DEPRECATED_TOOLS).forEach((key) => delete DEPRECATED_TOOLS[key])
+      Object.keys(DEPRECATED_TOOLS).forEach((key) => {
+        delete DEPRECATED_TOOLS[key]
+      })
       Object.assign(DEPRECATED_TOOLS, originalDeprecatedTools)
     })
 
@@ -248,14 +266,14 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
 
     it('should return all deprecated tools with full details', () => {
       // Add multiple deprecated tools
-      DEPRECATED_TOOLS['tool_a'] = {
+      DEPRECATED_TOOLS.tool_a = {
         since: '1.0.0',
         removeIn: '2.0.0',
         reason: 'Replaced by tool_b',
         replacement: 'tool_b',
       }
 
-      DEPRECATED_TOOLS['tool_c'] = {
+      DEPRECATED_TOOLS.tool_c = {
         since: '1.5.0',
         reason: 'No longer needed',
       }
@@ -284,7 +302,7 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
     })
 
     it('should provide TBD for missing removeIn version', () => {
-      DEPRECATED_TOOLS['indefinite_tool'] = {
+      DEPRECATED_TOOLS.indefinite_tool = {
         since: '0.5.0',
         reason: 'May be removed in future',
       }
@@ -303,13 +321,15 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
     })
 
     afterEach(() => {
-      Object.keys(DEPRECATED_TOOLS).forEach((key) => delete DEPRECATED_TOOLS[key])
+      Object.keys(DEPRECATED_TOOLS).forEach((key) => {
+        delete DEPRECATED_TOOLS[key]
+      })
       Object.assign(DEPRECATED_TOOLS, originalDeprecatedTools)
     })
 
     it('should handle API version migration scenario', () => {
       // Simulate deprecating v1 booking tools in favor of v2
-      DEPRECATED_TOOLS['lodgify_create_booking_v1'] = {
+      DEPRECATED_TOOLS.lodgify_create_booking_v1 = {
         since: '2.0.0',
         removeIn: '3.0.0',
         reason: 'Lodgify API v1 is being sunset. V2 provides better performance and more features',
@@ -318,7 +338,7 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
 
       const warning = generateDeprecationWarning(
         'lodgify_create_booking_v1',
-        DEPRECATED_TOOLS['lodgify_create_booking_v1'],
+        DEPRECATED_TOOLS.lodgify_create_booking_v1,
       )
 
       expect(warning).toContain('Lodgify API v1 is being sunset')
@@ -328,7 +348,7 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
 
     it('should handle removed feature scenario', () => {
       // Simulate a feature that Lodgify no longer supports
-      DEPRECATED_TOOLS['lodgify_bulk_import'] = {
+      DEPRECATED_TOOLS.lodgify_bulk_import = {
         since: '1.8.0',
         removeIn: '2.0.0',
         reason:
@@ -344,14 +364,14 @@ describe('Tool Deprecation System - Critical User Migration Feature', () => {
 
     it('should handle renamed tool scenario', () => {
       // Simulate a tool that was renamed for clarity
-      DEPRECATED_TOOLS['get_bookings'] = {
+      DEPRECATED_TOOLS.get_bookings = {
         since: '1.2.0',
         removeIn: '2.0.0',
         reason: 'Renamed for consistency with other tools',
         replacement: 'lodgify_list_bookings',
       }
 
-      const warning = generateDeprecationWarning('get_bookings', DEPRECATED_TOOLS['get_bookings'])
+      const warning = generateDeprecationWarning('get_bookings', DEPRECATED_TOOLS.get_bookings)
 
       expect(warning).toContain('Renamed for consistency')
       expect(warning).toContain('lodgify_list_bookings')

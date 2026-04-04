@@ -136,8 +136,8 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
   describe('Error handling scenarios', () => {
     it('should handle booking not found error gracefully', async () => {
       // Mock booking not found error
-      const notFoundError = new Error('Booking not found')
-      ;(notFoundError as any).statusCode = 404
+      const notFoundError = new Error('Booking not found') as Error & { statusCode?: number }
+      notFoundError.statusCode = 404
       mockClient.deleteBookingV1.mockRejectedValue(notFoundError)
 
       await expect(
@@ -151,8 +151,10 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
 
     it('should handle permission denied error when trying to delete protected booking', async () => {
       // Mock permission denied error
-      const permissionError = new Error('Permission denied: Cannot delete confirmed booking')
-      ;(permissionError as any).statusCode = 403
+      const permissionError = new Error(
+        'Permission denied: Cannot delete confirmed booking',
+      ) as Error & { statusCode?: number }
+      permissionError.statusCode = 403
       mockClient.deleteBookingV1.mockRejectedValue(permissionError)
 
       await expect(
@@ -166,8 +168,8 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
 
     it('should handle network timeout during deletion', async () => {
       // Mock network timeout
-      const timeoutError = new Error('Network timeout')
-      ;(timeoutError as any).code = 'ETIMEDOUT'
+      const timeoutError = new Error('Network timeout') as Error & { code?: string }
+      timeoutError.code = 'ETIMEDOUT'
       mockClient.deleteBookingV1.mockRejectedValue(timeoutError)
 
       await expect(
@@ -179,8 +181,8 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
 
     it('should handle API rate limiting', async () => {
       // Mock rate limit error
-      const rateLimitError = new Error('Too many requests')
-      ;(rateLimitError as any).statusCode = 429
+      const rateLimitError = new Error('Too many requests') as Error & { statusCode?: number }
+      rateLimitError.statusCode = 429
       mockClient.deleteBookingV1.mockRejectedValue(rateLimitError)
 
       await expect(
@@ -200,11 +202,11 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
         // Check if an error is embedded in the response
         const response = JSON.parse(result?.content[0]?.text || '{}')
         expect(response.error || response.operation?.status).toBeTruthy()
-      } catch (error: any) {
+      } catch (error: unknown) {
         // This is the expected path - validation error
         expect(error).toBeDefined()
         // The error could be from Zod or from the handler
-        expect(error.message || error.toString()).toBeTruthy()
+        expect((error as Error).message || String(error)).toBeTruthy()
       }
     })
 
@@ -213,14 +215,14 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
       try {
         await deleteBookingTool?.handler({ id: 'abc' })
         expect(true).toBe(false) // Should not reach here
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeDefined()
       }
 
       try {
         await deleteBookingTool?.handler({ id: 12.5 })
         expect(true).toBe(false) // Should not reach here
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeDefined()
       }
     })
@@ -289,9 +291,12 @@ describe('lodgify_delete_booking - Permanent booking deletion', () => {
 
     it('should handle concurrent deletion attempts gracefully', async () => {
       // Simulate booking already deleted error
-      const alreadyDeletedError = new Error('Booking already deleted')
-      ;(alreadyDeletedError as any).statusCode = 404
-      ;(alreadyDeletedError as any).code = 'BOOKING_NOT_FOUND'
+      const alreadyDeletedError = new Error('Booking already deleted') as Error & {
+        statusCode?: number
+        code?: string
+      }
+      alreadyDeletedError.statusCode = 404
+      alreadyDeletedError.code = 'BOOKING_NOT_FOUND'
 
       mockClient.deleteBookingV1.mockRejectedValueOnce(alreadyDeletedError)
 

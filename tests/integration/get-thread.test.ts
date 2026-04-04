@@ -9,8 +9,8 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createTestServer } from '../test-server.js'
 
 describe('lodgify_get_thread - Critical User-Facing Guest Communication Feature', () => {
-  let testServer: any
-  let mockClient: any
+  let testServer: Record<string, unknown>
+  let mockClient: Record<string, unknown>
 
   beforeEach(() => {
     // Create a mock client with messaging methods
@@ -265,7 +265,7 @@ describe('lodgify_get_thread - Critical User-Facing Guest Communication Feature'
     })
 
     test('should handle empty thread GUID', async () => {
-      const response = await testServer.callTool('lodgify_get_thread', {
+      const _response = await testServer.callTool('lodgify_get_thread', {
         threadGuid: '',
       })
 

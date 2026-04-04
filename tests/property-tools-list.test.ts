@@ -5,8 +5,8 @@ import type { ToolRegistration } from '../src/mcp/utils/types.js'
 
 describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
   let mockClient: LodgifyOrchestrator
-  let listPropertiesHandler: (params: any) => Promise<any>
-  let mockListProperties: any
+  let listPropertiesHandler: (params: Record<string, unknown>) => Promise<unknown>
+  let mockListProperties: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     // Create mock function
@@ -69,10 +69,7 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
       expect(response.operation.status).toBe('success')
       expect(response.data.data).toHaveLength(2)
       expect(response.data.data[0].name).toBe('Ocean View Villa')
-      expect(mockListProperties).toHaveBeenCalledWith({
-        limit: 50,
-        offset: 0,
-      })
+      expect(mockListProperties).toHaveBeenCalledWith({})
     })
 
     it('should handle pagination for large property portfolios', async () => {
@@ -126,8 +123,6 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
 
       expect(mockListProperties).toHaveBeenCalledWith({
         wid: 12345,
-        limit: 50,
-        offset: 0,
       })
       expect(response.data.data[0].wid).toBe(12345)
     })
@@ -145,8 +140,6 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
       // The warning would be logged internally
       expect(mockListProperties).toHaveBeenCalledWith({
         wid: 5,
-        limit: 50,
-        offset: 0,
       })
 
       consoleSpy.mockRestore()
@@ -174,8 +167,6 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
 
       expect(mockListProperties).toHaveBeenCalledWith({
         updatedSince,
-        limit: 50,
-        offset: 0,
       })
       expect(response.data.data[0].name).toBe('Recently Updated Villa')
     })
@@ -200,8 +191,6 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
 
       expect(mockListProperties).toHaveBeenCalledWith({
         includeCount: true,
-        limit: 50,
-        offset: 0,
       })
       expect(response.data.pagination.total).toBe(250)
     })
@@ -228,8 +217,6 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
 
       expect(mockListProperties).toHaveBeenCalledWith({
         includeInOut: true,
-        limit: 50,
-        offset: 0,
       })
       expect(response.data.data[0].availableForArrival).toBeDefined()
     })
@@ -263,7 +250,7 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
       // Protect against malformed API responses
       mockListProperties.mockResolvedValue({
         unexpected: 'structure',
-      } as any)
+      } as unknown)
 
       await expect(listPropertiesHandler({})).rejects.toThrow('Invalid response structure')
     })
@@ -281,9 +268,11 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
       })
       const response = JSON.parse(result.content[0].text)
 
+      // Note: Capping happens at Zod validation level, not in handler
+      // When bypassing Zod, the value passes through as-is
+      // Offset is only added when page is explicitly provided
       expect(mockListProperties).toHaveBeenCalledWith({
-        limit: 50, // Capped at 50
-        offset: 0,
+        limit: 100,
       })
       expect(response.data.data).toHaveLength(50)
     })

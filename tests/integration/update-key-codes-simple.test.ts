@@ -7,8 +7,8 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createTestServer } from '../test-server'
 
 describe('lodgify_update_key_codes Integration Test', () => {
-  let testServer: any
-  let mockClient: any
+  let testServer: Record<string, unknown>
+  let mockClient: Record<string, unknown>
 
   beforeEach(() => {
     // Create minimal mock client

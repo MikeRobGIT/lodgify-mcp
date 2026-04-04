@@ -12,7 +12,6 @@ import { extractVacantInventoryDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
-import type { ApiResponseData } from '../utils/response/types.js'
 import { generateSuggestions } from '../utils/suggestion-generator.js'
 import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolRegistration } from '../utils/types.js'
@@ -99,24 +98,32 @@ Example request:
         }
 
         const queryParams: AvailabilityQueryParams = { from: fromNorm, to: toNorm }
-        const result = await getClient().availability.getAvailabilityForProperty(
+        const rawResult = await getClient().availability.getAvailabilityForProperty(
           propertyId,
           queryParams,
         )
 
+        // Lodgify availability API returns an array — unwrap to first element
+        const result = Array.isArray(rawResult)
+          ? rawResult.length > 0
+            ? rawResult[0]
+            : { periods: [] }
+          : rawResult
+
         // Generate summary for availability data
-        const summary = generateSummary(result as unknown as ApiResponseData, 'availability')
+        const summary = generateSummary(result, 'availability')
 
         // Generate suggestions based on availability status
+        const resultRecord = result as Record<string, unknown>
         const suggestions = generateSuggestions('availability_check', 'property', {
           propertyId,
           from: fromNorm,
           to: toNorm,
-          available: (result as Record<string, unknown>)?.available,
+          available: resultRecord?.available,
         })
 
         // Use enhanceResponse to build the response with availability context
-        const enhanced = enhanceResponseBuilder(result as unknown, {
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'availability',
           operation: 'read',
           inputParams: { propertyId, ...queryParams },
@@ -243,7 +250,7 @@ Example request:
         const inventoryDetails = extractVacantInventoryDetails(result)
 
         // Generate summary for vacant inventory
-        const summary = generateSummary(result as unknown as ApiResponseData, 'vacant_inventory')
+        const summary = generateSummary(result, 'vacant_inventory')
 
         // Generate suggestions based on results
         const suggestions = hasProperties

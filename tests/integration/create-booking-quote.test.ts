@@ -244,7 +244,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         validUntil: '2025-06-30T15:00:00Z',
       })
 
-      const result = await createQuoteTool.handler({
+      const _result = await createQuoteTool.handler({
         bookingId: 'BK005',
         payload: {
           totalPrice: 2000.0,
@@ -329,7 +329,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         rentalAgreementId: 'RA456',
       })
 
-      const result = await createQuoteTool.handler({
+      const _result = await createQuoteTool.handler({
         bookingId: 'BKTERMS001',
         payload: {
           totalPrice: 5000.0,
@@ -489,7 +489,7 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
         bookingId: 'BK-2024_001#USD',
       })
 
-      const result = await createQuoteTool.handler({
+      const _result = await createQuoteTool.handler({
         bookingId: 'BK-2024_001#USD',
         payload: {
           totalPrice: 1750.0,

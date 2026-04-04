@@ -10,8 +10,8 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createTestServer } from '../test-server'
 
 describe('Check-in/Check-out Integration Tests', () => {
-  let testServer: any
-  let mockClient: any
+  let testServer: Record<string, unknown>
+  let mockClient: Record<string, unknown>
 
   beforeEach(() => {
     // Create a mock client with all required methods

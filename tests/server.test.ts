@@ -218,7 +218,9 @@ describe('MCP Server Integration Tests', () => {
         params: { from: '2025-11-01', to: '2025-11-30' },
       })
 
-      expect(mockClient.listBookings).toHaveBeenCalledWith({ from: '2025-11-01', to: '2025-11-30' })
+      expect(mockClient.listBookings).toHaveBeenCalledWith({
+        params: { from: '2025-11-01', to: '2025-11-30' },
+      })
       expect(response.content[0].text).toContain(fixtures.booking.id)
     })
 

@@ -222,9 +222,10 @@ describe('Input Sanitizer - Critical Security Validators', () => {
     it('should throw proper error messages for security', () => {
       try {
         validatePropertyId('prop; DROP TABLE;')
-      } catch (error: any) {
-        expect(error.code).toBe(ErrorCode.InvalidParams)
-        expect(error.message).toContain('must contain only letters, numbers')
+      } catch (error: unknown) {
+        const err = error as { code: string; message: string }
+        expect(err.code).toBe(ErrorCode.InvalidParams)
+        expect(err.message).toContain('must contain only letters, numbers')
       }
     })
   })
@@ -341,8 +342,9 @@ describe('Input Sanitizer - Critical Security Validators', () => {
     it('should provide context in error messages', () => {
       try {
         validatePrice(-100, 'deposit')
-      } catch (error: any) {
-        expect(error.message).toContain('Invalid deposit')
+      } catch (error: unknown) {
+        const err = error as { message: string }
+        expect(err.message).toContain('Invalid deposit')
       }
     })
   })

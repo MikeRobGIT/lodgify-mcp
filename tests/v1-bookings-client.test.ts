@@ -8,7 +8,7 @@
  * - Handle reservation requests
  */
 
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { BaseApiClient } from '../src/api/base-client'
 import { BookingsV1Client } from '../src/api/v1/bookings/client'
 import type { BookingV1Response, CreateBookingV1Request } from '../src/api/v1/bookings/types'
@@ -146,10 +146,18 @@ describe('V1 Bookings Client - Critical User-Facing Booking Creation', () => {
             status: 'Tentative',
             source_text: 'Booking.com',
           },
+          apiVersion: 'v1',
         })
 
         // Verify status update was attempted
-        expect(requestSpy).toHaveBeenNthCalledWith(2, 'PUT', '888777/tentative')
+        expect(requestSpy).toHaveBeenNthCalledWith(
+          2,
+          'PUT',
+          'reservation/booking/888777/tentative',
+          {
+            apiVersion: 'v1',
+          },
+        )
 
         expect(result.id).toBe(888777)
         expect(result.status).toBe('tentative')
@@ -205,7 +213,9 @@ describe('V1 Bookings Client - Critical User-Facing Booking Creation', () => {
 
         // Verify status endpoint was called
         expect(requestSpy).toHaveBeenCalledTimes(2)
-        expect(requestSpy).toHaveBeenNthCalledWith(2, 'PUT', '555666/book')
+        expect(requestSpy).toHaveBeenNthCalledWith(2, 'PUT', 'reservation/booking/555666/book', {
+          apiVersion: 'v1',
+        })
 
         expect(result.id).toBe(555666)
         expect(result.status).toBe('confirmed')

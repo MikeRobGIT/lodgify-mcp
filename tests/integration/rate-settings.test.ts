@@ -8,8 +8,8 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { createTestServer } from '../test-server.js'
 
 describe('lodgify_rate_settings - Critical Rate Configuration Tool', () => {
-  let testServer: any
-  let mockClient: any
+  let testServer: Record<string, unknown>
+  let mockClient: Record<string, unknown>
 
   beforeEach(() => {
     // Create a mock client with all required methods
@@ -169,9 +169,9 @@ describe('lodgify_rate_settings - Critical Rate Configuration Tool', () => {
         serviceFeePercent: 5,
       }
 
-      mockClient.getRateSettings.mockImplementation(async (params: any) => {
+      mockClient.getRateSettings.mockImplementation(async (params: Record<string, unknown>) => {
         // Test server passes params object directly
-        if (params && params.houseId) {
+        if (params?.houseId) {
           expect(params.houseId).toBe(12345)
         }
         return mockPropertyRateSettings
@@ -436,7 +436,9 @@ describe('lodgify_rate_settings - Critical Rate Configuration Tool', () => {
     it('should verify tool registration metadata', async () => {
       // Verify the tool is properly registered with correct metadata
       const response = await testServer.listTools()
-      const toolInfo = response.tools.find((t: any) => t.name === 'lodgify_rate_settings')
+      const toolInfo = response.tools.find(
+        (t: { name: string }) => t.name === 'lodgify_rate_settings',
+      )
 
       expect(toolInfo).toBeDefined()
       expect(toolInfo.description).toContain('rate settings')

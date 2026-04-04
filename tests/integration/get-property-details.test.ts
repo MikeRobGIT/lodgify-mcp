@@ -9,7 +9,7 @@ import { getPropertyTools } from '../../src/mcp/tools/property-tools.js'
 import type { EnhancedResponse } from '../../src/mcp/utils/response/types.js'
 
 describe('lodgify_get_property - Critical Property Details Retrieval', () => {
-  let mockClient: any
+  let mockClient: Record<string, unknown>
   let tools: ReturnType<typeof getPropertyTools>
   let getPropertyTool: ReturnType<typeof getPropertyTools>[0]
 
@@ -182,7 +182,7 @@ describe('lodgify_get_property - Critical Property Details Retrieval', () => {
 
   it('should handle property not found (404) with helpful suggestions', async () => {
     // Mock 404 error
-    const error = new Error('Property not found') as any
+    const error = new Error('Property not found') as Error & { statusCode?: number }
     error.statusCode = 404
     error.message = 'Property with ID 999999 not found'
     mockClient.properties.getProperty.mockRejectedValue(error)
@@ -256,7 +256,7 @@ describe('lodgify_get_property - Critical Property Details Retrieval', () => {
     expect(response.data.maxOccupancy).toBe(7)
 
     // Verify room details are preserved
-    const kidsRoom = response.data.roomTypes.find((r: any) => r.name === 'Kids Room')
+    const kidsRoom = response.data.roomTypes.find((r: { name: string }) => r.name === 'Kids Room')
     expect(kidsRoom).toMatchObject({
       maxOccupancy: 3,
       beds: 3,
@@ -266,7 +266,7 @@ describe('lodgify_get_property - Critical Property Details Retrieval', () => {
 
   it('should handle network timeout gracefully', async () => {
     // Mock network timeout
-    const timeoutError = new Error('Network timeout') as any
+    const timeoutError = new Error('Network timeout') as Error & { code?: string }
     timeoutError.code = 'ETIMEDOUT'
     mockClient.properties.getProperty.mockRejectedValue(timeoutError)
 
@@ -277,7 +277,7 @@ describe('lodgify_get_property - Critical Property Details Retrieval', () => {
 
   it('should handle invalid property ID format', async () => {
     // Test with invalid ID (though TypeScript should catch this)
-    const invalidError = new Error('Invalid property ID format') as any
+    const invalidError = new Error('Invalid property ID format') as Error & { statusCode?: number }
     invalidError.statusCode = 400
     mockClient.properties.getProperty.mockRejectedValue(invalidError)
 
@@ -321,7 +321,10 @@ describe('lodgify_get_property - Critical Property Details Retrieval', () => {
 
   it('should handle rate-limited API response', async () => {
     // Mock 429 rate limit error
-    const rateLimitError = new Error('Rate limit exceeded') as any
+    const rateLimitError = new Error('Rate limit exceeded') as Error & {
+      statusCode?: number
+      headers?: Record<string, string>
+    }
     rateLimitError.statusCode = 429
     rateLimitError.headers = { 'Retry-After': '60' }
     mockClient.properties.getProperty.mockRejectedValue(rateLimitError)
@@ -391,7 +394,7 @@ describe('lodgify_get_property - Critical Property Details Retrieval', () => {
 
   it('should handle unauthorized access (401)', async () => {
     // Mock 401 unauthorized error
-    const authError = new Error('Unauthorized') as any
+    const authError = new Error('Unauthorized') as Error & { statusCode?: number }
     authError.statusCode = 401
     authError.message = 'Invalid API key'
     mockClient.properties.getProperty.mockRejectedValue(authError)

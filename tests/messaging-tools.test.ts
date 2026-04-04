@@ -16,18 +16,21 @@ describe('Messaging Tools - Critical guest communication feature', () => {
   let tools: ReturnType<typeof getMessagingTools>
 
   beforeEach(() => {
-    // Reset mock client for each test
     mockClient = {
       messaging: {
         getThread: vi.fn(),
-      } as any,
+      } as unknown as LodgifyOrchestrator['messaging'],
     }
     getClient = () => mockClient as LodgifyOrchestrator
     tools = getMessagingTools(getClient)
   })
 
   describe('lodgify_get_thread - Retrieve guest conversation threads', () => {
-    const getThreadTool = () => tools.find((t) => t.name === 'lodgify_get_thread')!
+    const getThreadTool = () => {
+      const tool = tools.find((t) => t.name === 'lodgify_get_thread')
+      if (!tool) throw new Error('Tool lodgify_get_thread not found')
+      return tool
+    }
 
     test('should retrieve thread with multiple messages successfully', async () => {
       const mockThread = {
@@ -69,13 +72,15 @@ describe('Messaging Tools - Critical guest communication feature', () => {
         ],
       }
 
-      ;(mockClient.messaging!.getThread as any).mockResolvedValue(mockThread)
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockThread,
+      )
 
       const result = (await getThreadTool().handler({
         threadGuid: '550e8400-e29b-41d4-a716-446655440000',
       })) as CallToolResult
 
-      expect(mockClient.messaging!.getThread).toHaveBeenCalledWith(
+      expect(mockClient.messaging?.getThread).toHaveBeenCalledWith(
         '550e8400-e29b-41d4-a716-446655440000',
       )
 
@@ -114,7 +119,9 @@ describe('Messaging Tools - Critical guest communication feature', () => {
         messages: [],
       }
 
-      ;(mockClient.messaging!.getThread as any).mockResolvedValue(mockThread)
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockThread,
+      )
 
       const result = (await getThreadTool().handler({
         threadGuid: 'thread_empty_123',
@@ -130,27 +137,27 @@ describe('Messaging Tools - Critical guest communication feature', () => {
     })
 
     test('should handle thread not found error', async () => {
-      ;(mockClient.messaging!.getThread as any).mockRejectedValue(
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Thread not found: Invalid thread UID'),
       )
 
-      // Error handler should throw an McpError
-      await expect(async () => {
-        await getThreadTool().handler({
+      await expect(
+        getThreadTool().handler({
           threadGuid: 'invalid_thread_id',
-        })
-      }).toThrow()
+        }),
+      ).rejects.toThrow()
     })
 
     test('should handle network timeout gracefully', async () => {
-      ;(mockClient.messaging!.getThread as any).mockRejectedValue(new Error('Request timeout'))
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Request timeout'),
+      )
 
-      // Error handler should throw an McpError
-      await expect(async () => {
-        await getThreadTool().handler({
+      await expect(
+        getThreadTool().handler({
           threadGuid: '550e8400-e29b-41d4-a716-446655440000',
-        })
-      }).toThrow()
+        }),
+      ).rejects.toThrow()
     })
 
     test('should sanitize input thread GUID', async () => {
@@ -159,15 +166,16 @@ describe('Messaging Tools - Critical guest communication feature', () => {
         messages: [],
       }
 
-      ;(mockClient.messaging!.getThread as any).mockResolvedValue(mockThread)
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockThread,
+      )
 
-      // Test with extra whitespace
       const result = (await getThreadTool().handler({
         threadGuid: '  thread_123  ',
       })) as CallToolResult
 
       // Should call with trimmed value
-      expect(mockClient.messaging!.getThread).toHaveBeenCalledWith('thread_123')
+      expect(mockClient.messaging?.getThread).toHaveBeenCalledWith('thread_123')
 
       const response = JSON.parse(result.content[0].text)
       expect(response.operation.status).toBe('success')
@@ -206,7 +214,9 @@ describe('Messaging Tools - Critical guest communication feature', () => {
         ],
       }
 
-      ;(mockClient.messaging!.getThread as any).mockResolvedValue(mockThread)
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockThread,
+      )
 
       const result = (await getThreadTool().handler({
         threadGuid: 'thread_complex',
@@ -239,7 +249,9 @@ describe('Messaging Tools - Critical guest communication feature', () => {
         ],
       }
 
-      ;(mockClient.messaging!.getThread as any).mockResolvedValue(mockThread)
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockThread,
+      )
 
       const result = (await getThreadTool().handler({
         threadGuid: 'thread_special',
@@ -253,21 +265,21 @@ describe('Messaging Tools - Critical guest communication feature', () => {
     })
 
     test('should handle API rate limiting', async () => {
-      ;(mockClient.messaging!.getThread as any).mockRejectedValue(
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Rate limit exceeded. Please try again in 60 seconds.'),
       )
 
-      // Error handler should throw an McpError
-      await expect(async () => {
-        await getThreadTool().handler({
+      await expect(
+        getThreadTool().handler({
           threadGuid: 'thread_123',
-        })
-      }).toThrow()
+        }),
+      ).rejects.toThrow()
     })
 
     test('should handle malformed API response gracefully', async () => {
-      // API returns unexpected structure
-      ;(mockClient.messaging!.getThread as any).mockResolvedValue(null as any)
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        null as unknown,
+      )
 
       const result = (await getThreadTool().handler({
         threadGuid: 'thread_malformed',
@@ -297,7 +309,9 @@ describe('Messaging Tools - Critical guest communication feature', () => {
         unread: true,
       }
 
-      ;(mockClient.messaging!.getThread as any).mockResolvedValue(mockThread)
+      ;(mockClient.messaging?.getThread as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockThread,
+      )
 
       const result = (await getThreadTool().handler({
         threadGuid: 'thread_long',

@@ -7,8 +7,8 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createTestServer } from '../test-server.js'
 
 describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
-  let testServer: any
-  let mockClient: any
+  let testServer: Record<string, unknown>
+  let mockClient: Record<string, unknown>
 
   beforeEach(() => {
     // Create a mock client with the listBookings method and other required methods
@@ -56,7 +56,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
   describe('Daily Operations - Finding and Managing Bookings', () => {
     test('should list upcoming bookings for property managers to prepare for arrivals', async () => {
       // Property managers need to see future bookings to prepare properties
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK001',
@@ -109,10 +109,10 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
       const response = await testServer.callTool('lodgify_list_bookings', params)
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          limit: 10,
-          offset: 0,
+          page: 1,
+          size: 10,
           stayFilter: 'Upcoming',
           includeCount: true,
         }),
@@ -130,7 +130,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should find currently checked-in guests for property managers', async () => {
       // Essential for knowing who is currently in properties
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK003',
@@ -159,10 +159,10 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 20,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           stayFilter: 'Current',
-          limit: 20,
+          size: 20,
         }),
       )
 
@@ -173,7 +173,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should retrieve bookings arriving on a specific date', async () => {
       // Critical for daily check-in preparations
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK004',
@@ -192,10 +192,11 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 5,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           stayFilter: 'ArrivalDate',
           stayFilterDate: '2024-03-15T00:00:00Z',
+          size: 5,
         }),
       )
 
@@ -205,7 +206,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should find bookings departing on a specific date', async () => {
       // Essential for coordinating checkouts and cleaning schedules
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK005',
@@ -224,10 +225,11 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 10,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           stayFilter: 'DepartureDate',
           stayFilterDate: '2024-03-22T00:00:00Z',
+          size: 10,
         }),
       )
 
@@ -237,7 +239,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should retrieve historic bookings for reporting', async () => {
       // Used for financial reporting and performance analysis
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK006',
@@ -275,7 +277,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
   describe('Advanced Filtering and Business Operations', () => {
     test('should filter bookings updated since a specific date', async () => {
       // Critical for keeping external systems synchronized
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK008',
@@ -292,7 +294,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 15,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           updatedSince: '2024-03-01T00:00:00Z',
         }),
@@ -304,7 +306,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should include transaction details when requested', async () => {
       // Essential for financial management and payment tracking
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK009',
@@ -324,7 +326,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 10,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           includeTransactions: true,
         }),
@@ -337,7 +339,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should handle pagination for large booking lists', async () => {
       // Essential for managing properties with many bookings
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: new Array(20).fill(null).map((_, i) => ({
           id: `BK${100 + i}`,
           status: 'confirmed',
@@ -352,10 +354,12 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         includeCount: true,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          offset: 20, // Page 2 with size 20
-          limit: 20,
+          page: 2,
+          size: 20,
+          stayFilter: 'All',
+          includeCount: true,
         }),
       )
 
@@ -366,7 +370,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should include external bookings from OTAs', async () => {
       // Important for understanding total occupancy across all channels
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK-AIRBNB-001',
@@ -390,7 +394,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 20,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           includeExternal: true,
         }),
@@ -416,7 +420,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should handle empty results gracefully', async () => {
       // Important for user experience when no bookings match filters
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [],
         pagination: { total: 0, limit: 10, offset: 0 },
       })
@@ -434,7 +438,9 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should handle API errors gracefully', async () => {
       // Network issues shouldn't crash the application
-      mockClient.bookings.listBookings.mockRejectedValue(new Error('Network timeout'))
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockRejectedValue(
+        new Error('Network timeout'),
+      )
 
       const response = await testServer.callTool('lodgify_list_bookings', {
         stayFilter: 'Upcoming',
@@ -447,7 +453,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should handle trash filter for deleted bookings', async () => {
       // Important for recovering accidentally deleted bookings
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK-DELETED-001',
@@ -464,7 +470,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 10,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           trash: 'True',
         }),
@@ -478,7 +484,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
   describe('Business-Critical Scenarios', () => {
     test('should retrieve all booking details for comprehensive reporting', async () => {
       // Full booking details needed for monthly reports
-      mockClient.bookings.listBookings.mockResolvedValue({
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockResolvedValue({
         data: [
           {
             id: 'BK-FULL-001',
@@ -508,7 +514,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         size: 50,
       })
 
-      expect(mockClient.bookings.listBookings).toHaveBeenCalledWith(
+      expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           includeTransactions: true,
           includeQuoteDetails: true,
@@ -525,7 +531,9 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
     test('should handle rate limiting with appropriate error message', async () => {
       // Rate limiting shouldn't cause confusion
-      mockClient.bookings.listBookings.mockRejectedValue(new Error('429 Too Many Requests'))
+      ;(mockClient.listBookings as ReturnType<typeof mock>).mockRejectedValue(
+        new Error('429 Too Many Requests'),
+      )
 
       const response = await testServer.callTool('lodgify_list_bookings', {
         stayFilter: 'All',
@@ -548,7 +556,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         (t: { name: string }) => t.name === 'lodgify_list_bookings',
       )
       expect(listBookingsTool).toBeDefined()
-      expect(listBookingsTool.description).toContain('List Bookings')
+      expect(listBookingsTool.description).toContain('List bookings')
     })
   })
 })

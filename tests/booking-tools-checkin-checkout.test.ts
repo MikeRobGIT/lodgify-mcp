@@ -8,15 +8,14 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from 'bun:test'
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator'
 import { getBookingTools } from '../src/mcp/tools/booking-tools'
 
 describe('Booking Tools - Checkin/Checkout Handlers', () => {
   let mockClient: Partial<LodgifyOrchestrator>
   let tools: ReturnType<typeof getBookingTools>
-  let checkinTool: any
-  let checkoutTool: any
+  let checkinTool: ReturnType<typeof getBookingTools>[number]
+  let checkoutTool: ReturnType<typeof getBookingTools>[number]
 
   beforeEach(() => {
     // Create mock client with checkin/checkout methods
@@ -146,9 +145,9 @@ describe('Booking Tools - Checkin/Checkout Handlers', () => {
       expect(
         response.suggestions.some(
           (s: string) =>
-            s.toLowerCase().includes('welcome') ||
-            s.toLowerCase().includes('amenities') ||
-            s.toLowerCase().includes('key'),
+            s.toLowerCase().includes('verify') ||
+            s.toLowerCase().includes('identity') ||
+            s.toLowerCase().includes('codes'),
         ),
       ).toBe(true)
     })
@@ -321,13 +320,13 @@ describe('Booking Tools - Checkin/Checkout Handlers', () => {
       expect(response.data.estimatedCost).toBe(150.0)
       expect(response.data.securityDepositHeld).toBe(true)
 
-      // Should include damage-related suggestions
+      // Should include action-related suggestions for checkout
       expect(
         response.suggestions.some(
           (s: string) =>
-            s.toLowerCase().includes('damage') ||
-            s.toLowerCase().includes('deposit') ||
-            s.toLowerCase().includes('claim'),
+            s.toLowerCase().includes('cleaning') ||
+            s.toLowerCase().includes('property condition') ||
+            s.toLowerCase().includes('report'),
         ),
       ).toBe(true)
     })

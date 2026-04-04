@@ -73,9 +73,8 @@ describe('Health Check - Critical User-Facing Monitoring', () => {
     })
 
     it('should measure API response time accurately', async () => {
-      // User scenario: Monitoring API performance for SLA tracking
-      let resolvePromise: () => void
-      const delayedPromise = new Promise<any>((resolve) => {
+      let resolvePromise: (() => void) | undefined
+      const delayedPromise = new Promise<{ data: unknown[]; count: number }>((resolve) => {
         resolvePromise = () => resolve({ data: [], count: 0 })
       })
 
@@ -84,7 +83,7 @@ describe('Health Check - Critical User-Facing Monitoring', () => {
           listProperties: jest.fn().mockImplementation(async () => {
             // Simulate 100ms API delay
             await new Promise((resolve) => setTimeout(resolve, 100))
-            resolvePromise!()
+            resolvePromise?.()
             return delayedPromise
           }),
         },

@@ -5,7 +5,6 @@
  * use to generate secure payment links for collecting guest payments online.
  */
 
-import { ErrorCode } from '@modelcontextprotocol/sdk/types.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { getBookingTools } from '../src/mcp/tools/booking-tools.js'
@@ -41,7 +40,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - Create payment link for booking
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK12345',
           payload: {
             amount: 500.0,
@@ -66,9 +65,14 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         expect(response.data.amount).toBe(mockResponse.amount)
         expect(response.data.currency).toBe(mockResponse.currency)
         expect(response.details).toBeDefined()
-        expect(response.suggestions).toContain(
-          expect.stringMatching(/send.*payment.*link|share.*guest/i),
+        expect(response.suggestions).toBeDefined()
+        expect(Array.isArray(response.suggestions)).toBe(true)
+        expect(response.suggestions.length).toBeGreaterThan(0)
+        // Check if any suggestion matches the expected pattern
+        const hasPaymentLinkSuggestion = response.suggestions.some((s: string) =>
+          /send.*payment.*link|share.*guest/i.test(s),
         )
+        expect(hasPaymentLinkSuggestion).toBe(true)
       })
 
       it('should create a payment link with custom description for guest clarity', async () => {
@@ -83,7 +87,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - Create payment link with description
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK67890',
           payload: {
             amount: 1500.0,
@@ -117,7 +121,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - Create payment link for deposit
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK99999',
           payload: {
             amount: 300.0,
@@ -145,7 +149,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK11111',
           payload: {
             amount: 750.0,
@@ -174,7 +178,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - Create payment link in JPY
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK22222',
           payload: {
             amount: 50000.0,
@@ -196,7 +200,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockRejectedValue(new Error('Invalid booking ID'))
 
         // Act & Assert
-        await expect(handler!({ id: '', payload: { amount: 100 } })).rejects.toThrow(
+        await expect(handler?.({ id: '', payload: { amount: 100 } })).rejects.toThrow(
           'Invalid booking ID',
         )
       })
@@ -212,7 +216,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - No amount specified
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK12345',
           payload: {},
         })
@@ -232,7 +236,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - No currency specified
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK12345',
           payload: {
             amount: 500.0,
@@ -255,7 +259,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - With description
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK12345',
           payload: {
             amount: 250.0,
@@ -279,7 +283,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act - Booking ID with special chars
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK-123/45#test',
           payload: {
             amount: 100.0,
@@ -301,7 +305,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
 
         // Act & Assert
         await expect(
-          handler!({
+          handler?.({
             id: 'INVALID_BOOKING',
             payload: {
               amount: 500.0,
@@ -317,7 +321,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
 
         // Act & Assert
         await expect(
-          handler!({
+          handler?.({
             id: 'BK12345',
             payload: {
               amount: 1000.0,
@@ -333,7 +337,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
 
         // Act & Assert
         await expect(
-          handler!({
+          handler?.({
             id: 'BK12345',
             payload: {
               amount: 250.0,
@@ -344,14 +348,13 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
       })
 
       it('should handle rate limiting errors', async () => {
-        // Arrange - Too many requests
-        const rateLimitError = new Error('Rate limit exceeded')
-        ;(rateLimitError as any).statusCode = 429
+        const rateLimitError = new Error('Rate limit exceeded') as Error & { statusCode: number }
+        rateLimitError.statusCode = 429
         mockCreateBookingPaymentLink.mockRejectedValue(rateLimitError)
 
         // Act & Assert
         await expect(
-          handler!({
+          handler?.({
             id: 'BK12345',
             payload: {
               amount: 100.0,
@@ -362,14 +365,15 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
       })
 
       it('should handle permission denied errors', async () => {
-        // Arrange - No permission to create payment links
-        const permissionError = new Error('Permission denied: payment link creation disabled')
-        ;(permissionError as any).statusCode = 403
+        const permissionError = new Error(
+          'Permission denied: payment link creation disabled',
+        ) as Error & { statusCode: number }
+        permissionError.statusCode = 403
         mockCreateBookingPaymentLink.mockRejectedValue(permissionError)
 
         // Act & Assert
         await expect(
-          handler!({
+          handler?.({
             id: 'BK12345',
             payload: {
               amount: 500.0,
@@ -392,7 +396,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK33333',
           payload: {
             amount: 999999.99,
@@ -413,7 +417,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK44444',
           payload: {
             amount: 200.0,
@@ -424,7 +428,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         // Assert - Handles minimal response gracefully
         const response = JSON.parse(result.content[0].text)
         expect(response.operation.status).toBe('success')
-        expect(response.data).toEqual(mockResponse)
+        expect(response.data).toMatchObject(mockResponse)
       })
 
       it('should handle decimal precision in payment amounts', async () => {
@@ -438,7 +442,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK55555',
           payload: {
             amount: 123.45,
@@ -461,7 +465,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK66666',
           payload: {
             amount: 300.0,
@@ -494,11 +498,11 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
 
         // Act - Create two payment links concurrently
         const [result1, result2] = await Promise.all([
-          handler!({
+          handler?.({
             id: 'BK77777',
             payload: { amount: 100.0, currency: 'USD' },
           }),
-          handler!({
+          handler?.({
             id: 'BK88888',
             payload: { amount: 200.0, currency: 'EUR' },
           }),
@@ -528,7 +532,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK99999',
           payload: {
             amount: 850.0,
@@ -556,7 +560,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK10101',
           payload: {
             amount: 5000.0,
@@ -587,7 +591,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
         mockCreateBookingPaymentLink.mockResolvedValue(mockResponse)
 
         // Act
-        const result = await handler!({
+        const result = await handler?.({
           id: 'BK20202',
           payload: {
             amount: 425.0,

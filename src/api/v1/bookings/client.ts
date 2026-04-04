@@ -236,7 +236,7 @@ export class BookingsV1Client extends BaseApiModule {
    */
   private transformToApiRequest(booking: CreateBookingV1Request): CreateBookingV1ApiRequest {
     // Split guest name into first/last (simple approach)
-    const nameParts = booking.guest_name.trim().split(' ')
+    const nameParts = booking.guest_name.trim().split(/\s+/)
     const firstName = nameParts[0] || ''
     const lastName = nameParts.slice(1).join(' ') || ''
 
@@ -300,7 +300,7 @@ export class BookingsV1Client extends BaseApiModule {
 
       if (updates.guest_name) {
         // Split guest name into first/last (simple approach)
-        const nameParts = updates.guest_name.trim().split(' ')
+        const nameParts = updates.guest_name.trim().split(/\s+/)
         const firstName = nameParts[0] || ''
         const lastName = nameParts.slice(1).join(' ') || ''
 

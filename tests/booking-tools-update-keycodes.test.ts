@@ -11,7 +11,7 @@ import { getBookingTools } from '../src/mcp/tools/booking-tools.js'
 describe('lodgify_update_key_codes Handler - Critical Property Access Feature', () => {
   let mockClient: Partial<LodgifyOrchestrator>
   let getClient: () => LodgifyOrchestrator
-  let updateKeyCodesHandler: any
+  let updateKeyCodesHandler: ((args: Record<string, unknown>) => Promise<unknown>) | undefined
 
   beforeEach(() => {
     // Reset mock for each test

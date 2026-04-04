@@ -6,18 +6,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 import type { BaseApiClient } from '../src/api/base-client'
 import { RatesV1Client } from '../src/api/v1/rates/client'
-import type { RateUpdateV1Request, RateUpdateV1Response } from '../src/api/v1/rates/types'
+import type { RateUpdateV1Request } from '../src/api/v1/rates/types'
 
 // Mock BaseApiClient for testing
 class MockBaseApiClient implements BaseApiClient {
   baseUrl = 'https://api.lodgify.com'
   authHeaders = { 'X-ApiKey': 'test-key' }
 
-  private mockResponse: any = null
+  private mockResponse: unknown = null
   private mockError: Error | null = null
-  private lastRequest: { method: string; path: string; body?: any } | null = null
+  private lastRequest: { method: string; path: string; body?: unknown } | null = null
 
-  setMockResponse(response: any) {
+  setMockResponse(response: unknown) {
     this.mockResponse = response
     this.mockError = null
   }
@@ -31,7 +31,7 @@ class MockBaseApiClient implements BaseApiClient {
     return this.lastRequest
   }
 
-  async request(method: string, path: string, options?: any): Promise<any> {
+  async request(method: string, path: string, options?: unknown): Promise<unknown> {
     this.lastRequest = { method, path, body: options?.body }
 
     if (this.mockError) {
@@ -192,11 +192,13 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
     describe('Input Validation - Protecting Users from Errors', () => {
       it('should reject missing rate data', async () => {
-        await expect(client.updateRatesV1(null as any)).rejects.toThrow('Rate data is required')
-
-        await expect(client.updateRatesV1(undefined as any)).rejects.toThrow(
+        await expect(client.updateRatesV1(null as unknown as RateUpdateV1Request)).rejects.toThrow(
           'Rate data is required',
         )
+
+        await expect(
+          client.updateRatesV1(undefined as unknown as RateUpdateV1Request),
+        ).rejects.toThrow('Rate data is required')
       })
 
       it('should reject invalid property ID', async () => {
@@ -383,7 +385,7 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
                 room_type_id: 67890,
                 start_date: '2025-06-01',
                 end_date: '2025-06-30',
-                price_per_day: 'free' as any,
+                price_per_day: 'free' as unknown as number,
               },
             ],
           }),
@@ -397,7 +399,7 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
                 room_type_id: 67890,
                 start_date: '2025-06-01',
                 end_date: '2025-06-30',
-                price_per_day: null as any,
+                price_per_day: null as unknown as number,
               },
             ],
           }),
@@ -431,7 +433,7 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
                 start_date: '2025-06-01',
                 end_date: '2025-06-30',
                 price_per_day: 100,
-                min_stay: 'two' as any,
+                min_stay: 'two' as unknown as number,
               },
             ],
           }),
@@ -579,14 +581,12 @@ describe('V1 Rates Client - Critical User-Facing Pricing Management', () => {
 
     describe('Client Configuration and Initialization', () => {
       it('should initialize with correct module configuration', () => {
-        // Verify the client is properly configured for v1 API
         expect(client).toBeDefined()
         expect(client).toBeInstanceOf(RatesV1Client)
 
-        // The module should be configured for v1 rates endpoint
-        expect((client as any).version).toBe('v1')
-        expect((client as any).basePath).toBe('rates')
-        expect((client as any).name).toBe('rates-v1')
+        expect((client as unknown as Record<string, unknown>).version).toBe('v1')
+        expect((client as unknown as Record<string, unknown>).basePath).toBe('rates')
+        expect((client as unknown as Record<string, unknown>).name).toBe('rates-v1')
       })
 
       it('should use correct API endpoint path', async () => {

@@ -8,18 +8,16 @@ import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator'
 import { getBookingTools } from '../src/mcp/tools/booking-tools'
 
 describe('lodgify_get_booking_payment_link', () => {
-  let mockClient: any
+  let mockClient: Partial<LodgifyOrchestrator>
   let tools: ReturnType<typeof getBookingTools>
-  let getBookingPaymentLinkTool: any
+  let getBookingPaymentLinkTool: ReturnType<typeof getBookingTools>[number]
 
   beforeEach(() => {
-    // Create a mock client with all required methods
     mockClient = {
       getBookingPaymentLink: vi.fn(),
-    } as unknown as LodgifyOrchestrator
+    }
 
-    // Get tools and find the payment link tool
-    tools = getBookingTools(() => mockClient)
+    tools = getBookingTools(() => mockClient as LodgifyOrchestrator)
     getBookingPaymentLinkTool = tools.find((t) => t.name === 'lodgify_get_booking_payment_link')
   })
 
@@ -421,9 +419,8 @@ describe('lodgify_get_booking_payment_link', () => {
     })
 
     it('should handle rate-limited responses', async () => {
-      // Mock rate limit error
-      const rateLimitError = new Error('Rate limit exceeded')
-      ;(rateLimitError as any).statusCode = 429
+      const rateLimitError = new Error('Rate limit exceeded') as Error & { statusCode: number }
+      rateLimitError.statusCode = 429
       mockClient.getBookingPaymentLink.mockRejectedValue(rateLimitError)
 
       await expect(
@@ -434,9 +431,8 @@ describe('lodgify_get_booking_payment_link', () => {
     })
 
     it('should handle unauthorized access', async () => {
-      // Mock unauthorized error
-      const unauthorizedError = new Error('Unauthorized')
-      ;(unauthorizedError as any).statusCode = 401
+      const unauthorizedError = new Error('Unauthorized') as Error & { statusCode: number }
+      unauthorizedError.statusCode = 401
       mockClient.getBookingPaymentLink.mockRejectedValue(unauthorizedError)
 
       await expect(

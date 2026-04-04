@@ -1,0 +1,42 @@
+{
+  "env": {
+    "MAX_MCP_OUTPUT_TOKENS": "50000"
+  },
+  "permissions": {
+    "allow": [
+      "mcp__browsermcp__browser_get_console_logs",
+      "Bash(cat:*)",
+      "mcp__browsermcp__browser_screenshot",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "mcp__browsermcp__browser_type",
+      "mcp__browsermcp__browser_press_key",
+      "Bash(journalctl:*)",
+      "Bash(systemctl:*)",
+      "Read(//var/log/**)",
+      "Bash(docker-compose build:*)",
+      "Bash(tee:*)",
+      "Bash(docker logs:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(bun run typecheck:*)",
+      "Bash(docker compose:*)",
+      "Bash(curl:*)",
+      "Bash(docker ps:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "/home/crisis/_workspace/litellm/"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "lodgify",
+    "taskmaster-ai",
+    "mixpost",
+    "playwright"
+  ]
+}

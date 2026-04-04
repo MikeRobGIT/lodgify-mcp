@@ -3,6 +3,7 @@
  */
 
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
+import { isRecord } from './helpers.js'
 import type {
   ApiResponseData,
   EntityType,
@@ -16,7 +17,7 @@ import type {
  * 1. (data, contextType) for simple context-based summaries
  * 2. (operationType, entityType, details, status) for detailed operation summaries
  */
-export function generateSummary(data: ApiResponseData, contextType: string): string
+export function generateSummary(data: unknown, contextType: string): string
 export function generateSummary(
   operationType: OperationType,
   entityType: EntityType,
@@ -24,35 +25,28 @@ export function generateSummary(
   status?: OperationStatus,
 ): string
 export function generateSummary(
-  dataOrOperationType: ApiResponseData | OperationType | string,
+  dataOrOperationType: unknown,
   contextTypeOrEntityType?: string | EntityType,
   details?: ApiResponseData,
   status?: OperationStatus,
 ): string {
   // Handle the two-argument form (data, contextType)
   if (typeof contextTypeOrEntityType === 'string' && !details && !status) {
-    const data = dataOrOperationType as ApiResponseData
+    const data = isRecord(dataOrOperationType) ? dataOrOperationType : {}
     const contextType = contextTypeOrEntityType
 
     // Generate context-specific summaries
     switch (contextType) {
       case 'property_list': {
-        // Handle direct array response first
-        if (Array.isArray(data)) {
-          return `Retrieved ${data.length} properties`
+        // Check for data array (from PropertiesListResponse structure)
+        if (Array.isArray(data.data)) {
+          const count = data.data.length
+          return `Retrieved ${count} ${count === 1 ? 'property' : 'properties'}`
         }
-
-        // Handle object responses safely
-        if (data && typeof data === 'object') {
-          const dataObj = data as Record<string, unknown>
-          // Check for data array (from PropertiesListResponse structure)
-          if (Array.isArray(dataObj.data)) {
-            return `Retrieved ${dataObj.data.length} properties`
-          }
-          // Fallback to check properties field (legacy)
-          if (Array.isArray(dataObj.properties)) {
-            return `Retrieved ${dataObj.properties.length} properties`
-          }
+        // Fallback to check properties field (legacy)
+        if (Array.isArray(data.properties)) {
+          const count = data.properties.length
+          return `Retrieved ${count} ${count === 1 ? 'property' : 'properties'}`
         }
 
         return `Retrieved 0 properties`
@@ -64,19 +58,17 @@ export function generateSummary(
       case 'availability':
         return `Availability check completed`
       case 'vacant_inventory': {
-        const dataObj = data as Record<string, unknown>
         // Try to get the count from counts.availableProperties first
-        if (dataObj.counts && typeof dataObj.counts === 'object') {
-          const counts = dataObj.counts as Record<string, unknown>
-          if (counts.availableProperties !== undefined) {
-            return `Found ${counts.availableProperties} vacant ${counts.availableProperties === 1 ? 'property' : 'properties'}`
+        if (isRecord(data.counts)) {
+          const { availableProperties } = data.counts
+          if (availableProperties !== undefined) {
+            return `Found ${availableProperties} vacant ${availableProperties === 1 ? 'property' : 'properties'}`
           }
         }
         // Fallback to counting available properties in the array
-        if (dataObj.properties && Array.isArray(dataObj.properties)) {
-          const availableCount = dataObj.properties.filter((p: unknown) => {
-            const prop = p as Record<string, unknown>
-            return prop.available === true
+        if (Array.isArray(data.properties)) {
+          const availableCount = data.properties.filter((p: unknown) => {
+            return isRecord(p) && p.available === true
           }).length
           return `Found ${availableCount} vacant ${availableCount === 1 ? 'property' : 'properties'}`
         }
@@ -93,9 +85,9 @@ export function generateSummary(
       case 'booking_quote':
         return `Booking quote created`
       case 'booking_list':
-        return `Retrieved ${(data.bookings as unknown[] | undefined)?.length || (data.data as unknown[] | undefined)?.length || 0} bookings`
+        return `Retrieved ${Array.isArray(data.bookings) ? data.bookings.length : Array.isArray(data.data) ? data.data.length : 0} bookings`
       case 'webhook_list':
-        return `Retrieved ${(data.webhooks as unknown[] | undefined)?.length || 0} webhooks`
+        return `Retrieved ${Array.isArray(data.webhooks) ? data.webhooks.length : 0} webhooks`
       case 'webhook_subscribe':
         return `Webhook subscription created`
       case 'webhook_unsubscribe':
@@ -108,7 +100,7 @@ export function generateSummary(
   }
 
   // Handle the four-argument form (original implementation)
-  const operationType = dataOrOperationType as OperationType
+  const operationType = String(dataOrOperationType) as OperationType
   const entityType = contextTypeOrEntityType as EntityType
   const detailsData = details || {}
 

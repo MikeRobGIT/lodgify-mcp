@@ -8,11 +8,11 @@
  */
 
 import type { ToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { getWebhookTools } from '../src/mcp/tools/webhook-tools.js'
 
 describe('Webhook Tools - Critical Real-Time Notification Features', () => {
-  let mockOrchestrator: any
+  let mockOrchestrator: Record<string, unknown>
   let webhookTools: ReturnType<typeof getWebhookTools>
 
   beforeEach(() => {
@@ -63,7 +63,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_list_webhooks')
       expect(tool).toBeDefined()
 
-      const result = (await tool!.handler({})) as ToolResult
+      const result = (await tool?.handler({})) as ToolResult
       const response = JSON.parse(result.content[0].text)
 
       // Verify response structure
@@ -98,7 +98,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       })
 
       const tool = webhookTools.find((t) => t.name === 'lodgify_list_webhooks')
-      const result = (await tool!.handler({})) as ToolResult
+      const result = (await tool?.handler({})) as ToolResult
       const response = JSON.parse(result.content[0].text)
 
       expect(response.operation.status).toBe('success')
@@ -121,7 +121,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
 
       const tool = webhookTools.find((t) => t.name === 'lodgify_list_webhooks')
 
-      await expect(tool!.handler({})).rejects.toThrow()
+      await expect(tool?.handler({})).rejects.toThrow()
     })
   })
 
@@ -141,7 +141,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
       expect(tool).toBeDefined()
 
-      const result = (await tool!.handler({
+      const result = (await tool?.handler({
         event: 'booking_new_status_booked',
         target_url: 'https://propertymanager.com/webhooks/new-bookings',
       })) as ToolResult
@@ -182,7 +182,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       mockOrchestrator.subscribeWebhook.mockResolvedValue(mockSubscription)
 
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
-      const result = (await tool!.handler({
+      const result = (await tool?.handler({
         event: 'guest_message_received',
         target_url: 'https://propertymanager.com/webhooks/messages',
       })) as ToolResult
@@ -202,7 +202,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
 
       await expect(
-        tool!.handler({
+        tool?.handler({
           event: 'booking_new_status_booked',
           target_url: 'http://insecure.com/webhook', // HTTP not HTTPS
         }),
@@ -222,7 +222,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       mockOrchestrator.subscribeWebhook.mockResolvedValue(mockSubscription)
 
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
-      const result = (await tool!.handler({
+      const result = (await tool?.handler({
         event: 'rate_change',
         target_url: 'https://propertymanager.com/webhooks/rates',
       })) as ToolResult
@@ -244,7 +244,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       mockOrchestrator.subscribeWebhook.mockResolvedValue(mockSubscription)
 
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
-      const result = (await tool!.handler({
+      const result = (await tool?.handler({
         event: 'availability_change',
         target_url: 'https://channelmanager.com/webhooks/availability',
       })) as ToolResult
@@ -266,7 +266,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       mockOrchestrator.subscribeWebhook.mockResolvedValue(mockSubscription)
 
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
-      const result = (await tool!.handler({
+      const result = (await tool?.handler({
         event: 'booking_status_change_booked',
         target_url: 'https://operations.com/webhooks/status-changes',
       })) as ToolResult
@@ -284,7 +284,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
 
       await expect(
-        tool!.handler({
+        tool?.handler({
           event: 'booking_new_status_booked',
           target_url: 'https://example.com/webhook',
         }),
@@ -301,7 +301,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_unsubscribe_webhook')
       expect(tool).toBeDefined()
 
-      const result = (await tool!.handler({
+      const result = (await tool?.handler({
         id: 'wh_001',
       })) as ToolResult
       const response = JSON.parse(result.content[0].text)
@@ -331,7 +331,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_unsubscribe_webhook')
 
       await expect(
-        tool!.handler({
+        tool?.handler({
           id: 'invalid_webhook_id',
         }),
       ).rejects.toThrow('not found')
@@ -344,8 +344,8 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_unsubscribe_webhook')
 
       // Unsubscribe multiple webhooks
-      const result1 = (await tool!.handler({ id: 'wh_001' })) as ToolResult
-      const result2 = (await tool!.handler({ id: 'wh_002' })) as ToolResult
+      const result1 = (await tool?.handler({ id: 'wh_001' })) as ToolResult
+      const result2 = (await tool?.handler({ id: 'wh_002' })) as ToolResult
 
       const response1 = JSON.parse(result1.content[0].text)
       const response2 = JSON.parse(result2.content[0].text)
@@ -392,7 +392,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
       const tool = webhookTools.find((t) => t.name === 'lodgify_subscribe_webhook')
 
       await expect(
-        tool!.handler({
+        tool?.handler({
           event: 'booking_new_status_booked',
           target_url: 'https://example.com/webhook',
         }),
@@ -406,7 +406,7 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
 
       const tool = webhookTools.find((t) => t.name === 'lodgify_list_webhooks')
 
-      await expect(tool!.handler({})).rejects.toThrow('timed out')
+      await expect(tool?.handler({})).rejects.toThrow('timed out')
     })
   })
 })

@@ -29,9 +29,8 @@ describe('lodgify_get_booking handler', () => {
 
     getClient = vi.fn(() => mockClient as LodgifyOrchestrator)
 
-    // Get the specific tool registration
     const tools = getBookingTools(getClient)
-    tool = tools.find((t) => t.name === 'lodgify_get_booking')!
+    tool = tools.find((t) => t.name === 'lodgify_get_booking')
   })
 
   it('should retrieve complete booking details successfully', async () => {
@@ -71,7 +70,7 @@ describe('lodgify_get_booking handler', () => {
     mockClient.bookings.getBooking.mockResolvedValueOnce(mockBookingResponse)
 
     // Act: Call the handler directly
-    const result = await tool.handler({ id: 'BK12345' })
+    const result = await tool?.handler({ id: 'BK12345' })
 
     // Parse the JSON response
     const response = JSON.parse(result.content[0].text)
@@ -148,7 +147,7 @@ describe('lodgify_get_booking handler', () => {
     mockClient.bookings.getBooking.mockRejectedValueOnce(notFoundError)
 
     // Act & Assert
-    await expect(tool.handler({ id: 'INVALID_ID' })).rejects.toThrow('Booking not found')
+    await expect(tool?.handler({ id: 'INVALID_ID' })).rejects.toThrow('Booking not found')
     expect(mockClient.bookings.getBooking).toHaveBeenCalledWith('INVALID_ID')
   })
 
@@ -158,7 +157,7 @@ describe('lodgify_get_booking handler', () => {
     mockClient.bookings.getBooking.mockRejectedValueOnce(timeoutError)
 
     // Act & Assert
-    await expect(tool.handler({ id: 'BK12345' })).rejects.toThrow('Network timeout')
+    await expect(tool?.handler({ id: 'BK12345' })).rejects.toThrow('Network timeout')
   })
 
   it('should include payment details in enhanced response when available', async () => {
@@ -306,6 +305,6 @@ describe('lodgify_get_booking handler', () => {
     mockClient.bookings.getBooking.mockRejectedValueOnce(unauthorizedError)
 
     // Act & Assert
-    await expect(tool.handler({ id: 'BK12345' })).rejects.toThrow('Unauthorized: Invalid API key')
+    await expect(tool?.handler({ id: 'BK12345' })).rejects.toThrow('Unauthorized: Invalid API key')
   })
 })

@@ -373,7 +373,7 @@ describe('lodgify_get_property_availability - User-facing availability checking'
         periods: [],
       })
 
-      const result = await availabilityTool.handler({
+      const _result = await availabilityTool.handler({
         propertyId: '', // Empty - gets passed through
         params: {
           from: '2025-06-01',

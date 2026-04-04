@@ -10,7 +10,7 @@ import type { IResourceRegistry } from '../src/mcp/utils/types.js'
 
 describe('MCP Resources - Rate Limit Resource', () => {
   let registry: IResourceRegistry
-  let registeredResources: Map<string, any>
+  let registeredResources: Map<string, Record<string, unknown>>
   let mockClient: LodgifyOrchestrator
 
   beforeEach(() => {

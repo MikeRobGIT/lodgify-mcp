@@ -4,7 +4,7 @@
  * when they don't know the exact property IDs
  */
 
-import { beforeEach, describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { findProperties } from '../src/mcp/tools/helper-tools.js'
 

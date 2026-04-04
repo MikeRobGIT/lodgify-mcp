@@ -226,12 +226,12 @@ describe('QuotesClient - Critical Quote Calculation Feature', () => {
       await expect(
         client.getQuoteRaw('property-123', null as unknown as Record<string, unknown>),
       ).rejects.toThrow('Valid parameters object is required for quote')
-      await expect(client.getQuoteRaw('property-123', undefined as any)).rejects.toThrow(
-        'Valid parameters object is required for quote',
-      )
-      await expect(client.getQuoteRaw('property-123', 'invalid' as any)).rejects.toThrow(
-        'Valid parameters object is required for quote',
-      )
+      await expect(
+        client.getQuoteRaw('property-123', undefined as unknown as Record<string, unknown>),
+      ).rejects.toThrow('Valid parameters object is required for quote')
+      await expect(
+        client.getQuoteRaw('property-123', 'invalid' as unknown as Record<string, unknown>),
+      ).rejects.toThrow('Valid parameters object is required for quote')
     })
   })
 

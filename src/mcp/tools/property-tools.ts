@@ -220,14 +220,11 @@ Example response:
         // Generate summary for property list using safe type conversion
         const summary = generateSummary(toApiResponseData(result), 'property_list')
 
-        // Generate suggestions if no properties found or for next steps
-        const suggestions =
-          result?.data?.length === 0
-            ? generateSuggestions('no_results', 'property', sanitized)
-            : generateSuggestions('success', 'property_list', {
-                count: result?.data?.length || 0,
-                hasMore: getPaginationHasNext(result),
-              })
+        // Generate suggestions for property list (same suggestions regardless of count)
+        const suggestions = generateSuggestions('list', 'property', {
+          count: result?.data?.length || 0,
+          hasMore: getPaginationHasNext(result),
+        })
 
         // Use enhanceResponse to build the response
         const enhanced = enhanceResponseBuilder(toApiResponseData(result), {

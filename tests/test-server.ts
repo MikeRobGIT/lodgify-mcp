@@ -314,7 +314,16 @@ export function createTestServer(mockClient: unknown): TestServer {
 
           // Booking Management Tools
           case 'lodgify_list_bookings':
-            result = await mockClient.listBookings(args.params)
+            // Validate stayFilterDate requirement
+            if (
+              (args.stayFilter === 'ArrivalDate' || args.stayFilter === 'DepartureDate') &&
+              !args.stayFilterDate
+            ) {
+              throw new Error(
+                'stayFilterDate is required when using ArrivalDate or DepartureDate filter',
+              )
+            }
+            result = await mockClient.listBookings(args)
             break
           case 'lodgify_get_booking':
             result = await mockClient.getBooking(args.id)

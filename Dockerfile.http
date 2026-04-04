@@ -37,6 +37,9 @@ COPY --chown=mcpuser:mcpuser docker-entrypoint.sh /app/
 COPY --chown=mcpuser:mcpuser scripts/env-check.sh /app/scripts/
 RUN chmod +x /app/docker-entrypoint.sh /app/scripts/env-check.sh
 
+# Create writable logs directory for fallback file logging
+RUN mkdir -p /app/logs && chown mcpuser:mcpuser /app/logs
+
 USER mcpuser
 
 ARG PORT=3000

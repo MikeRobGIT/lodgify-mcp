@@ -1,6 +1,8 @@
 /**
- * File-based logger configuration for MCP server
- * Prevents console.log interference with STDIO transport
+ * Logger configuration for MCP server
+ *
+ * In HTTP mode: logs to stdout (Docker logging driver handles rotation).
+ * In STDIO mode: logs to file to avoid interfering with the MCP protocol on stdout.
  */
 
 import fs from 'node:fs'
@@ -12,8 +14,20 @@ import pino from 'pino'
  */
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
 
+/** Maximum serialized size for a single log entry's data payload (bytes). */
+const MAX_LOG_ENTRY_BYTES = 64 * 1024 // 64 KB
+
 /**
- * Create log directory if it doesn't exist
+ * Detect whether we are running in HTTP transport mode.
+ * When true, we can safely write logs to stdout.
+ */
+function isHttpMode(): boolean {
+  // server-http.ts sets PORT; the entrypoint also prints MODE: http
+  return Boolean(process.env.PORT) || process.env.MCP_TRANSPORT === 'http'
+}
+
+/**
+ * Create log directory if it doesn't exist (STDIO mode only)
  */
 function ensureLogDirectory(): string {
   const logDir = path.join(process.cwd(), 'logs')
@@ -47,41 +61,90 @@ function getLogLevel(): LogLevel {
 }
 
 /**
- * Create and configure the file-based logger
+ * Clean up old log files (older than 7 days) in the given directory.
+ * Best-effort — failures are silently ignored.
+ */
+function pruneOldLogFiles(logDir: string): void {
+  try {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+    for (const entry of fs.readdirSync(logDir)) {
+      if (!entry.startsWith('lodgify-mcp-') || !entry.endsWith('.log')) continue
+      const filePath = path.join(logDir, entry)
+      try {
+        const stat = fs.statSync(filePath)
+        if (stat.mtimeMs < cutoff) {
+          fs.unlinkSync(filePath)
+        }
+      } catch {
+        // ignore per-file errors
+      }
+    }
+  } catch {
+    // ignore directory-level errors
+  }
+}
+
+/**
+ * Create and configure the logger
  */
 function createLogger() {
-  const logDir = ensureLogDirectory()
   const logLevel = getLogLevel()
 
-  // Log file path with timestamp for rotation
+  if (isHttpMode()) {
+    // HTTP mode: write to stdout — Docker logging driver handles rotation/size
+    return pino({
+      level: logLevel,
+      timestamp: pino.stdTimeFunctions.isoTime,
+      formatters: {
+        level: (label) => ({ level: label }),
+      },
+    })
+  }
+
+  // STDIO mode: write to file so stdout stays clean for MCP protocol
+  const logDir = ensureLogDirectory()
+  pruneOldLogFiles(logDir)
+
   const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD
   const logFile = path.join(logDir, `lodgify-mcp-${timestamp}.log`)
 
-  // Create logger instance with file destination
-  const logger = pino(
+  return pino(
     {
       level: logLevel,
       timestamp: pino.stdTimeFunctions.isoTime,
       formatters: {
-        level: (label) => {
-          return { level: label }
-        },
+        level: (label) => ({ level: label }),
       },
     },
     pino.destination({
       dest: logFile,
-      sync: true, // Sync writes to ensure logger is immediately ready
-      mkdir: true, // Create directory if needed
+      sync: false, // async writes to avoid blocking the event loop
+      mkdir: true,
     }),
   )
-
-  return logger
 }
 
 /**
  * Global logger instance
  */
 export const logger = createLogger()
+
+/**
+ * Truncate a value if its JSON representation exceeds the size limit.
+ * Returns the original value when small enough, or a truncation notice string.
+ */
+function truncateIfLarge(value: unknown): unknown {
+  if (value === undefined || value === null) return value
+  try {
+    const serialized = JSON.stringify(value)
+    if (serialized && serialized.length > MAX_LOG_ENTRY_BYTES) {
+      return `[truncated: ${serialized.length} bytes]`
+    }
+  } catch {
+    return '[unserializable]'
+  }
+  return value
+}
 
 /**
  * Safe logging wrapper that ensures no output to stdout/stderr
@@ -99,7 +162,7 @@ export class SafeLogger {
    */
   error(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
-      this.pino.error({ extra: args }, message)
+      this.pino.error({ extra: args.map(truncateIfLarge) }, message)
     } else {
       this.pino.error(message)
     }
@@ -110,7 +173,7 @@ export class SafeLogger {
    */
   warn(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
-      this.pino.warn({ extra: args }, message)
+      this.pino.warn({ extra: args.map(truncateIfLarge) }, message)
     } else {
       this.pino.warn(message)
     }
@@ -121,7 +184,7 @@ export class SafeLogger {
    */
   info(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
-      this.pino.info({ extra: args }, message)
+      this.pino.info({ extra: args.map(truncateIfLarge) }, message)
     } else {
       this.pino.info(message)
     }
@@ -132,7 +195,7 @@ export class SafeLogger {
    */
   debug(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
-      this.pino.debug({ extra: args }, message)
+      this.pino.debug({ extra: args.map(truncateIfLarge) }, message)
     } else {
       this.pino.debug(message)
     }
@@ -156,9 +219,9 @@ export class SafeLogger {
             method: details.method,
             url: details.url,
             headers: this.sanitizeHeaders(details.headers),
-            body: details.body,
+            body: truncateIfLarge(details.body),
             status: details.status,
-            response: details.response,
+            response: truncateIfLarge(details.response),
           },
         },
         'HTTP Request/Response',
@@ -207,7 +270,7 @@ export function createChildLogger(context: Record<string, unknown>): SafeLogger 
 
     error(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
-        this.childPino.error({ extra: args }, message)
+        this.childPino.error({ extra: args.map(truncateIfLarge) }, message)
       } else {
         this.childPino.error(message)
       }
@@ -215,7 +278,7 @@ export function createChildLogger(context: Record<string, unknown>): SafeLogger 
 
     warn(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
-        this.childPino.warn({ extra: args }, message)
+        this.childPino.warn({ extra: args.map(truncateIfLarge) }, message)
       } else {
         this.childPino.warn(message)
       }
@@ -223,7 +286,7 @@ export function createChildLogger(context: Record<string, unknown>): SafeLogger 
 
     info(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
-        this.childPino.info({ extra: args }, message)
+        this.childPino.info({ extra: args.map(truncateIfLarge) }, message)
       } else {
         this.childPino.info(message)
       }
@@ -231,7 +294,7 @@ export function createChildLogger(context: Record<string, unknown>): SafeLogger 
 
     debug(message: string, ...args: unknown[]): void {
       if (args.length > 0) {
-        this.childPino.debug({ extra: args }, message)
+        this.childPino.debug({ extra: args.map(truncateIfLarge) }, message)
       } else {
         this.childPino.debug(message)
       }

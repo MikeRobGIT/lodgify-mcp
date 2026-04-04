@@ -4,13 +4,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import type { TestServer } from '../test-server.js'
 import { createTestServer } from '../test-server.js'
 
 describe('Rate Tools - Critical Pricing Quote Feature', () => {
   let testServer: TestServer
-  let mockClient: any
+  let mockClient: Record<string, unknown>
 
   beforeEach(async () => {
     mockClient = {
@@ -42,7 +41,7 @@ describe('Rate Tools - Critical Pricing Quote Feature', () => {
           },
         }
 
-        mockClient.getQuote = async (propertyId: string, params: any) => {
+        mockClient.getQuote = async (propertyId: string, params: Record<string, unknown>) => {
           expect(propertyId).toBe('684855')
           // The params should have from/to, not arrival/departure
           expect(params.from).toBe('2025-09-01')
@@ -79,7 +78,7 @@ describe('Rate Tools - Critical Pricing Quote Feature', () => {
           available: true,
         }
 
-        mockClient.getQuote = async (propertyId: string, params: any) => {
+        mockClient.getQuote = async (_propertyId: string, params: Record<string, unknown>) => {
           // Params are passed as-is in test server
           expect(params.from).toBe('2025-10-15')
           expect(params.to).toBe('2025-10-18')
@@ -116,7 +115,7 @@ describe('Rate Tools - Critical Pricing Quote Feature', () => {
           },
         }
 
-        mockClient.getQuote = async (propertyId: string, params: any) => {
+        mockClient.getQuote = async (_propertyId: string, params: Record<string, unknown>) => {
           expect(params['roomTypes[0].Id']).toBe(101)
           expect(params['roomTypes[1].Id']).toBe(102)
           expect(params['guest_breakdown[adults]']).toBe(4)
@@ -208,7 +207,7 @@ describe('Rate Tools - Critical Pricing Quote Feature', () => {
       test('should normalize ISO date-time to YYYY-MM-DD format', async () => {
         const mockQuoteResponse = { totalPrice: 500.0, currency: 'USD' }
 
-        mockClient.getQuote = async (propertyId: string, params: any) => {
+        mockClient.getQuote = async (_propertyId: string, params: Record<string, unknown>) => {
           // Should normalize ISO dates to YYYY-MM-DD
           // Test server passes params as-is, including from/to
           expect(params.from).toBe('2025-09-15T14:00:00Z')
@@ -412,8 +411,8 @@ describe('Rate Tools - Critical Pricing Quote Feature', () => {
 
       test('should handle rate limiting (429) errors', async () => {
         mockClient.getQuote = async () => {
-          const error = new Error('429: Too Many Requests')
-          ;(error as any).statusCode = 429
+          const error = new Error('429: Too Many Requests') as Error & { statusCode?: number }
+          error.statusCode = 429
           throw error
         }
 

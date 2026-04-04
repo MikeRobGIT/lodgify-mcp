@@ -181,7 +181,7 @@ describe('Daily Rates Tool - Critical Pricing Information Feature', () => {
             startDate: 'June 1st, 2024', // Invalid format
             endDate: '2024-06-03',
           }),
-        ).rejects.toThrow(/Date must be in YYYY-MM-DD format/)
+        ).rejects.toThrow(/Invalid.*date format.*YYYY-MM-DD/i)
       })
 
       it('should reject end date before start date', async () => {
@@ -356,8 +356,16 @@ describe('Daily Rates Tool - Critical Pricing Information Feature', () => {
       it('should handle rates with no availability data', async () => {
         const mockResponse: DailyRatesResponse = {
           rates: [
-            { date: '2024-06-01', price: 150.0, currency: 'USD' } as any, // Missing availability
-            { date: '2024-06-02', price: 150.0, currency: 'USD' } as any,
+            {
+              date: '2024-06-01',
+              price: 150.0,
+              currency: 'USD',
+            } as unknown as DailyRatesResponse['rates'][0],
+            {
+              date: '2024-06-02',
+              price: 150.0,
+              currency: 'USD',
+            } as unknown as DailyRatesResponse['rates'][0],
           ],
           averageRate: 150.0,
           lowestRate: 150.0,

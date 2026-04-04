@@ -8,7 +8,6 @@
 import { beforeEach, describe, expect, it, jest } from 'bun:test'
 import type { BaseApiClient } from '../src/api/base-client'
 import { AvailabilityClient } from '../src/api/v2/availability/client'
-import type { AvailabilityQueryParams } from '../src/api/v2/availability/types'
 
 describe('AvailabilityClient - Critical user-facing availability checking', () => {
   let mockClient: BaseApiClient
@@ -53,7 +52,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
       }
 
       // Mock the base module's request method
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue(mockResponse)
 
       const result = await availabilityClient.getAvailabilityForProperty('PROP123', {
@@ -77,7 +79,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should handle date format normalization (ISO 8601 to YYYY-MM-DD)', async () => {
       // User provides ISO 8601 dates, system should handle them
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ periods: [] })
 
       await availabilityClient.getAvailabilityForProperty('PROP123', {
@@ -103,7 +108,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
         default_availability: 'available',
       }
 
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue(mockResponse)
 
       const result = await availabilityClient.getAvailabilityForProperty('PROP123')
@@ -114,7 +122,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should handle partial date ranges (only from date)', async () => {
       // User wants availability from a specific date onward
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ periods: [] })
 
       await availabilityClient.getAvailabilityForProperty('PROP123', { from: '2025-08-01' })
@@ -129,7 +140,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should handle partial date ranges (only to date)', async () => {
       // User wants availability up to a specific date
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ periods: [] })
 
       await availabilityClient.getAvailabilityForProperty('PROP123', { to: '2025-08-20' })
@@ -151,7 +165,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should handle API errors gracefully', async () => {
       // User sees helpful error when API fails
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockRejectedValue(new Error('API Error: Property not found'))
 
       await expect(
@@ -195,7 +212,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
         totalBookedDays: 5,
       }
 
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue(mockResponse)
 
       const result = await availabilityClient.getAvailabilityForProperty('PROP123', {
@@ -227,7 +247,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
         ],
       }
 
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue(mockResponse)
 
       const result = await availabilityClient.getAvailabilityForRoom('PROP123', 'ROOM456', {
@@ -280,7 +303,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
         total_properties: 2,
       }
 
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue(mockResponse)
 
       const result = await availabilityClient.getAvailabilityAll({
@@ -302,7 +328,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should filter by specific property when requested', async () => {
       // User wants availability for specific property through general endpoint
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ properties: [] })
 
       await availabilityClient.getAvailabilityAll({
@@ -323,7 +352,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should filter by room type when requested', async () => {
       // User wants to find available rooms of specific type
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ rooms: [] })
 
       await availabilityClient.getAvailabilityAll({
@@ -344,7 +376,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should handle no parameters (get all availability)', async () => {
       // User wants general availability overview
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ properties: [] })
 
       await availabilityClient.getAvailabilityAll()
@@ -367,7 +402,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
         ],
       }
 
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue(undefined)
 
       await availabilityClient.updatePropertyAvailability('PROP123', payload)
@@ -385,13 +423,19 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should throw error when payload is missing', async () => {
       await expect(
-        availabilityClient.updatePropertyAvailability('PROP123', null as any),
+        availabilityClient.updatePropertyAvailability(
+          'PROP123',
+          null as unknown as Record<string, unknown>,
+        ),
       ).rejects.toThrow('Payload is required')
     })
 
     it('should throw error when payload is not an object', async () => {
       await expect(
-        availabilityClient.updatePropertyAvailability('PROP123', 'invalid' as any),
+        availabilityClient.updatePropertyAvailability(
+          'PROP123',
+          'invalid' as unknown as Record<string, unknown>,
+        ),
       ).rejects.toThrow('Payload is required')
     })
 
@@ -424,7 +468,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
         default_changeover: 'flexible',
       }
 
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ success: true })
 
       await availabilityClient.updatePropertyAvailability('PROP123', payload)
@@ -438,7 +485,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
   describe('Edge cases and error scenarios', () => {
     it('should handle empty availability response', async () => {
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({})
 
       const result = await availabilityClient.getAvailabilityForProperty('PROP123')
@@ -446,7 +496,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
     })
 
     it('should handle network timeout', async () => {
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockRejectedValue(new Error('Request timeout'))
 
       await expect(availabilityClient.getAvailabilityForProperty('PROP123')).rejects.toThrow(
@@ -466,7 +519,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
         ],
       }
 
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue(mockResponse)
 
       const result = await availabilityClient.getAvailabilityForProperty('PROP123')
@@ -477,7 +533,10 @@ describe('AvailabilityClient - Critical user-facing availability checking', () =
 
     it('should handle very long date ranges', async () => {
       // User checks availability for entire year
-      const requestSpy = jest.spyOn(availabilityClient as any, 'request')
+      const requestSpy = jest.spyOn(
+        availabilityClient as unknown as { request: jest.Mock },
+        'request',
+      )
       requestSpy.mockResolvedValue({ periods: [] })
 
       await availabilityClient.getAvailabilityForProperty('PROP123', {

@@ -263,17 +263,17 @@ describe('BookingsV1Client.updateBookingV1 - Critical booking modification funct
         'Booking ID is required',
       )
 
-      await expect(client.updateBookingV1(null as any, { adults: 2 })).rejects.toThrow(
-        'Booking ID is required',
-      )
+      await expect(
+        client.updateBookingV1(null as unknown as string | number, { adults: 2 }),
+      ).rejects.toThrow('Booking ID is required')
     })
 
     it('should reject update without any data', async () => {
       await expect(client.updateBookingV1(12345, {})).rejects.toThrow('Update data is required')
 
-      await expect(client.updateBookingV1(12345, null as any)).rejects.toThrow(
-        'Update data is required',
-      )
+      await expect(
+        client.updateBookingV1(12345, null as unknown as UpdateBookingV1Request),
+      ).rejects.toThrow('Update data is required')
     })
 
     it('should validate date format for arrival', async () => {
@@ -463,7 +463,9 @@ describe('BookingsV1Client.updateBookingV1 - Critical booking modification funct
       ]
 
       for (const { input, expected } of statusMappings) {
-        await client.updateBookingV1(11111, { status: input as any })
+        await client.updateBookingV1(11111, {
+          status: input as 'booked' | 'tentative' | 'declined' | 'confirmed',
+        })
 
         expect(mockRequest).toHaveBeenCalledWith('PUT', 'reservation/booking/11111', {
           apiVersion: 'v1',

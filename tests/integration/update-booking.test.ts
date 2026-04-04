@@ -4,7 +4,6 @@
  */
 
 import { beforeAll, beforeEach, describe, expect, it, jest } from 'bun:test'
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import type { LodgifyOrchestrator } from '../../src/lodgify-orchestrator.js'
 import { getBookingTools } from '../../src/mcp/tools/booking-tools.js'
 import type { ToolRegistration } from '../../src/mcp/utils/types.js'
@@ -358,11 +357,12 @@ describe('lodgify_update_booking MCP Tool', () => {
 
       const response = JSON.parse(result?.content[0]?.text || '{}')
       expect(response.operation.status).toBe('success')
-      // Suggestions may not be generated for all operations yet
+      // Suggestions should reflect booking update context
       if (response.suggestions) {
         expect(
           response.suggestions.some(
-            (s: string) => s.includes('Send confirmation email') || s.includes('updated'),
+            (s: string) =>
+              s.includes('Notify guest') || s.includes('payment') || s.includes('availability'),
           ),
         ).toBe(true)
       }

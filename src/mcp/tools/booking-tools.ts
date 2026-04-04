@@ -21,10 +21,31 @@ import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
 import { formatMcpResponse } from '../utils/response/index.js'
-import type { ApiResponseData } from '../utils/response/types.js'
 import { generateSuggestions } from '../utils/suggestion-generator.js'
 import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolRegistration } from '../utils/types.js'
+
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
+function normalizeSummaryDate(date?: string): string {
+  if (!date) {
+    return new Date().toISOString().split('T')[0]
+  }
+
+  if (!DATE_ONLY_REGEX.test(date)) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Invalid date format "${date}". Expected YYYY-MM-DD format.`,
+    )
+  }
+
+  const parsed = new Date(`${date}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime())) {
+    throw new McpError(ErrorCode.InvalidParams, `Invalid date value "${date}".`)
+  }
+
+  return date
+}
 
 /**
  * Register all booking management tools
@@ -121,7 +142,7 @@ Example response:
             .describe('Number of items per page'),
           includeCount: z.boolean().default(false).describe('Include total number of results'),
           stayFilter: z
-            .enum(BOOKING_CONFIG.VALID_STAY_FILTERS as unknown as readonly [string, ...string[]])
+            .enum(BOOKING_CONFIG.VALID_STAY_FILTERS)
             .default(BOOKING_CONFIG.DEFAULT_STAY_FILTER)
             .describe(
               'Filter by stay dates. Default is "Upcoming". Avoid "All" unless absolutely necessary (can return too many items). Use "Current" for active guests, "Historic" for past bookings, and "ArrivalDate"/"DepartureDate" with stayFilterDate for specific dates.',
@@ -190,7 +211,7 @@ Example response:
         const result = await getClient().bookings.listBookings(mappedParams)
 
         // Generate summary for booking list
-        const summary = generateSummary(result as unknown as ApiResponseData, 'booking_list')
+        const summary = generateSummary(result, 'booking_list')
 
         // Generate contextual suggestions based on results and filters
         const suggestions =
@@ -199,7 +220,12 @@ Example response:
             : generateSuggestions('success', 'booking_list', {
                 count: result?.data?.length || 0,
                 stayFilter: sanitized.stayFilter,
-                hasMore: (result?.pagination as Record<string, unknown>)?.hasNext as boolean,
+                hasMore: !!(
+                  result?.pagination &&
+                  typeof result.pagination === 'object' &&
+                  'hasNext' in result.pagination &&
+                  result.pagination.hasNext
+                ),
               })
 
         // Use enhanceResponse to build the response with booking insights
@@ -222,6 +248,96 @@ Example response:
           ],
         }
       }, 'lodgify_list_bookings'),
+    },
+
+    // Daily Booking Summary Tool
+    {
+      name: 'lodgify_daily_booking_summary',
+      category: 'Booking & Reservation Management',
+      config: {
+        title: 'Daily Booking Operations Summary',
+        description: `[Booking & Reservation Management] Generate an operations summary with today's check-ins and check-outs, tonight's occupancy, and tomorrow's arrivals. Each section includes complete booking details for every reservation in scope.
+
+Use this for front desk handoffs, housekeeping coordination, and daily operations planning.
+
+Example request:
+{
+  "date": "2026-02-16",         // Optional reference date (YYYY-MM-DD). Defaults to today in UTC.
+  "includeExternal": true,      // Include external OTA bookings (default: true)
+  "includeFullDetails": true    // Fetch full booking details per reservation (default: true)
+}`,
+        inputSchema: {
+          date: z
+            .string()
+            .regex(DATE_ONLY_REGEX, 'Date must be in YYYY-MM-DD format')
+            .optional()
+            .describe(
+              'Reference date for the summary in YYYY-MM-DD format. Defaults to today (UTC).',
+            ),
+          includeExternal: z
+            .boolean()
+            .default(true)
+            .describe('Include external bookings synced from OTA channels'),
+          includeFullDetails: z
+            .boolean()
+            .default(true)
+            .describe('Fetch full booking details for each reservation in the summary'),
+        },
+      },
+      handler: wrapToolHandler(async (input) => {
+        const sanitized = sanitizeInput(input) as {
+          date?: string
+          includeExternal?: boolean
+          includeFullDetails?: boolean
+        }
+
+        const date = normalizeSummaryDate(sanitized.date)
+        const includeExternal = sanitized.includeExternal ?? true
+        const includeFullDetails = sanitized.includeFullDetails ?? true
+
+        const result = await getClient().getDailyBookingSummary({
+          date,
+          includeExternal,
+          includeFullDetails,
+        })
+
+        const summary =
+          `Daily booking summary for ${result.referenceDate}: ` +
+          `${result.counts.checkInsToday} check-ins today, ` +
+          `${result.counts.checkOutsToday} check-outs today, ` +
+          `${result.counts.occupancyTonight} occupied tonight, ` +
+          `${result.counts.arrivalsTomorrow} arrivals tomorrow.`
+
+        const suggestions = [
+          "Review today's check-outs to schedule turnovers and inspections.",
+          'Confirm check-in instructions for today and tomorrow arrivals.',
+          'Use booking IDs in this report to open individual reservations if follow-up is needed.',
+        ]
+
+        const enhanced = enhanceResponseBuilder(result, {
+          entityType: 'booking',
+          operation: 'read',
+          inputParams: {
+            date,
+            includeExternal,
+            includeFullDetails,
+          },
+          metadata: {
+            summary,
+            suggestions,
+            warnings: result.warnings,
+          },
+        })
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(enhanced, null, 2),
+            },
+          ],
+        }
+      }, 'lodgify_daily_booking_summary'),
     },
 
     // Get Booking Details Tool
@@ -248,7 +364,7 @@ Example request:
         const bookingDetails = extractBookingDetails(result)
 
         // Generate contextual suggestions based on booking status
-        const suggestions = generateSuggestions('booking_retrieved', 'booking', {
+        const suggestions = generateSuggestions('read', 'booking', {
           bookingId: id,
           status: result?.status,
           checkIn: result?.checkIn,
@@ -304,9 +420,9 @@ Example request:
         const paymentDetails = extractPaymentLinkDetails(result)
 
         // Generate payment-specific suggestions
-        const suggestions = generateSuggestions('payment_link', 'booking', {
+        const suggestions = generateSuggestions('read', 'payment_link', {
           bookingId: id,
-          hasLink: !!(result as unknown as Record<string, unknown>)?.paymentLink,
+          hasLink: !!('paymentLink' in result),
           status: result?.status,
         })
 
@@ -387,11 +503,11 @@ Example request:
         const paymentDetails = extractPaymentLinkDetails(result)
 
         // Generate suggestions for next steps after payment link creation
-        const suggestions = generateSuggestions('payment_link_created', 'booking', {
+        const suggestions = generateSuggestions('create', 'payment_link', {
           bookingId: id,
           amount: payload.amount,
           currency: payload.currency,
-          paymentUrl: (result as unknown as Record<string, unknown>)?.paymentUrl,
+          paymentUrl: result.url,
         })
 
         // Use enhanceResponse with payment link creation context
@@ -457,7 +573,7 @@ Example request:
         const result = await getClient().updateKeyCodes(id.toString(), payload)
 
         // Generate suggestions for key code update
-        const suggestions = generateSuggestions('key_codes_updated', 'booking', {
+        const suggestions = generateSuggestions('update', 'key_codes', {
           bookingId: id,
           keyCount: payload.keyCodes?.length || 0,
         })
@@ -514,7 +630,7 @@ Example request:
         const result = await getClient().checkinBooking(id.toString(), time)
 
         // Generate suggestions for post-checkin actions
-        const suggestions = generateSuggestions('checkin_completed', 'booking', {
+        const suggestions = generateSuggestions('action', 'booking', {
           bookingId: id,
           checkinTime: time,
         })
@@ -571,7 +687,7 @@ Example request:
         const result = await getClient().checkoutBooking(id.toString(), time)
 
         // Generate suggestions for post-checkout actions
-        const suggestions = generateSuggestions('checkout_completed', 'booking', {
+        const suggestions = generateSuggestions('action', 'booking', {
           bookingId: id,
           checkoutTime: time,
         })
@@ -619,16 +735,16 @@ Example request:
         const result = await getClient().bookings.getExternalBookings(id)
 
         // Generate summary for external bookings
-        const summary = generateSummary(result as unknown as ApiResponseData, 'external_bookings')
+        const summary = generateSummary(result, 'external_bookings')
 
         // Generate suggestions for external booking management
-        const suggestions = generateSuggestions('external_bookings', 'booking', {
+        const suggestions = generateSuggestions('read', 'booking', {
           propertyId: id,
           count: Array.isArray(result) ? result.length : 0,
         })
 
         // Use enhanceResponse with external bookings context
-        const enhanced = enhanceResponseBuilder(result as unknown, {
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'external_booking',
           operation: 'list',
           inputParams: { id },
@@ -816,7 +932,7 @@ The transformation handles: guest name splitting, room structuring, status capit
         const bookingDetails = extractBookingDetails(finalResult)
 
         // Generate suggestions for newly created booking
-        const suggestions = generateSuggestions('booking_created', 'booking', {
+        const suggestions = generateSuggestions('create', 'booking', {
           bookingId: finalResult?.id,
           propertyId: sanitized.property_id,
           arrival: sanitized.arrival,
@@ -927,7 +1043,7 @@ This gets automatically transformed to the nested API structure with guest objec
         const bookingDetails = extractBookingDetails(result)
 
         // Generate suggestions for updated booking
-        const suggestions = generateSuggestions('booking_updated', 'booking', {
+        const suggestions = generateSuggestions('update', 'booking', {
           bookingId: id,
           updates: Object.keys(sanitizedUpdates),
         })
@@ -976,7 +1092,7 @@ Example request:
         const result = await getClient().deleteBookingV1(id)
 
         // Generate suggestions after booking deletion
-        const suggestions = generateSuggestions('booking_deleted', 'booking', {
+        const suggestions = generateSuggestions('delete', 'booking', {
           bookingId: id,
         })
 
