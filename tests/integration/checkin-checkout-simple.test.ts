@@ -7,10 +7,10 @@
  */
 
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { createTestServer } from '../test-server'
+import { createTestServer, type TestServer } from '../test-server'
 
 describe('Check-in/Check-out Integration Tests', () => {
-  let testServer: Record<string, unknown>
+  let testServer: TestServer
   let mockClient: Record<string, unknown>
 
   beforeEach(() => {

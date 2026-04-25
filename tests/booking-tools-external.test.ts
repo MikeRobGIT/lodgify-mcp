@@ -4,7 +4,7 @@
  * Property managers NEED this to see their full booking picture across all channels
  */
 
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, mock } from 'bun:test'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator'
 import { getBookingTools } from '../src/mcp/tools/booking-tools'
 import type { ToolRegistration } from '../src/mcp/utils/types'
@@ -12,7 +12,7 @@ import type { ToolRegistration } from '../src/mcp/utils/types'
 // Mock the orchestrator and client
 const mockClient = {
   bookings: {
-    getExternalBookings: vi.fn(),
+    getExternalBookings: mock(),
   },
 }
 

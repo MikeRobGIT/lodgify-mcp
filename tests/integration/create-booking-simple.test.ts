@@ -12,18 +12,17 @@
  */
 
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { createTestServer } from '../test-server.js'
+import { createTestServer, type TestServer } from '../test-server.js'
 
 describe('Booking Creation Simple Integration Tests', () => {
-  let testServer: Record<string, unknown>
+  let testServer: TestServer
   let mockClient: Record<string, unknown>
 
   beforeEach(() => {
     // Create a mock client with all required methods
     mockClient = {
-      // Primary method we're testing
+      // Primary method we're testing — real handler calls createBookingV1
       createBookingV1: mock(() => Promise.resolve()),
-      createBooking: mock(() => Promise.resolve()),
 
       // Other required methods for test server
       listProperties: mock(() => Promise.resolve()),
@@ -57,7 +56,7 @@ describe('Booking Creation Simple Integration Tests', () => {
   describe('lodgify_create_booking', () => {
     test('should successfully create a booking with minimal fields', async () => {
       // Mock successful booking creation
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 12345,
         property_id: 684855,
         room_type_id: 751902,
@@ -80,7 +79,7 @@ describe('Booking Creation Simple Integration Tests', () => {
         adults: 2,
       })
 
-      expect(mockClient.createBooking).toHaveBeenCalledWith(
+      expect(mockClient.createBookingV1).toHaveBeenCalledWith(
         expect.objectContaining({
           property_id: 684855,
           room_type_id: 751902,
@@ -100,7 +99,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle all optional fields when creating a booking', async () => {
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 67890,
         property_id: 123456,
         room_type_id: 789012,
@@ -144,7 +143,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle API errors gracefully', async () => {
-      mockClient.createBooking.mockRejectedValue(
+      mockClient.createBookingV1.mockRejectedValue(
         new Error('Property not available for selected dates'),
       )
 
@@ -162,7 +161,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle network timeouts', async () => {
-      mockClient.createBooking.mockRejectedValue(new Error('Network timeout'))
+      mockClient.createBookingV1.mockRejectedValue(new Error('Network timeout'))
 
       const response = await testServer.callTool('lodgify_create_booking', {
         property_id: 123,
@@ -178,7 +177,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle group bookings with children', async () => {
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 33333,
         property_id: 999,
         room_type_id: 888,
@@ -213,7 +212,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle special characters in guest names', async () => {
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 44444,
         property_id: 123,
         room_type_id: 456,
@@ -240,7 +239,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should create tentative bookings', async () => {
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 55555,
         property_id: 123,
         room_type_id: 456,
@@ -271,7 +270,7 @@ describe('Booking Creation Simple Integration Tests', () => {
       const today = new Date().toISOString().split('T')[0]
       const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
 
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 66666,
         property_id: 777,
         room_type_id: 666,
@@ -299,7 +298,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle extended stay bookings', async () => {
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 77777,
         property_id: 123,
         room_type_id: 456,
@@ -327,7 +326,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle booking with source information', async () => {
-      mockClient.createBooking.mockResolvedValue({
+      mockClient.createBookingV1.mockResolvedValue({
         id: 88888,
         property_id: 123,
         room_type_id: 456,
@@ -356,7 +355,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle rate limiting errors', async () => {
-      mockClient.createBooking.mockRejectedValue(new Error('429 Too Many Requests'))
+      mockClient.createBookingV1.mockRejectedValue(new Error('429 Too Many Requests'))
 
       const response = await testServer.callTool('lodgify_create_booking', {
         property_id: 123,
@@ -372,7 +371,7 @@ describe('Booking Creation Simple Integration Tests', () => {
     })
 
     test('should handle empty response from API', async () => {
-      mockClient.createBooking.mockResolvedValue({})
+      mockClient.createBookingV1.mockResolvedValue({})
 
       const response = await testServer.callTool('lodgify_create_booking', {
         property_id: 123,

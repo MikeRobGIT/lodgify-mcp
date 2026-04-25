@@ -949,6 +949,14 @@ export class LodgifyOrchestrator {
       throw new Error(`Invalid date value for daily summary: "${referenceDate}"`)
     }
 
+    // JS Date auto-normalizes impossible calendar values (e.g. 2026-02-31 → 2026-03-03).
+    // Round-trip to catch those before the summary runs against the wrong day.
+    if (parsedDate.toISOString().slice(0, 10) !== referenceDate) {
+      throw new Error(
+        `Invalid calendar date for daily summary: "${referenceDate}" (does not exist)`,
+      )
+    }
+
     const addDays = (date: string, days: number): string => {
       const d = new Date(`${date}T00:00:00Z`)
       d.setUTCDate(d.getUTCDate() + days)

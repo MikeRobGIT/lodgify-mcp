@@ -3,7 +3,7 @@
  * This is a critical user-facing feature for collecting payments from guests
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator'
 import { getBookingTools } from '../src/mcp/tools/booking-tools'
 
@@ -14,7 +14,7 @@ describe('lodgify_get_booking_payment_link', () => {
 
   beforeEach(() => {
     mockClient = {
-      getBookingPaymentLink: vi.fn(),
+      getBookingPaymentLink: mock(),
     }
 
     tools = getBookingTools(() => mockClient as LodgifyOrchestrator)

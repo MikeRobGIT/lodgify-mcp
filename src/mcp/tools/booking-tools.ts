@@ -18,6 +18,7 @@ import {
 } from '../utils/date/validator.js'
 import { extractBookingDetails, extractPaymentLinkDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
+import { isRecord } from '../utils/helpers.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
 import { formatMcpResponse } from '../utils/response/index.js'
@@ -420,10 +421,11 @@ Example request:
         const paymentDetails = extractPaymentLinkDetails(result)
 
         // Generate payment-specific suggestions
+        const resultRecord = isRecord(result) ? result : undefined
         const suggestions = generateSuggestions('read', 'payment_link', {
           bookingId: id,
-          hasLink: !!('paymentLink' in result),
-          status: result?.status,
+          hasLink: resultRecord ? 'paymentLink' in resultRecord : false,
+          status: resultRecord?.status,
         })
 
         // Use enhanceResponse for payment link context

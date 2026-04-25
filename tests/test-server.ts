@@ -1,17 +1,33 @@
 import pkg from '../package.json' with { type: 'json' }
 import type { ToolHandlerArgs } from './types.js'
 
+export interface ToolDefinition {
+  name: string
+  description: string
+  inputSchema: Record<string, unknown>
+}
+
+export interface ResourceDefinition {
+  uri: string
+  name: string
+  description: string
+  mimeType?: string
+}
+
+export interface ToolCallResponse {
+  content: Array<{ type: 'text'; text: string }>
+  isError?: boolean
+}
+
+export interface ResourceReadResponse {
+  contents: Array<{ uri: string; mimeType: string; text: string }>
+}
+
 export interface TestServer {
-  tools: Array<{
-    name: string
-    description: string
-    inputSchema: Record<string, unknown>
-  }>
-  listTools: () => { tools: Array<{ name: string; description: string; inputSchema: unknown }> }
-  listResources: () => { resources: Array<{ uri: string; name: string; description: string }> }
-  readResource: (args: { uri: string }) => {
-    contents: Array<{ uri: string; mimeType: string; text: string }>
-  }
+  listTools: () => Promise<{ tools: ToolDefinition[] }>
+  callTool: (name: string, args: ToolHandlerArgs) => Promise<ToolCallResponse>
+  listResources: () => Promise<{ resources: ResourceDefinition[] }>
+  readResource: (uri: string) => Promise<ResourceReadResponse>
 }
 
 /**
@@ -410,7 +426,8 @@ export function createTestServer(mockClient: unknown): TestServer {
 
           // v1 Booking CRUD Tools
           case 'lodgify_create_booking':
-            result = await mockClient.createBooking(args.payload || args)
+            // Real handler invokes createBookingV1 (v1 API endpoint)
+            result = await mockClient.createBookingV1(args.payload || args)
             break
           case 'lodgify_update_booking': {
             const { id, ...updateData } = args

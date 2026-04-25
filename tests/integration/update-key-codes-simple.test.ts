@@ -4,10 +4,10 @@
  */
 
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { createTestServer } from '../test-server'
+import { createTestServer, type TestServer } from '../test-server'
 
 describe('lodgify_update_key_codes Integration Test', () => {
-  let testServer: Record<string, unknown>
+  let testServer: TestServer
   let mockClient: Record<string, unknown>
 
   beforeEach(() => {
@@ -62,9 +62,6 @@ describe('lodgify_update_key_codes Integration Test', () => {
     // Check response structure
     expect(response.content[0].type).toBe('text')
     const result = JSON.parse(response.content[0].text)
-
-    // Log what we actually get back for debugging
-    console.log('Response result:', result)
 
     // Check that we got a response (adjust based on actual structure)
     expect(result).toBeDefined()

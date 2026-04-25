@@ -7,8 +7,8 @@
  * Without reliable webhooks, managers miss critical updates that impact operations.
  */
 
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { ToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { getWebhookTools } from '../src/mcp/tools/webhook-tools.js'
 
 describe('Webhook Tools - Critical Real-Time Notification Features', () => {
@@ -19,18 +19,14 @@ describe('Webhook Tools - Critical Real-Time Notification Features', () => {
     // Create mock orchestrator with webhook methods
     mockOrchestrator = {
       webhooks: {
-        listWebhooks: vi.fn(),
+        listWebhooks: mock(),
       },
-      subscribeWebhook: vi.fn(),
-      unsubscribeWebhook: vi.fn(),
+      subscribeWebhook: mock(),
+      unsubscribeWebhook: mock(),
     }
 
     // Get webhook tools with mock orchestrator
     webhookTools = getWebhookTools(() => mockOrchestrator)
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
   })
 
   describe('lodgify_list_webhooks - View Active Notification Subscriptions', () => {

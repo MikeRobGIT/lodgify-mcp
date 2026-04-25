@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { getPropertyTools } from '../src/mcp/tools/property-tools.js'
 import type { ToolRegistration } from '../src/mcp/utils/types.js'
@@ -6,11 +6,11 @@ import type { ToolRegistration } from '../src/mcp/utils/types.js'
 describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
   let mockClient: LodgifyOrchestrator
   let listPropertiesHandler: (params: Record<string, unknown>) => Promise<unknown>
-  let mockListProperties: ReturnType<typeof vi.fn>
+  let mockListProperties: ReturnType<typeof mock>
 
   beforeEach(() => {
     // Create mock function
-    mockListProperties = vi.fn()
+    mockListProperties = mock()
 
     // Create mock client
     mockClient = {
@@ -24,10 +24,6 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
     const tool = tools.find((t) => t.name === 'lodgify_list_properties')
     if (!tool) throw new Error('Tool not found')
     listPropertiesHandler = tool.handler
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
   })
 
   describe('Daily Operations - Property Inventory Management', () => {
@@ -129,7 +125,7 @@ describe('lodgify_list_properties - Critical User-Facing Feature Tests', () => {
 
     it('should warn about suspiciously low website IDs', async () => {
       // Protect users from common mistakes with website IDs
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleSpy = spyOn(console, 'warn').mockImplementation(() => {})
 
       mockListProperties.mockResolvedValue({ data: [] })
 

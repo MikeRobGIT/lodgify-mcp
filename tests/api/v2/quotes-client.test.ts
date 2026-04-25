@@ -9,7 +9,7 @@
  * - Make informed booking decisions
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { BaseApiClient } from '../../../src/api/base-client.js'
 import { QuotesClient } from '../../../src/api/v2/quotes/client.js'
 import type { QuoteRequest } from '../../../src/api/v2/quotes/types.js'
@@ -21,9 +21,9 @@ describe('QuotesClient - Critical Quote Calculation Feature', () => {
   beforeEach(() => {
     // Create mock base client
     mockBaseClient = {
-      request: vi.fn(),
-      getFullUrl: vi.fn((path: string) => `https://api.lodgify.com/v2/quote/${path}`),
-      getHeaders: vi.fn(() => ({ 'X-ApiKey': 'test-key' })),
+      request: mock(),
+      getFullUrl: mock((path: string) => `https://api.lodgify.com/v2/quote/${path}`),
+      getHeaders: mock(() => ({ 'X-ApiKey': 'test-key' })),
     }
 
     client = new QuotesClient(mockBaseClient)

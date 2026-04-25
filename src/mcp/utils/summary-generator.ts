@@ -32,7 +32,13 @@ export function generateSummary(
 ): string {
   // Handle the two-argument form (data, contextType)
   if (typeof contextTypeOrEntityType === 'string' && !details && !status) {
-    const data = isRecord(dataOrOperationType) ? dataOrOperationType : {}
+    // Wrap direct array responses so downstream `data.data` / `data.properties`
+    // checks resolve. Otherwise fall back to the record value or {}.
+    const data: Record<string, unknown> = Array.isArray(dataOrOperationType)
+      ? { data: dataOrOperationType }
+      : isRecord(dataOrOperationType)
+        ? dataOrOperationType
+        : {}
     const contextType = contextTypeOrEntityType
 
     // Generate context-specific summaries

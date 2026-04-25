@@ -4,10 +4,10 @@
  */
 
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { createTestServer } from '../test-server.js'
+import { createTestServer, type TestServer } from '../test-server.js'
 
 describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
-  let testServer: Record<string, unknown>
+  let testServer: TestServer
   let mockClient: Record<string, unknown>
 
   beforeEach(() => {

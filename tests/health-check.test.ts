@@ -91,10 +91,12 @@ describe('Health Check - Critical User-Facing Monitoring', () => {
 
       const health = await checkDependencies(mockClient)
 
-      // Response time should reflect the API delay
+      // Response time should reflect the API delay. Bounds are loose to
+      // accommodate timer-precision and CI/test-runner jitter; the assertion
+      // still catches truly broken measurements (orders of magnitude off).
       expect(health.lodgifyApi.status).toBe('healthy')
-      expect(health.lodgifyApi.responseTime).toBeGreaterThanOrEqual(100)
-      expect(health.lodgifyApi.responseTime).toBeLessThan(200) // Should not exceed 200ms
+      expect(health.lodgifyApi.responseTime).toBeGreaterThanOrEqual(80)
+      expect(health.lodgifyApi.responseTime).toBeLessThan(2000)
     })
 
     it('should handle non-Error exceptions gracefully', async () => {

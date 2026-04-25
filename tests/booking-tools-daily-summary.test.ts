@@ -1,10 +1,10 @@
+import { describe, expect, it, mock } from 'bun:test'
 import { ErrorCode } from '@modelcontextprotocol/sdk/types.js'
-import { describe, expect, it, vi } from 'vitest'
 import type { DailyBookingSummaryResult, LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { getBookingTools } from '../src/mcp/tools/booking-tools.js'
 
 describe('lodgify_daily_booking_summary tool', () => {
-  const mockGetDailyBookingSummary = vi.fn()
+  const mockGetDailyBookingSummary = mock()
   const getClient = () =>
     ({
       getDailyBookingSummary: mockGetDailyBookingSummary,

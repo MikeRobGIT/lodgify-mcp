@@ -20,10 +20,13 @@ const MAX_LOG_ENTRY_BYTES = 64 * 1024 // 64 KB
 /**
  * Detect whether we are running in HTTP transport mode.
  * When true, we can safely write logs to stdout.
+ *
+ * Gate strictly on MCP_TRANSPORT='http'. Generic deployment variables
+ * like PORT may be present in STDIO environments and cannot be used
+ * to infer that stdout is safe for logging.
  */
 function isHttpMode(): boolean {
-  // server-http.ts sets PORT; the entrypoint also prints MODE: http
-  return Boolean(process.env.PORT) || process.env.MCP_TRANSPORT === 'http'
+  return process.env.MCP_TRANSPORT === 'http'
 }
 
 /**

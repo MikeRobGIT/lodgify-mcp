@@ -260,22 +260,22 @@ describe('lodgify_create_booking_quote - User-facing custom quote creation', () 
       )
     })
 
-    it('should handle empty booking ID gracefully', async () => {
-      // Empty string technically passes Zod min(1) check but gets passed through to API
-      // The mock client returns undefined for empty bookingId
+    it('should handle unusually long booking IDs gracefully', async () => {
+      // Booking IDs may come from external systems with arbitrary lengths.
+      // The handler should pass the value through to the API and surface
+      // whatever response the orchestrator returns without crashing.
       mockClient.createBookingQuote.mockResolvedValue(undefined)
 
+      const longBookingId = `BK${'X'.repeat(256)}`
       const result = await createQuoteTool.handler({
-        bookingId: '',
+        bookingId: longBookingId,
         payload: {
           totalPrice: 1000.0,
         },
       })
 
-      // API was called with empty string
-      expect(mockClient.createBookingQuote).toHaveBeenCalledWith('', expect.any(Object))
+      expect(mockClient.createBookingQuote).toHaveBeenCalledWith(longBookingId, expect.any(Object))
 
-      // Response should handle undefined gracefully
       const content = JSON.parse(result.content[0].text)
       expect(content.operation.status).toBe('success')
     })

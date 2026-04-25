@@ -3,8 +3,8 @@
  * Critical user-facing feature for browsing property inventory
  */
 
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LodgifyOrchestrator } from '../../src/lodgify-orchestrator'
 import { getPropertyTools } from '../../src/mcp/tools/property-tools'
 import type { ToolRegistration } from '../../src/mcp/utils/types'
@@ -15,12 +15,10 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
   let listPropertiesTool: ToolRegistration | undefined
 
   beforeEach(() => {
-    vi.clearAllMocks()
-
     // Create mock orchestrator
     mockOrchestrator = {
       properties: {
-        listProperties: vi.fn(),
+        listProperties: mock(),
       },
       isHealthy: true,
     } as unknown as LodgifyOrchestrator
@@ -64,7 +62,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
           size: 50,
         },
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -103,7 +101,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         page: 3,
         size: 10,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -143,7 +141,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ],
         total: 1,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -175,7 +173,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ],
         total: 1,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -207,7 +205,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ],
         total: 1,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -239,7 +237,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         page: 1,
         size: 50,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -265,7 +263,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ],
         total: 2,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -281,7 +279,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
 
     it('should handle network timeout error', async () => {
       // Arrange
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockRejectedValue(
         new Error('Network timeout'),
       )
 
@@ -295,7 +293,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ErrorCode.InternalError,
         'Rate limit exceeded. Please wait and try again.',
       )
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockRejectedValue(
         rateLimitError,
       )
 
@@ -305,7 +303,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
 
     it('should handle invalid page number', async () => {
       // Arrange
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockRejectedValue(
         new McpError(ErrorCode.InvalidParams, 'Invalid page number: page must be >= 1'),
       )
 
@@ -315,7 +313,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
 
     it('should handle invalid size parameter', async () => {
       // Arrange
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockRejectedValue(
         new McpError(ErrorCode.InvalidParams, 'Invalid size: must be between 1 and 50'),
       )
 
@@ -361,7 +359,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         page: 1,
         size: 50,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -382,7 +380,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
 
     it('should handle malformed API response gracefully', async () => {
       // Arrange
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         'invalid response' as unknown,
       )
 
@@ -406,7 +404,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ],
         total: 1,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -436,7 +434,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         page: 2,
         size: 5,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -479,7 +477,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         data: [{ id: 1, name: 'Test Property', status: 'inactive' }],
         total: 1,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -510,7 +508,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ],
         total: 3,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 
@@ -549,7 +547,7 @@ describe('lodgify_list_properties - Critical Property Management Feature', () =>
         ],
         total: 2,
       }
-      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof vi.fn>).mockResolvedValue(
+      ;(mockOrchestrator.properties.listProperties as ReturnType<typeof mock>).mockResolvedValue(
         mockResponse,
       )
 

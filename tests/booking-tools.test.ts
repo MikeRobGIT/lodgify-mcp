@@ -5,14 +5,14 @@
  * use to generate secure payment links for collecting guest payments online.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { getBookingTools } from '../src/mcp/tools/booking-tools.js'
 
 describe('Booking Tools - Critical Payment Link Creation Feature', () => {
   describe('lodgify_create_booking_payment_link - Payment Collection for Property Managers', () => {
     // Mock the orchestrator
-    const mockCreateBookingPaymentLink = vi.fn()
+    const mockCreateBookingPaymentLink = mock()
     const mockGetClient = () =>
       ({
         createBookingPaymentLink: mockCreateBookingPaymentLink,
@@ -24,7 +24,7 @@ describe('Booking Tools - Critical Payment Link Creation Feature', () => {
     const handler = paymentLinkTool?.handler
 
     beforeEach(() => {
-      vi.clearAllMocks()
+      mockCreateBookingPaymentLink.mockClear()
     })
 
     describe('Successful Payment Link Creation', () => {

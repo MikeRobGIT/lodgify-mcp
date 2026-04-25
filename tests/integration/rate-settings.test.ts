@@ -5,10 +5,10 @@
  */
 
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-import { createTestServer } from '../test-server.js'
+import { createTestServer, type TestServer } from '../test-server.js'
 
 describe('lodgify_rate_settings - Critical Rate Configuration Tool', () => {
-  let testServer: Record<string, unknown>
+  let testServer: TestServer
   let mockClient: Record<string, unknown>
 
   beforeEach(() => {

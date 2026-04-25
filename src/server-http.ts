@@ -10,6 +10,11 @@ import cors from 'cors'
 import { config } from 'dotenv'
 import type { Request, Response } from 'express'
 import express from 'express'
+// Signal HTTP transport BEFORE any other imports so logger initializes
+// for stdout output. ESM hoists imports above top-level statements, so this
+// must be done in a bootstrap module imported first.
+import './http-bootstrap.js'
+
 import { loadEnvironment } from './env.js'
 import { LodgifyOrchestrator } from './lodgify-orchestrator.js'
 import { safeLogger } from './logger.js'
@@ -20,6 +25,11 @@ config()
 
 const PORT = Number(process.env.PORT) || 3000
 const AUTH_TOKEN = process.env.MCP_TOKEN
+
+// JSON-RPC 2.0 spec: id may be string, number, or null
+function isJsonRpcId(value: unknown): value is string | number | null {
+  return typeof value === 'string' || typeof value === 'number' || value === null
+}
 
 // Fail fast if auth token is not configured
 if (!AUTH_TOKEN) {
@@ -74,33 +84,56 @@ async function main() {
 
   // POST /mcp - Handle all MCP requests (new server+transport per request)
   app.post('/mcp', async (req: Request, res: Response) => {
+    const { server, cleanup } = setupServer(sharedClient)
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless mode
+    })
+
+    // Idempotent teardown — registered before handleRequest to avoid the race
+    // where a fast response closes before the listener attaches, leaking the
+    // per-request server/transport pair under load.
+    let torndown = false
+    const teardown = async () => {
+      if (torndown) return
+      torndown = true
+      try {
+        await transport.close()
+      } catch {
+        // ignore
+      }
+      try {
+        await cleanup()
+      } catch {
+        // ignore
+      }
+      try {
+        await server.close()
+      } catch {
+        // ignore
+      }
+    }
+    res.on('close', () => {
+      void teardown()
+    })
+
     try {
-      const { server, cleanup } = setupServer(sharedClient)
-
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // stateless mode
-      })
-
       await server.connect(transport)
       await transport.handleRequest(req, res, req.body)
-
-      res.on('close', async () => {
-        await transport.close()
-        await cleanup()
-        await server.close()
-      })
     } catch (err) {
       safeLogger.error('Request handling failed', err)
       if (!res.headersSent) {
+        // JSON-RPC 2.0: echo request id when parseable, otherwise null
+        const requestId = isJsonRpcId(req.body?.id) ? req.body.id : null
         res.status(500).json({
           jsonrpc: '2.0',
           error: {
             code: -32603,
             message: 'Internal server error',
           },
-          id: null,
+          id: requestId,
         })
       }
+      await teardown()
     }
   })
 

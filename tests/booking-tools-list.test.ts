@@ -3,8 +3,8 @@
  * Property managers use this constantly to view bookings and manage operations
  */
 
+import { describe, expect, it, mock } from 'bun:test'
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
-import { describe, expect, it, vi } from 'vitest'
 import type { LodgifyOrchestrator } from '../src/lodgify-orchestrator.js'
 import { getBookingTools } from '../src/mcp/tools/booking-tools.js'
 
@@ -12,7 +12,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
   // Mock the orchestrator and its methods
   const mockOrchestrator = {
     bookings: {
-      listBookings: vi.fn(),
+      listBookings: mock(),
     },
   } as unknown as LodgifyOrchestrator
 
@@ -58,7 +58,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
         },
       }
 
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue(mockBookings)
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue(mockBookings)
 
       // Execute the handler with typical user parameters
       const result = await handler({
@@ -109,7 +109,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
         ],
       }
 
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue(mockArrivals)
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue(mockArrivals)
 
       const result = await handler({
         stayFilter: 'ArrivalDate',
@@ -152,7 +152,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
 
     it('should handle empty results with helpful suggestions', async () => {
       // Critical for user guidance when no bookings found
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue({
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue({
         data: [],
         pagination: { total: 0 },
       })
@@ -191,7 +191,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
         },
       }
 
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue(mockPage2)
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue(mockPage2)
 
       const result = await handler({
         page: 2,
@@ -220,7 +220,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
 
     it('should include all optional parameters when specified', async () => {
       // Testing comprehensive filtering - used for reporting
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue({
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue({
         data: [{ id: 'BK300' }],
       })
 
@@ -254,9 +254,9 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
 
     it('should handle API errors gracefully', async () => {
       // Critical for operational stability
-      mockOrchestrator.bookings.listBookings = vi
-        .fn()
-        .mockRejectedValue(new Error('API rate limit exceeded'))
+      mockOrchestrator.bookings.listBookings = mock().mockRejectedValue(
+        new Error('API rate limit exceeded'),
+      )
 
       await expect(
         handler({
@@ -280,7 +280,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
 
     it('should handle default values correctly', async () => {
       // Test that defaults work as documented
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue({
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue({
         data: [],
       })
 
@@ -309,7 +309,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
         ],
       }
 
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue(currentGuests)
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue(currentGuests)
 
       const result = await handler({
         stayFilter: 'Current',
@@ -335,7 +335,7 @@ describe('lodgify_list_bookings handler - Critical User-Facing Feature', () => {
         pagination: { total: 30 },
       }
 
-      mockOrchestrator.bookings.listBookings = vi.fn().mockResolvedValue(monthlyBookings)
+      mockOrchestrator.bookings.listBookings = mock().mockResolvedValue(monthlyBookings)
 
       const result = await handler({
         stayFilter: 'Historic',

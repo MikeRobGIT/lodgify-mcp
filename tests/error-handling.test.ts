@@ -16,7 +16,7 @@ interface MockClient {
   subscribeWebhook: MockFunction
   unsubscribeWebhook: MockFunction
   // v1 Booking CRUD endpoints
-  createBooking: MockFunction
+  createBookingV1: MockFunction
   updateBooking: MockFunction
   deleteBooking: MockFunction
   // v1 Rate management
@@ -39,7 +39,7 @@ describe('Error Handling Tests', () => {
       listWebhooks: mock(() => Promise.resolve()),
       subscribeWebhook: mock(() => Promise.resolve()),
       unsubscribeWebhook: mock(() => Promise.resolve()),
-      createBooking: mock(() => Promise.resolve()),
+      createBookingV1: mock(() => Promise.resolve()),
       updateBooking: mock(() => Promise.resolve()),
       deleteBooking: mock(() => Promise.resolve()),
       updateRates: mock(() => Promise.resolve()),
@@ -80,13 +80,13 @@ describe('Error Handling Tests', () => {
     })
 
     test('should handle booking creation with mock client', async () => {
-      mockClient.createBooking.mockResolvedValue(fixtures.createBookingResponse)
+      mockClient.createBookingV1.mockResolvedValue(fixtures.createBookingResponse)
 
       const response = await testServer.callTool('lodgify_create_booking', {
         payload: fixtures.createBookingRequest,
       })
 
-      expect(mockClient.createBooking).toHaveBeenCalledWith(fixtures.createBookingRequest)
+      expect(mockClient.createBookingV1).toHaveBeenCalledWith(fixtures.createBookingRequest)
       expect(response.content[0].text).toContain('booking_789')
     })
 
@@ -128,7 +128,7 @@ describe('Error Handling Tests', () => {
     test('should handle 429 Rate Limit error', async () => {
       const rateLimitError = new Error('429 Too Many Requests')
       Object.assign(rateLimitError, { status: 429, retryAfter: 60 })
-      mockClient.createBooking.mockRejectedValue(rateLimitError)
+      mockClient.createBookingV1.mockRejectedValue(rateLimitError)
 
       const response = await testServer.callTool('lodgify_create_booking', {
         payload: {
@@ -254,7 +254,7 @@ describe('Error Handling Tests', () => {
   describe('Comparison with v2 Endpoints', () => {
     test('v1 create_booking should work with proper payload', async () => {
       // v1 create_booking with full payload
-      mockClient.createBooking.mockResolvedValue(fixtures.createBookingResponse)
+      mockClient.createBookingV1.mockResolvedValue(fixtures.createBookingResponse)
 
       const response1 = await testServer.callTool('lodgify_create_booking', {
         payload: fixtures.createBookingRequest,
