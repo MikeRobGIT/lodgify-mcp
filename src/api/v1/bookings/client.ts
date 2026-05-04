@@ -282,6 +282,7 @@ export class BookingsV1Client extends BaseApiModule {
 
     if (booking.total !== undefined) apiRequest.total = booking.total
     if (booking.currency_code) apiRequest.currency_code = booking.currency_code
+    if (booking.bookability) apiRequest.bookability = booking.bookability
 
     return apiRequest
   }
@@ -366,6 +367,7 @@ export class BookingsV1Client extends BaseApiModule {
 
     if (updates.total !== undefined) apiRequest.total = updates.total
     if (updates.currency_code !== undefined) apiRequest.currency_code = updates.currency_code
+    if (updates.bookability) apiRequest.bookability = updates.bookability
 
     return apiRequest
   }

@@ -106,6 +106,11 @@ export interface CreateBookingV1Request {
   // total_amount is set to this value instead of being recalculated from rate plans.
   total?: number
   currency_code?: string
+  // Without this, Lodgify defaults new bookings to EnquiryOnly. The dashboard
+  // hides per-unit totals on enquiries even when total_amount is set, so any
+  // sync workflow that wants the booking to render as a real reservation needs
+  // to pass `InstantBooking` (or `BookingRequest`) explicitly.
+  bookability?: 'InstantBooking' | 'BookingRequest' | 'EnquiryOnly'
 }
 
 /**
@@ -128,6 +133,7 @@ export interface UpdateBookingV1Request {
   source?: string
   total?: number
   currency_code?: string
+  bookability?: 'InstantBooking' | 'BookingRequest' | 'EnquiryOnly'
 }
 
 /**

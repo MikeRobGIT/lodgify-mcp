@@ -860,6 +860,12 @@ The transformation handles: guest name splitting, room structuring, status capit
             .describe(
               'ISO currency code for the override total (e.g. USD, EUR). Required when total is set.',
             ),
+          bookability: z
+            .enum(['InstantBooking', 'BookingRequest', 'EnquiryOnly'])
+            .optional()
+            .describe(
+              'Booking flow Lodgify should treat this reservation as. Defaults to EnquiryOnly server-side; pass "InstantBooking" for fully confirmed reservations so the dashboard renders per-unit totals.',
+            ),
         },
       },
       handler: wrapToolHandler(async (params) => {
@@ -922,6 +928,7 @@ The transformation handles: guest name splitting, room structuring, status capit
           ...(sanitized.notes && { notes: sanitized.notes }),
           ...(sanitized.total !== undefined && { total: sanitized.total }),
           ...(sanitized.currency_code && { currency_code: sanitized.currency_code }),
+          ...(sanitized.bookability && { bookability: sanitized.bookability }),
         }
 
         const result = await getClient().createBookingV1(apiRequest)
@@ -1034,6 +1041,12 @@ This gets automatically transformed to the nested API structure with guest objec
             .optional()
             .describe(
               'ISO currency code for the override total (e.g. USD, EUR). Required when total is set.',
+            ),
+          bookability: z
+            .enum(['InstantBooking', 'BookingRequest', 'EnquiryOnly'])
+            .optional()
+            .describe(
+              'Update the booking flow Lodgify treats this reservation as. "InstantBooking" makes the dashboard render per-unit totals; "EnquiryOnly" hides them.',
             ),
         },
       },
