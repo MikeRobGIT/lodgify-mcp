@@ -857,7 +857,9 @@ The transformation handles: guest name splitting, room structuring, status capit
             .string()
             .length(3)
             .optional()
-            .describe('ISO currency code for the override total (e.g. USD, EUR). Required when total is set.'),
+            .describe(
+              'ISO currency code for the override total (e.g. USD, EUR). Required when total is set.',
+            ),
         },
       },
       handler: wrapToolHandler(async (params) => {
@@ -1030,7 +1032,9 @@ This gets automatically transformed to the nested API structure with guest objec
             .string()
             .length(3)
             .optional()
-            .describe('ISO currency code for the override total (e.g. USD, EUR). Required when total is set.'),
+            .describe(
+              'ISO currency code for the override total (e.g. USD, EUR). Required when total is set.',
+            ),
         },
       },
       handler: wrapToolHandler(async (params) => {
