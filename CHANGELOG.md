@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.25] - 2026-05-04
+
+### Added
+
+- **Manual Total Override on v1 Bookings**: `lodgify_create_booking` and `lodgify_update_booking` now forward `total` and `currency_code` so manual amounts override rate-plan calculations
+
+### Fixed
+
+- **HTTP Transport "Server not initialized" Errors**: Switched server-http to stateless MCP transport (new server+transport per request) — resolves the prior session-init race
+- **HTTP Error Logging**: `safeLogger.error` in the request error path now passes a serializable shape (message/stack/name) so non-enumerable `Error` fields are preserved through `JSON.stringify`
+- **Booking Status After Creation**: Set booking status via the dedicated v1 endpoint after creation (Lodgify ignores `status` in the POST body)
+- **Test Fidelity for `lodgify_list_bookings` and `lodgify_rate_settings`**: `tests/test-server.ts` now mirrors real handler param mapping (`size`→`limit`, `page`→`offset`, `houseId.toString()`) so test assertions reflect production call shape
+- **Quote Client Typing**: Replaced `any` casts in `tests/api/v2/quotes-client.test.ts` with proper type casts for invalid/null/undefined parameters
+- **Health-Check Flake**: Removed `responseTime >= 5` lower bound; `Date.now()` resolution + scheduler jitter can produce 0–4ms even with a 10ms `setTimeout`
+
+### Technical Details
+
+- Expanded test coverage: 40+ new test files, ~19k lines added across booking, rate, property, webhook, messaging, availability, and helper tools
+- Integration test assertions for `lodgify_list_bookings` updated to assert the mapped (flat) shape produced by `booking-tools.ts`
+- All 1385 tests passing
+
 ## [0.1.24] - 2025-11-06
 
 ### Added
