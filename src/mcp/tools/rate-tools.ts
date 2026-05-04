@@ -148,7 +148,7 @@ Example request:
         )
 
         // Generate suggestions for rate analysis
-        const suggestions = generateSuggestions('rate_analysis', 'rates', {
+        const suggestions = generateSuggestions('read', 'rate', {
           roomTypeId,
           houseId,
           startDate: rangeValidation.start.validatedDate,
@@ -218,7 +218,7 @@ Example request:
         const summary = generateSummary(result, 'rate_settings')
 
         // Generate suggestions for rate configuration
-        const suggestions = generateSuggestions('rate_settings', 'rates', {
+        const suggestions = generateSuggestions('read', 'rate', {
           houseId: params?.houseId,
         })
 
@@ -376,7 +376,7 @@ Example request:
           const summary = generateSummary(finalResult, 'quote')
 
           // Generate suggestions based on quote results
-          const suggestions = generateSuggestions('quote_calculated', 'rates', {
+          const suggestions = generateSuggestions('read', 'quote', {
             propertyId,
             from: validatedParams.from || validatedParams.arrival,
             to: validatedParams.to || validatedParams.departure,
@@ -527,7 +527,7 @@ Example request:
         )
 
         // Generate suggestions for rate updates
-        const suggestions = generateSuggestions('rates_updated', 'rates', {
+        const suggestions = generateSuggestions('update', 'rate', {
           propertyId: sanitized.property_id,
           rateCount: sanitized.rates?.length || 0,
         })
@@ -693,7 +693,7 @@ Example response:
         const summary = generateSummary(result, 'booking_quote')
 
         // Generate suggestions for quote follow-up
-        const suggestions = generateSuggestions('quote_created', 'rates', {
+        const suggestions = generateSuggestions('create', 'quote', {
           bookingId,
           quoteId: result?.id,
           totalPrice: payload.totalPrice,

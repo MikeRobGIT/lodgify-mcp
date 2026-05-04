@@ -236,7 +236,7 @@ export class BookingsV1Client extends BaseApiModule {
    */
   private transformToApiRequest(booking: CreateBookingV1Request): CreateBookingV1ApiRequest {
     // Split guest name into first/last (simple approach)
-    const nameParts = booking.guest_name.trim().split(' ')
+    const nameParts = booking.guest_name.trim().split(/\s+/)
     const firstName = nameParts[0] || ''
     const lastName = nameParts.slice(1).join(' ') || ''
 
@@ -280,6 +280,9 @@ export class BookingsV1Client extends BaseApiModule {
       source_text: booking.source || null,
     }
 
+    if (booking.total !== undefined) apiRequest.total = booking.total
+    if (booking.currency_code) apiRequest.currency_code = booking.currency_code
+
     return apiRequest
   }
 
@@ -300,7 +303,7 @@ export class BookingsV1Client extends BaseApiModule {
 
       if (updates.guest_name) {
         // Split guest name into first/last (simple approach)
-        const nameParts = updates.guest_name.trim().split(' ')
+        const nameParts = updates.guest_name.trim().split(/\s+/)
         const firstName = nameParts[0] || ''
         const lastName = nameParts.slice(1).join(' ') || ''
 
@@ -360,6 +363,9 @@ export class BookingsV1Client extends BaseApiModule {
     if (updates.source !== undefined) {
       apiRequest.source_text = updates.source || null
     }
+
+    if (updates.total !== undefined) apiRequest.total = updates.total
+    if (updates.currency_code !== undefined) apiRequest.currency_code = updates.currency_code
 
     return apiRequest
   }

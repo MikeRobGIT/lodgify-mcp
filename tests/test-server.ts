@@ -1,17 +1,33 @@
 import pkg from '../package.json' with { type: 'json' }
 import type { ToolHandlerArgs } from './types.js'
 
+export interface ToolDefinition {
+  name: string
+  description: string
+  inputSchema: Record<string, unknown>
+}
+
+export interface ResourceDefinition {
+  uri: string
+  name: string
+  description: string
+  mimeType?: string
+}
+
+export interface ToolCallResponse {
+  content: Array<{ type: 'text'; text: string }>
+  isError?: boolean
+}
+
+export interface ResourceReadResponse {
+  contents: Array<{ uri: string; mimeType: string; text: string }>
+}
+
 export interface TestServer {
-  tools: Array<{
-    name: string
-    description: string
-    inputSchema: Record<string, unknown>
-  }>
-  listTools: () => { tools: Array<{ name: string; description: string; inputSchema: unknown }> }
-  listResources: () => { resources: Array<{ uri: string; name: string; description: string }> }
-  readResource: (args: { uri: string }) => {
-    contents: Array<{ uri: string; mimeType: string; text: string }>
-  }
+  listTools: () => Promise<{ tools: ToolDefinition[] }>
+  callTool: (name: string, args: ToolHandlerArgs) => Promise<ToolCallResponse>
+  listResources: () => Promise<{ resources: ResourceDefinition[] }>
+  readResource: (uri: string) => Promise<ResourceReadResponse>
 }
 
 /**
@@ -313,9 +329,35 @@ export function createTestServer(mockClient: unknown): TestServer {
             break
 
           // Booking Management Tools
-          case 'lodgify_list_bookings':
-            result = await mockClient.listBookings(args.params)
+          case 'lodgify_list_bookings': {
+            // Validate stayFilterDate requirement
+            if (
+              (args.stayFilter === 'ArrivalDate' || args.stayFilter === 'DepartureDate') &&
+              !args.stayFilterDate
+            ) {
+              throw new Error(
+                'stayFilterDate is required when using ArrivalDate or DepartureDate filter',
+              )
+            }
+            // Mirror real handler param mapping (src/mcp/tools/booking-tools.ts)
+            // so test assertions reflect production call shape.
+            const mappedParams: Record<string, unknown> = {}
+            if (args.size !== undefined) mappedParams.limit = args.size
+            if (args.page !== undefined) mappedParams.offset = (args.page - 1) * (args.size || 50)
+            if (args.includeCount !== undefined) mappedParams.includeCount = args.includeCount
+            if (args.stayFilter !== undefined) mappedParams.stayFilter = args.stayFilter
+            if (args.stayFilterDate !== undefined) mappedParams.stayFilterDate = args.stayFilterDate
+            if (args.updatedSince !== undefined) mappedParams.updatedSince = args.updatedSince
+            if (args.includeTransactions !== undefined)
+              mappedParams.includeTransactions = args.includeTransactions
+            if (args.includeExternal !== undefined)
+              mappedParams.includeExternal = args.includeExternal
+            if (args.includeQuoteDetails !== undefined)
+              mappedParams.includeQuoteDetails = args.includeQuoteDetails
+            if (args.trash !== undefined) mappedParams.trash = args.trash
+            result = await mockClient.listBookings(mappedParams)
             break
+          }
           case 'lodgify_get_booking':
             result = await mockClient.getBooking(args.id)
             break
@@ -342,9 +384,14 @@ export function createTestServer(mockClient: unknown): TestServer {
           case 'lodgify_daily_rates':
             result = await mockClient.getDailyRates(args.params)
             break
-          case 'lodgify_rate_settings':
-            result = await mockClient.getRateSettings(args.params)
+          case 'lodgify_rate_settings': {
+            // Mirror real handler param mapping (src/mcp/tools/rate-tools.ts)
+            // which stringifies houseId before calling the API.
+            const params = args.params as { houseId?: number } | undefined
+            const rateParams = params?.houseId ? { houseId: params.houseId.toString() } : {}
+            result = await mockClient.getRateSettings(rateParams)
             break
+          }
 
           // Availability Tools
           case 'lodgify_list_vacant_inventory': {
@@ -401,7 +448,8 @@ export function createTestServer(mockClient: unknown): TestServer {
 
           // v1 Booking CRUD Tools
           case 'lodgify_create_booking':
-            result = await mockClient.createBooking(args.payload || args)
+            // Real handler invokes createBookingV1 (v1 API endpoint)
+            result = await mockClient.createBookingV1(args.payload || args)
             break
           case 'lodgify_update_booking': {
             const { id, ...updateData } = args

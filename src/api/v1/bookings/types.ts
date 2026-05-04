@@ -102,6 +102,10 @@ export interface CreateBookingV1Request {
   status?: 'booked' | 'tentative' | 'declined' | 'confirmed'
   notes?: string
   source?: string
+  // Override Lodgify's rate-plan calculated total. When provided, the booking's
+  // total_amount is set to this value instead of being recalculated from rate plans.
+  total?: number
+  currency_code?: string
 }
 
 /**
@@ -122,6 +126,8 @@ export interface UpdateBookingV1Request {
   status?: 'booked' | 'tentative' | 'declined' | 'confirmed'
   notes?: string
   source?: string
+  total?: number
+  currency_code?: string
 }
 
 /**

@@ -30,7 +30,7 @@ interface MockClient {
   subscribeWebhook: MockFunction
   unsubscribeWebhook: MockFunction
   // v1 Booking CRUD endpoints
-  createBooking: MockFunction
+  createBookingV1: MockFunction
   updateBooking: MockFunction
   deleteBooking: MockFunction
   // v1 Rate management
@@ -90,7 +90,7 @@ describe('MCP Server Integration Tests', () => {
       subscribeWebhook: mock(() => Promise.resolve()),
       unsubscribeWebhook: mock(() => Promise.resolve()),
       // v1 Booking CRUD endpoints
-      createBooking: mock(() => Promise.resolve()),
+      createBookingV1: mock(() => Promise.resolve()),
       updateBooking: mock(() => Promise.resolve()),
       deleteBooking: mock(() => Promise.resolve()),
       // v1 Rate management
@@ -215,10 +215,19 @@ describe('MCP Server Integration Tests', () => {
       mockClient.listBookings.mockResolvedValue([fixtures.booking])
 
       const response = await testServer.callTool('lodgify_list_bookings', {
-        params: { from: '2025-11-01', to: '2025-11-30' },
+        stayFilter: 'Upcoming',
+        page: 1,
+        size: 10,
+        includeCount: true,
       })
 
-      expect(mockClient.listBookings).toHaveBeenCalledWith({ from: '2025-11-01', to: '2025-11-30' })
+      // Asserts the mapped (flat) shape produced by booking-tools.ts.
+      expect(mockClient.listBookings).toHaveBeenCalledWith({
+        limit: 10,
+        offset: 0,
+        stayFilter: 'Upcoming',
+        includeCount: true,
+      })
       expect(response.content[0].text).toContain(fixtures.booking.id)
     })
 
@@ -421,7 +430,7 @@ describe('MCP Server Integration Tests', () => {
         adults: 2,
         status: 'booked',
       }
-      mockClient.createBooking.mockResolvedValue(newBooking)
+      mockClient.createBookingV1.mockResolvedValue(newBooking)
 
       const response = await testServer.callTool('lodgify_create_booking', {
         property_id: 123,
@@ -432,7 +441,7 @@ describe('MCP Server Integration Tests', () => {
         status: 'booked',
       })
 
-      expect(mockClient.createBooking).toHaveBeenCalledWith({
+      expect(mockClient.createBookingV1).toHaveBeenCalledWith({
         property_id: 123,
         arrival: '2024-06-15',
         departure: '2024-06-20',

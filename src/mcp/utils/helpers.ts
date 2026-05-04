@@ -47,3 +47,21 @@ export function getStringOrNumber(value: unknown): string | undefined {
 export function formatStatus(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
 }
+
+/**
+ * Type guard: checks whether a value is a non-null, non-array object
+ * (i.e. a plain Record<string, unknown>).
+ */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Safely extract an error message from an unknown caught value.
+ * Replaces the common `(e as Error)?.message` pattern with a proper type check.
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return 'Unknown error'
+}

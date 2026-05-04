@@ -42,16 +42,84 @@ export function generateSuggestions(
           'Update property availability calendar',
           'Review cancellation reason for improvements',
         )
+      } else if (operationType === 'list') {
+        suggestions.push(
+          'Review upcoming arrivals and departures',
+          'Check payment status for pending bookings',
+          'Use lodgify_get_booking to view full details for a specific booking',
+          'Filter by date range or status for targeted results',
+        )
+      } else if (operationType === 'read') {
+        const bookingStatus = String(safeDetails.status || '').toLowerCase()
+        if (bookingStatus === 'cancelled' || bookingStatus === 'declined') {
+          suggestions.push(
+            'Process any refund if applicable',
+            'Send cancellation confirmation to guest',
+            'Update property availability calendar',
+            'Review cancellation reason for improvements',
+          )
+        } else {
+          suggestions.push(
+            'View property details for this booking',
+            'Check availability for date changes',
+            'Create payment link if payment is pending',
+            'Review guest communication thread',
+          )
+        }
+      } else if (operationType === 'action') {
+        suggestions.push(
+          'Verify guest identity before check-in',
+          'Provide property access codes to the guest',
+          'Schedule cleaning after checkout',
+          'Review property condition and report any issues',
+        )
       }
       break
 
     case 'payment_link':
-      suggestions.push(
-        'Send payment link to guest via email',
-        'Set reminder for payment follow-up',
-        'Monitor payment status',
-        'Prepare receipt for completed payment',
-      )
+      if (operationType === 'create') {
+        suggestions.push(
+          'Send payment link to guest via email',
+          'Set reminder for payment follow-up',
+          'Monitor payment status',
+          'Prepare receipt for completed payment',
+        )
+      } else {
+        // read/get payment link - provide status-aware suggestions
+        const linkStatus = String(safeDetails.status || '').toLowerCase()
+        if (linkStatus === 'expired') {
+          suggestions.push(
+            'Generate a new payment link to replace the expired one',
+            'Contact guest about the expired payment link',
+            'Review booking payment history',
+          )
+        } else if (linkStatus === 'partial') {
+          suggestions.push(
+            'Send reminder for remaining balance payment',
+            'Review payment history and deposits received',
+            'Create new payment link for outstanding amount',
+          )
+        } else if (linkStatus === 'paid') {
+          suggestions.push(
+            'Payment is complete - prepare and send receipt to guest',
+            'Verify payment has been processed correctly',
+            'Update booking payment status if needed',
+          )
+        } else if (linkStatus === 'no_link' || !safeDetails.hasLink) {
+          suggestions.push(
+            'Create a new payment link for this booking',
+            'Contact guest about payment arrangements',
+            'Review booking balance before generating link',
+          )
+        } else {
+          suggestions.push(
+            'Send payment link to guest via email',
+            'Set reminder for payment follow-up',
+            'Monitor payment status',
+            'Prepare receipt for completed payment',
+          )
+        }
+      }
       break
 
     case 'quote':
@@ -98,6 +166,24 @@ export function generateSuggestions(
         'Test access codes if possible',
         'Set reminder to reset codes after checkout',
         'Document backup entry method',
+      )
+      break
+
+    case 'thread':
+      suggestions.push(
+        'Review conversation history for context',
+        'Reply to guest message via Lodgify interface',
+        'Update booking notes with communication details',
+        'Follow up if guest response is pending',
+      )
+      break
+
+    case 'property':
+      suggestions.push(
+        'Use lodgify_get_property to view full details for a specific property',
+        'Use lodgify_get_property_availability to check detailed availability',
+        'Check current rates with lodgify_daily_rates',
+        'View bookings for this property with lodgify_list_bookings',
       )
       break
 
@@ -161,6 +247,16 @@ export function generateSuggestions(
       }
       break
     }
+
+    default:
+      // Generic suggestions for unknown entity/operation combinations
+      if (operationType === 'list' || operationType === 'read') {
+        suggestions.push(
+          'Review the returned data for relevant details',
+          'Use related tools to perform follow-up actions',
+        )
+      }
+      break
   }
 
   return suggestions

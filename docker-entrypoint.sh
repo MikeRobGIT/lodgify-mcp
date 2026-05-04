@@ -81,6 +81,14 @@ if [ "$MODE" = "http" ]; then
     fi
 fi
 
+# Clean up old log files (older than 7 days) to prevent unbounded disk growth
+for logdir in /app/logs /tmp/@mikerob-lodgify-mcp-logs; do
+    if [ -d "$logdir" ]; then
+        find "$logdir" -name 'lodgify-mcp-*.log' -mtime +7 -delete 2>/dev/null || true
+        log "Pruned old log files in $logdir"
+    fi
+done
+
 # Log startup configuration (without sensitive data)
 log "Configuration:"
 log "  MODE: $MODE"

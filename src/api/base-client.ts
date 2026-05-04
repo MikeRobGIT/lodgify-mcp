@@ -199,15 +199,14 @@ export abstract class BaseApiClient extends BaseHttpClient {
     // Use retry handler
     const result = await this.retryHandler.executeOrThrow<T>(executeRequest, (error: unknown) => {
       // Extract Retry-After header if available
-      if (
-        error &&
-        typeof error === 'object' &&
-        'status' in error &&
-        (error as { status: number }).status === 429 &&
-        'detail' in error &&
-        (error as { detail?: { retryAfter?: string | number } }).detail?.retryAfter
-      ) {
-        return String((error as { detail: { retryAfter: string | number } }).detail.retryAfter)
+      if (error && typeof error === 'object' && 'status' in error && 'detail' in error) {
+        const errObj = error as Record<string, unknown>
+        if (errObj.status === 429) {
+          const detail = errObj.detail
+          if (detail && typeof detail === 'object' && 'retryAfter' in detail) {
+            return String((detail as Record<string, unknown>).retryAfter)
+          }
+        }
       }
       return undefined
     })
@@ -287,7 +286,7 @@ export abstract class BaseApiClient extends BaseHttpClient {
     }
 
     return this.request<T>('POST', endpoint, {
-      body: data as unknown as Record<string, unknown>,
+      body: data,
       apiVersion: version,
     })
   }
@@ -312,7 +311,7 @@ export abstract class BaseApiClient extends BaseHttpClient {
     const path = `${endpoint}/${sanitizedId}`
 
     return this.request<T>('PUT', path, {
-      body: data as unknown as Record<string, unknown>,
+      body: data,
       apiVersion: version,
     })
   }
@@ -384,7 +383,7 @@ export function isListResponse<T>(response: unknown): response is ListResponse<T
     typeof response === 'object' &&
     response !== null &&
     'data' in response &&
-    Array.isArray((response as { data: unknown }).data)
+    Array.isArray((response as Record<string, unknown>).data)
   )
 }
 
@@ -396,6 +395,6 @@ export function isSingleResponse<T>(response: unknown): response is SingleRespon
     typeof response === 'object' &&
     response !== null &&
     'data' in response &&
-    !Array.isArray((response as { data: unknown }).data)
+    !Array.isArray((response as Record<string, unknown>).data)
   )
 }
