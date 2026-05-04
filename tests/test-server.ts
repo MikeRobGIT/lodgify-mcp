@@ -329,7 +329,7 @@ export function createTestServer(mockClient: unknown): TestServer {
             break
 
           // Booking Management Tools
-          case 'lodgify_list_bookings':
+          case 'lodgify_list_bookings': {
             // Validate stayFilterDate requirement
             if (
               (args.stayFilter === 'ArrivalDate' || args.stayFilter === 'DepartureDate') &&
@@ -339,8 +339,25 @@ export function createTestServer(mockClient: unknown): TestServer {
                 'stayFilterDate is required when using ArrivalDate or DepartureDate filter',
               )
             }
-            result = await mockClient.listBookings(args)
+            // Mirror real handler param mapping (src/mcp/tools/booking-tools.ts)
+            // so test assertions reflect production call shape.
+            const mappedParams: Record<string, unknown> = {}
+            if (args.size !== undefined) mappedParams.limit = args.size
+            if (args.page !== undefined) mappedParams.offset = (args.page - 1) * (args.size || 50)
+            if (args.includeCount !== undefined) mappedParams.includeCount = args.includeCount
+            if (args.stayFilter !== undefined) mappedParams.stayFilter = args.stayFilter
+            if (args.stayFilterDate !== undefined) mappedParams.stayFilterDate = args.stayFilterDate
+            if (args.updatedSince !== undefined) mappedParams.updatedSince = args.updatedSince
+            if (args.includeTransactions !== undefined)
+              mappedParams.includeTransactions = args.includeTransactions
+            if (args.includeExternal !== undefined)
+              mappedParams.includeExternal = args.includeExternal
+            if (args.includeQuoteDetails !== undefined)
+              mappedParams.includeQuoteDetails = args.includeQuoteDetails
+            if (args.trash !== undefined) mappedParams.trash = args.trash
+            result = await mockClient.listBookings(mappedParams)
             break
+          }
           case 'lodgify_get_booking':
             result = await mockClient.getBooking(args.id)
             break
@@ -367,9 +384,14 @@ export function createTestServer(mockClient: unknown): TestServer {
           case 'lodgify_daily_rates':
             result = await mockClient.getDailyRates(args.params)
             break
-          case 'lodgify_rate_settings':
-            result = await mockClient.getRateSettings(args.params)
+          case 'lodgify_rate_settings': {
+            // Mirror real handler param mapping (src/mcp/tools/rate-tools.ts)
+            // which stringifies houseId before calling the API.
+            const params = args.params as { houseId?: number } | undefined
+            const rateParams = params?.houseId ? { houseId: params.houseId.toString() } : {}
+            result = await mockClient.getRateSettings(rateParams)
             break
+          }
 
           // Availability Tools
           case 'lodgify_list_vacant_inventory': {

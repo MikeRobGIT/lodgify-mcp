@@ -120,7 +120,13 @@ async function main() {
       await server.connect(transport)
       await transport.handleRequest(req, res, req.body)
     } catch (err) {
-      safeLogger.error('Request handling failed', err)
+      // Pass error details as a serializable shape so JSON.stringify in the
+      // logger preserves message/stack (Error fields are non-enumerable).
+      safeLogger.error('Request handling failed', {
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        name: err instanceof Error ? err.name : undefined,
+      })
       if (!res.headersSent) {
         // JSON-RPC 2.0: echo request id when parseable, otherwise null
         const requestId = isJsonRpcId(req.body?.id) ? req.body.id : null

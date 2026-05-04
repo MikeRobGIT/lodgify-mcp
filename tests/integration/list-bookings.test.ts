@@ -111,8 +111,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
       expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          page: 1,
-          size: 10,
+          limit: 10,
+          offset: 0,
           stayFilter: 'Upcoming',
           includeCount: true,
         }),
@@ -162,7 +162,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
       expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
           stayFilter: 'Current',
-          size: 20,
+          limit: 20,
         }),
       )
 
@@ -196,7 +196,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         expect.objectContaining({
           stayFilter: 'ArrivalDate',
           stayFilterDate: '2024-03-15T00:00:00Z',
-          size: 5,
+          limit: 5,
         }),
       )
 
@@ -229,7 +229,7 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
         expect.objectContaining({
           stayFilter: 'DepartureDate',
           stayFilterDate: '2024-03-22T00:00:00Z',
-          size: 10,
+          limit: 10,
         }),
       )
 
@@ -356,8 +356,8 @@ describe('lodgify_list_bookings - Critical User-Facing Feature Tests', () => {
 
       expect(mockClient.listBookings).toHaveBeenCalledWith(
         expect.objectContaining({
-          page: 2,
-          size: 20,
+          limit: 20,
+          offset: 20,
           stayFilter: 'All',
           includeCount: true,
         }),

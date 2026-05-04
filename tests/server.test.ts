@@ -215,11 +215,18 @@ describe('MCP Server Integration Tests', () => {
       mockClient.listBookings.mockResolvedValue([fixtures.booking])
 
       const response = await testServer.callTool('lodgify_list_bookings', {
-        params: { from: '2025-11-01', to: '2025-11-30' },
+        stayFilter: 'Upcoming',
+        page: 1,
+        size: 10,
+        includeCount: true,
       })
 
+      // Asserts the mapped (flat) shape produced by booking-tools.ts.
       expect(mockClient.listBookings).toHaveBeenCalledWith({
-        params: { from: '2025-11-01', to: '2025-11-30' },
+        limit: 10,
+        offset: 0,
+        stayFilter: 'Upcoming',
+        includeCount: true,
       })
       expect(response.content[0].text).toContain(fixtures.booking.id)
     })

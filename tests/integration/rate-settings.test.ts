@@ -170,9 +170,10 @@ describe('lodgify_rate_settings - Critical Rate Configuration Tool', () => {
       }
 
       mockClient.getRateSettings.mockImplementation(async (params: Record<string, unknown>) => {
-        // Test server passes params object directly
+        // Test server mirrors real handler which stringifies houseId before
+        // calling the API (src/mcp/tools/rate-tools.ts).
         if (params?.houseId) {
-          expect(params.houseId).toBe(12345)
+          expect(params.houseId).toBe('12345')
         }
         return mockPropertyRateSettings
       })
