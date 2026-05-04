@@ -846,6 +846,18 @@ The transformation handles: guest name splitting, room structuring, status capit
             .describe('Booking status'),
           source: z.string().optional().describe('Booking source or channel'),
           notes: z.string().optional().describe('Internal notes or special requests'),
+          total: z
+            .number()
+            .nonnegative()
+            .optional()
+            .describe(
+              'Override Lodgify rate-plan total. When provided, the booking is created with this exact total instead of being recalculated from rate plans.',
+            ),
+          currency_code: z
+            .string()
+            .length(3)
+            .optional()
+            .describe('ISO currency code for the override total (e.g. USD, EUR). Required when total is set.'),
         },
       },
       handler: wrapToolHandler(async (params) => {
@@ -906,6 +918,8 @@ The transformation handles: guest name splitting, room structuring, status capit
           ...(sanitized.status && { status: sanitized.status }),
           ...(sanitized.source && { source: sanitized.source }),
           ...(sanitized.notes && { notes: sanitized.notes }),
+          ...(sanitized.total !== undefined && { total: sanitized.total }),
+          ...(sanitized.currency_code && { currency_code: sanitized.currency_code }),
         }
 
         const result = await getClient().createBookingV1(apiRequest)
@@ -1005,6 +1019,18 @@ This gets automatically transformed to the nested API structure with guest objec
             .describe('Updated booking status'),
           source: z.string().optional().describe('Updated booking source'),
           notes: z.string().optional().describe('Updated notes'),
+          total: z
+            .number()
+            .nonnegative()
+            .optional()
+            .describe(
+              'Override Lodgify rate-plan total. When provided, the booking total_amount is set to this exact value.',
+            ),
+          currency_code: z
+            .string()
+            .length(3)
+            .optional()
+            .describe('ISO currency code for the override total (e.g. USD, EUR). Required when total is set.'),
         },
       },
       handler: wrapToolHandler(async (params) => {
