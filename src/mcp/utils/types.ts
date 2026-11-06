@@ -3,6 +3,7 @@
  */
 
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import type { ZodRawShape } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 
@@ -13,6 +14,7 @@ export interface ToolConfig<TInput extends ZodRawShape = ZodRawShape> {
   title?: string
   description?: string
   inputSchema?: TInput
+  annotations?: ToolAnnotations
 }
 
 /**
@@ -115,7 +117,7 @@ export interface ServerConfig {
  */
 export interface IToolRegistry {
   register<TInput extends ZodRawShape>(registration: ToolRegistration<TInput>): void
-  registerAll(server: McpServer): void
+  registerAll(server: McpServer, options?: { readOnly?: boolean }): void
   getTools(): ToolRegistration[]
   getCategories(): Record<ToolCategory, ToolRegistration[]>
 }

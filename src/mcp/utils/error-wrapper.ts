@@ -39,8 +39,8 @@ export function wrapToolHandler<TInput = unknown, TOutput = unknown>(
 
       // If it's already an McpError, make sure it's properly serializable
       if (error instanceof McpError) {
-        // McpError should already be properly formatted, but ensure the message is a string
-        throw new McpError(error.code, String(error.message), error.data)
+        // Rethrow as-is: re-wrapping would prefix the message twice ("MCP error -32602: MCP error -32602: ...")
+        throw error
       }
 
       // Check if it's a LodgifyError (has error: true, message, status, and detail fields)

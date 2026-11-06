@@ -1,6 +1,6 @@
 {
   "name": "@mikerob/lodgify-mcp",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "description": "Model Context Protocol server for Lodgify Public API - Expose Lodgify endpoints as MCP tools for AI assistants",
   "type": "module",
   "main": "dist/server.js",
@@ -64,7 +64,7 @@
     "bun": ">=1.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/cors": "^2.8.19",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

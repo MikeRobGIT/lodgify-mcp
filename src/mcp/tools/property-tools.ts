@@ -126,6 +126,12 @@ export function getPropertyTools(getClient: () => LodgifyOrchestrator): ToolRegi
       category: 'Property Management',
       config: {
         title: 'List Properties',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `[Property Management] List all properties with optional filtering and pagination. Returns property details including names, IDs, locations, and basic configuration. Supports filtering by status, location, and other criteria.
 
 Example request:
@@ -254,6 +260,12 @@ Example response:
       category: 'Property Management',
       config: {
         title: 'Get Property Details',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `[Property Management] Retrieve comprehensive details for a specific property including configuration, amenities, room types, location information, and booking settings. Essential for understanding property structure before making bookings or checking availability.
 
 Example request:
@@ -369,6 +381,12 @@ Example response:
       category: 'Property Management',
       config: {
         title: 'List Property Room Types',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Retrieve all room types and configurations for a specific property. Returns room details including capacity, pricing structure, amenities, and booking rules. Use this before checking availability or making bookings to understand available accommodation options.
 
 Example request:
@@ -427,6 +445,12 @@ Example request:
       category: 'Property Discovery & Search',
       config: {
         title: 'Find Properties',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `[Property Discovery & Search] Find properties in the system when you don't know the exact property ID. Searches properties by name, gets property IDs from bookings, or lists all properties.
 
 Example request (search by name):
@@ -552,6 +576,12 @@ Example response:
       category: 'Property Management',
       config: {
         title: 'List Deleted Properties',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Retrieve properties that have been soft-deleted from the system. Useful for auditing, recovery operations, and understanding property lifecycle. Returns properties that were previously active but have been removed from general availability.
 
 Example request:

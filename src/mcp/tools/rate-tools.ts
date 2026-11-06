@@ -42,6 +42,12 @@ export function getRateTools(getClient: () => LodgifyOrchestrator): ToolRegistra
       category: CATEGORY,
       config: {
         title: 'Get Daily Pricing Rates',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `View daily pricing rates for properties across date ranges. This shows the actual nightly rates that would be charged for specific dates. Use this tool to check prices BEFORE creating a booking.
 
 ✅ Use this for: Price checking, rate analysis, understanding seasonal pricing
@@ -184,6 +190,12 @@ Example request:
       category: CATEGORY,
       config: {
         title: 'Get Rate Configuration Settings',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Retrieve rate configuration settings including pricing rules, modifiers, seasonal adjustments, and rate calculation parameters. This shows HOW rates are calculated, not the actual prices themselves. Use lodgify_daily_rates to view actual pricing. Essential for understanding rate calculation logic and configuring pricing strategies.
 
 Example request:
@@ -251,6 +263,12 @@ Example request:
       category: CATEGORY,
       config: {
         title: 'Calculate Pricing Quote',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Calculate pricing for a potential booking. This tool checks availability and calculates total pricing for specified dates, room types, and guest counts. Use this to get a price quote BEFORE creating a booking.
 
 ⚠️ Important: This calculates NEW pricing for available dates. It does NOT retrieve existing quotes from bookings. For existing booking quotes, use lodgify_create_booking_quote.
@@ -447,6 +465,12 @@ Example request:
       category: CATEGORY,
       config: {
         title: 'Update Property Rates',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `[${CATEGORY}] Update rates for properties and room types. This v1 endpoint provides direct rate modification capability not available in v2. Essential for dynamic pricing strategies and rate management across seasons.
 
 Example request:
@@ -560,6 +584,12 @@ Example request:
       category: CATEGORY,
       config: {
         title: 'Create Custom Quote for Booking',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: false,
+          openWorldHint: true,
+        },
         description: `[${CATEGORY}] Create a custom quote for an existing booking with pricing adjustments. This allows property managers to provide personalized pricing for specific bookings.
 
 ⚠️ **Important**: This is a WRITE operation that modifies booking data. It will be blocked in read-only mode.
