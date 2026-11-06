@@ -768,6 +768,8 @@ Note: When ISO 8601 date-time values are provided for `from`/`to`, the server no
 
 List all properties vacant for a date range, optionally including room details. This aggregates availability across properties, so you can find inventory in one call.
 
+**Performance Note**: With many properties and `includeRooms=true`, this operation makes multiple API calls and may take 60-120 seconds. The default timeout is 180 seconds (3 minutes). Room availability checks are processed in parallel for optimal performance.
+
 **Parameters:**
 
 - `from` (required, string): Start date (YYYY-MM-DD)
@@ -776,13 +778,14 @@ List all properties vacant for a date range, optionally including room details. 
 - `includeRooms` (optional, boolean): Include room types per property (default: true)
 - `limit` (optional, number): Max properties to check when `propertyIds` not provided (default: 25, max: 200)
 - `wid` (optional, number): Optional website ID filter
+- `timeoutSeconds` (optional, number): Timeout in seconds for the entire operation (default: 180, min: 30, max: 600)
 
 **How Vacancy is Determined:**
 
 - The tool queries the Lodgify API which returns an array response with availability periods
 - Properties are marked as unavailable when the API returns `available: 0` for the requested date range
 - When a property is unavailable at the property level, all its rooms are automatically marked as unavailable without additional API calls
-- Only rooms in available properties are individually checked for their specific availability
+- Only rooms in available properties are individually checked for their specific availability (in parallel for better performance)
 
 **Example:**
 
@@ -791,7 +794,8 @@ List all properties vacant for a date range, optionally including room details. 
   "from": "2025-11-20",
   "to": "2025-11-25",
   "includeRooms": true,
-  "limit": 25
+  "limit": 25,
+  "timeoutSeconds": 180  // Optional: increase for large property lists
 }
 ```
 

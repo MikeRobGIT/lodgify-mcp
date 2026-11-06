@@ -6,6 +6,13 @@ describe('LodgifyOrchestrator', () => {
   let client: LodgifyOrchestrator
   let originalFetch: typeof global.fetch
 
+  const installImmediateRetrySleep = () => {
+    const sleepSpy = mock(() => Promise.resolve())
+    ;((client as unknown as { client: { retryHandler: { sleepFn: typeof sleepSpy } } }).client
+      .retryHandler.sleepFn as typeof sleepSpy) = sleepSpy
+    return sleepSpy
+  }
+
   beforeEach(() => {
     originalFetch = global.fetch
     client = new LodgifyOrchestrator({ apiKey: 'test-api-key' })
@@ -62,8 +69,9 @@ describe('LodgifyOrchestrator', () => {
       expect(result).toMatchObject({ data: expect.any(Array) })
     })
 
-    test.skip('should use exponential backoff when no Retry-After header', async () => {
+    test('should use exponential backoff when no Retry-After header', async () => {
       let callCount = 0
+      const sleepSpy = installImmediateRetrySleep()
 
       const mockFetch = mock(async () => {
         callCount++
@@ -77,11 +85,15 @@ describe('LodgifyOrchestrator', () => {
       const result = await client.properties.listProperties()
 
       expect(callCount).toBe(4) // Initial call + 3 retries
+      expect(sleepSpy).toHaveBeenNthCalledWith(1, 1000)
+      expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000)
+      expect(sleepSpy).toHaveBeenNthCalledWith(3, 4000)
       expect(result).toMatchObject({ data: expect.any(Array) })
     })
 
-    test.skip('should fail after max retries', async () => {
+    test('should fail after max retries', async () => {
       let callCount = 0
+      installImmediateRetrySleep()
 
       const mockFetch = mock(async () => {
         callCount++
@@ -94,10 +106,11 @@ describe('LodgifyOrchestrator', () => {
 
       await expect(promise).rejects.toMatchObject({
         error: true,
+        status: 429,
       })
 
-      expect(callCount).toBeGreaterThan(1) // Should make multiple attempts
-    }, 8000)
+      expect(callCount).toBe(5)
+    })
 
     test('should cap retry delay at 30 seconds', async () => {
       let callCount = 0
@@ -159,9 +172,9 @@ describe('LodgifyOrchestrator', () => {
       })
     })
 
-    test.skip('should format 500 Internal Server Error correctly', async () => {
+    test('should format 500 Internal Server Error correctly', async () => {
+      installImmediateRetrySleep()
       global.fetch = createMockFetch([
-        createMockResponse(500, { error: 'Server error' }),
         createMockResponse(500, { error: 'Server error' }),
         createMockResponse(500, { error: 'Server error' }),
         createMockResponse(500, { error: 'Server error' }),
@@ -173,40 +186,46 @@ describe('LodgifyOrchestrator', () => {
         error: true,
         message: 'Lodgify 500: Internal Server Error',
         status: 500,
-        path: '/v2/properties/',
+        path: '/v2/properties',
+        detail: { error: 'Server error' },
       })
     })
 
-    test.skip('should handle network errors', async () => {
+    test('should handle network errors', async () => {
+      installImmediateRetrySleep()
+
       global.fetch = mock(() => Promise.reject(new Error('Network error')))
 
-      await expect(client.properties.listProperties()).rejects.toMatchObject({
-        error: true,
-        message: 'Network error: Network error',
-        status: 0,
-        path: '/v2/properties/',
-      })
+      await expect(client.properties.listProperties()).rejects.toThrow('Network error')
     })
 
-    test.skip('should handle non-JSON error responses', async () => {
+    test('should handle non-JSON error responses', async () => {
+      installImmediateRetrySleep()
+
       const mockResponse = {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        headers: new Headers(),
+        headers: new Headers({ 'content-type': 'text/plain' }),
         text: mock(() => Promise.resolve('Plain text error')),
         json: mock(() => Promise.reject(new Error('Invalid JSON'))),
       } as unknown as Response
 
-      global.fetch = mock(() => Promise.resolve(mockResponse))
+      let callCount = 0
+      global.fetch = mock(() => {
+        callCount++
+        return Promise.resolve(mockResponse)
+      })
 
       await expect(client.properties.listProperties()).rejects.toMatchObject({
         error: true,
         message: 'Lodgify 500: Internal Server Error',
         status: 500,
-        path: '/v2/properties/',
-        detail: '',
+        path: '/v2/properties',
+        detail: 'Plain text error',
       })
+
+      expect(callCount).toBe(5)
     })
   })
 

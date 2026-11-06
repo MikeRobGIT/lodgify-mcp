@@ -160,6 +160,31 @@ export class BookingsV1Client extends BaseApiModule {
         adults: booking.adults,
       })
 
+      // Set booking status via separate endpoint (Lodgify ignores status in POST body)
+      if (booking.status) {
+        const statusEndpoint =
+          booking.status === 'booked' || booking.status === 'confirmed'
+            ? 'book'
+            : booking.status === 'tentative'
+              ? 'tentative'
+              : booking.status === 'declined'
+                ? 'decline'
+                : null
+
+        if (statusEndpoint) {
+          try {
+            await this.request('PUT', `${bookingId}/${statusEndpoint}`)
+            safeLogger.info('Booking status updated', { bookingId, status: booking.status })
+          } catch (statusError) {
+            safeLogger.warn('Failed to update booking status', {
+              bookingId,
+              status: booking.status,
+              error: statusError instanceof Error ? statusError.message : String(statusError),
+            })
+          }
+        }
+      }
+
       // Return a proper booking response by spreading the original request and adding the new ID
       return {
         ...booking,
@@ -211,7 +236,7 @@ export class BookingsV1Client extends BaseApiModule {
    */
   private transformToApiRequest(booking: CreateBookingV1Request): CreateBookingV1ApiRequest {
     // Split guest name into first/last (simple approach)
-    const nameParts = booking.guest_name.trim().split(' ')
+    const nameParts = booking.guest_name.trim().split(/\s+/)
     const firstName = nameParts[0] || ''
     const lastName = nameParts.slice(1).join(' ') || ''
 
@@ -255,6 +280,10 @@ export class BookingsV1Client extends BaseApiModule {
       source_text: booking.source || null,
     }
 
+    if (booking.total !== undefined) apiRequest.total = booking.total
+    if (booking.currency_code) apiRequest.currency_code = booking.currency_code
+    if (booking.bookability) apiRequest.bookability = booking.bookability
+
     return apiRequest
   }
 
@@ -275,7 +304,7 @@ export class BookingsV1Client extends BaseApiModule {
 
       if (updates.guest_name) {
         // Split guest name into first/last (simple approach)
-        const nameParts = updates.guest_name.trim().split(' ')
+        const nameParts = updates.guest_name.trim().split(/\s+/)
         const firstName = nameParts[0] || ''
         const lastName = nameParts.slice(1).join(' ') || ''
 
@@ -335,6 +364,10 @@ export class BookingsV1Client extends BaseApiModule {
     if (updates.source !== undefined) {
       apiRequest.source_text = updates.source || null
     }
+
+    if (updates.total !== undefined) apiRequest.total = updates.total
+    if (updates.currency_code !== undefined) apiRequest.currency_code = updates.currency_code
+    if (updates.bookability) apiRequest.bookability = updates.bookability
 
     return apiRequest
   }

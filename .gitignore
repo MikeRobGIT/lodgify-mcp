@@ -56,4 +56,8 @@ mcp.options.json
 
 # Task files
 tasks.json
-tasks/ 
+tasks/
+
+# Claude Code local config (developer-specific permissions, paths)
+.claude/settings.local.json
+

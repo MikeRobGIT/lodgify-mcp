@@ -46,9 +46,10 @@ describe('SuggestionGenerator', () => {
       expect(suggestions.length).toBe(4)
     })
 
-    it('should return empty array for unhandled booking operations', () => {
+    it('should return suggestions for read booking operation', () => {
       const suggestions = generateSuggestions('read', 'booking', {})
-      expect(suggestions.length).toBe(0)
+      expect(suggestions.length).toBeGreaterThan(0)
+      expect(suggestions).toContain('View property details for this booking')
     })
   })
 
@@ -63,11 +64,17 @@ describe('SuggestionGenerator', () => {
       expect(suggestions.length).toBe(4)
     })
 
-    it('should generate same suggestions for any payment link operation', () => {
-      const createSuggestions = generateSuggestions('create', 'payment_link', {})
+    it('should generate status-aware suggestions for read payment link operation', () => {
+      // Read without status info falls to no_link/hasLink fallback
       const readSuggestions = generateSuggestions('read', 'payment_link', {})
+      expect(readSuggestions.length).toBeGreaterThan(0)
 
-      expect(createSuggestions).toEqual(readSuggestions)
+      // With specific status, generates context-aware suggestions
+      const paidSuggestions = generateSuggestions('read', 'payment_link', { status: 'paid' })
+      expect(paidSuggestions.some((s) => s.toLowerCase().includes('complete'))).toBe(true)
+
+      const expiredSuggestions = generateSuggestions('read', 'payment_link', { status: 'expired' })
+      expect(expiredSuggestions.some((s) => s.toLowerCase().includes('new'))).toBe(true)
     })
   })
 
@@ -165,45 +172,54 @@ describe('SuggestionGenerator', () => {
   })
 
   describe('Thread entity suggestions', () => {
-    it('should return empty array for thread actions', () => {
+    it('should return thread suggestions for any operation', () => {
       const suggestions = generateSuggestions('action', 'thread', {
         action: 'archived',
       })
 
-      expect(suggestions.length).toBe(0)
+      expect(suggestions.length).toBeGreaterThan(0)
+      expect(suggestions).toContain('Review conversation history for context')
     })
 
-    it('should return empty array for thread read action', () => {
-      const suggestions = generateSuggestions('action', 'thread', {
+    it('should return thread suggestions for read action', () => {
+      const suggestions = generateSuggestions('read', 'thread', {
         action: 'read',
       })
 
-      expect(suggestions.length).toBe(0)
+      expect(suggestions.length).toBeGreaterThan(0)
+      expect(suggestions).toContain('Reply to guest message via Lodgify interface')
     })
 
-    it('should return empty for unknown thread actions', () => {
+    it('should return thread suggestions for any action', () => {
       const suggestions = generateSuggestions('action', 'thread', {
         action: 'unknown',
       })
-      expect(suggestions.length).toBe(0)
+      expect(suggestions.length).toBeGreaterThan(0)
+      expect(suggestions).toContain('Review conversation history for context')
     })
   })
 
   describe('Property entity suggestions', () => {
-    it('should return empty array for property list with more results', () => {
+    it('should return property suggestions for property list', () => {
       const suggestions = generateSuggestions('list', 'property', {
         hasMore: true,
       })
 
-      expect(suggestions.length).toBe(0)
+      expect(suggestions.length).toBeGreaterThan(0)
+      expect(suggestions).toContain(
+        'Use lodgify_get_property to view full details for a specific property',
+      )
     })
 
-    it('should return empty array for property list without more results', () => {
+    it('should return property suggestions regardless of hasMore flag', () => {
       const suggestions = generateSuggestions('list', 'property', {
         hasMore: false,
       })
 
-      expect(suggestions.length).toBe(0)
+      expect(suggestions.length).toBeGreaterThan(0)
+      expect(suggestions).toContain(
+        'Use lodgify_get_property to view full details for a specific property',
+      )
     })
   })
 

@@ -156,7 +156,7 @@ export class BookingsClient extends BaseApiModule {
     }
 
     return this.request<PaymentLink>('POST', `${id}/quote/paymentLink`, {
-      body: paymentRequest as unknown as Record<string, unknown>,
+      body: paymentRequest,
     })
   }
 
@@ -173,7 +173,7 @@ export class BookingsClient extends BaseApiModule {
     }
 
     return this.request<{ success: boolean }>('PUT', `${id}/keyCodes`, {
-      body: keyCodes as unknown as Record<string, unknown>,
+      body: keyCodes,
     })
   }
 
@@ -311,7 +311,7 @@ export class BookingsClient extends BaseApiModule {
     const body = time ? { time } : {}
 
     return this.request<{ success: boolean }>('PUT', `${id}/checkin`, {
-      body: body as unknown as Record<string, unknown>,
+      body,
     })
   }
 
@@ -327,7 +327,7 @@ export class BookingsClient extends BaseApiModule {
     const body = time ? { time } : {}
 
     return this.request<{ success: boolean }>('PUT', `${id}/checkout`, {
-      body: body as unknown as Record<string, unknown>,
+      body,
     })
   }
 

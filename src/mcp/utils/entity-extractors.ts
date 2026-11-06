@@ -4,8 +4,26 @@
 
 import { formatCurrency } from './currency-formatter.js'
 import { calculateNights, formatDate } from './date/formatter.js'
-import { formatStatus, getNestedValue, getNumber, getString, getStringOrNumber } from './helpers.js'
+import {
+  formatStatus,
+  getNestedValue,
+  getNumber,
+  getString,
+  getStringOrNumber,
+  isRecord,
+} from './helpers.js'
 import type { ApiResponseData } from './response/types.js'
+import { isApiResponseData, toApiResponseData } from './response/validators.js'
+
+/**
+ * Safely convert to ApiResponseData, returning {} for null/undefined without logging warnings.
+ * Use this for optional parameters where null/undefined is an expected (non-error) case.
+ */
+function toRecordSilent(value: unknown): ApiResponseData {
+  if (value == null) return {}
+  if (isApiResponseData(value)) return value
+  return toApiResponseData(value, 'entity-extractors')
+}
 
 /**
  * Extract booking details from response
@@ -13,9 +31,8 @@ import type { ApiResponseData } from './response/types.js'
 export function extractBookingDetails(data: unknown, inputParams?: unknown): ApiResponseData {
   const details: ApiResponseData = {}
 
-  // Cast to ApiResponseData for internal use
-  const responseData = data as ApiResponseData
-  const params = inputParams as ApiResponseData
+  const responseData = toRecordSilent(data)
+  const params = toRecordSilent(inputParams)
 
   // Handle both response formats (with 'id' or specific fields)
   // Use getStringOrNumber for IDs since API returns numeric IDs
@@ -102,9 +119,8 @@ export function extractBookingDetails(data: unknown, inputParams?: unknown): Api
 export function extractPaymentLinkDetails(data: unknown, inputParams?: unknown): ApiResponseData {
   const details: ApiResponseData = {}
 
-  // Cast to ApiResponseData for internal use
-  const responseData = data as ApiResponseData
-  const params = inputParams as ApiResponseData
+  const responseData = toRecordSilent(data)
+  const params = toRecordSilent(inputParams)
 
   // Handle numeric booking IDs
   details.bookingId = getStringOrNumber(params?.id) || getStringOrNumber(responseData?.bookingId)
@@ -139,9 +155,8 @@ export function extractPaymentLinkDetails(data: unknown, inputParams?: unknown):
 export function extractRateDetails(data: unknown, inputParams?: unknown): ApiResponseData {
   const details: ApiResponseData = {}
 
-  // Cast to ApiResponseData for internal use
-  const responseData = data as ApiResponseData
-  const params = inputParams as ApiResponseData
+  const responseData = toRecordSilent(data)
+  const params = toRecordSilent(inputParams)
 
   // Handle numeric property IDs
   const propertyId =
@@ -152,7 +167,7 @@ export function extractRateDetails(data: unknown, inputParams?: unknown): ApiRes
   const rates = params?.rates
   if (rates && Array.isArray(rates)) {
     details.ratesUpdated = rates.length
-    const firstRate = rates[0] as Record<string, unknown>
+    const firstRate = isRecord(rates[0]) ? rates[0] : undefined
     if (firstRate) {
       const startDate = getString(firstRate.start_date)
       const endDate = getString(firstRate.end_date)
@@ -177,9 +192,8 @@ export function extractRateDetails(data: unknown, inputParams?: unknown): ApiRes
 export function extractWebhookDetails(data: unknown, inputParams?: unknown): ApiResponseData {
   const details: ApiResponseData = {}
 
-  // Cast to ApiResponseData for internal use
-  const responseData = data as ApiResponseData
-  const params = inputParams as ApiResponseData
+  const responseData = toRecordSilent(data)
+  const params = toRecordSilent(inputParams)
 
   // Handle numeric webhook IDs
   details.webhookId =
@@ -208,9 +222,8 @@ export function extractVacantInventoryDetails(
 ): ApiResponseData {
   const details: ApiResponseData = {}
 
-  // Cast to ApiResponseData for internal use
-  const responseData = data as ApiResponseData
-  const params = inputParams as ApiResponseData
+  const responseData = toRecordSilent(data)
+  const params = toRecordSilent(inputParams)
 
   // Date range
   const from = getString(responseData?.from) || getString(params?.from)
@@ -222,7 +235,8 @@ export function extractVacantInventoryDetails(
   }
 
   // Counts
-  const counts = getNestedValue(responseData, 'counts') as Record<string, number> | undefined
+  const countsRaw = getNestedValue(responseData, 'counts')
+  const counts = isRecord(countsRaw) ? (countsRaw as Record<string, number>) : undefined
   if (counts) {
     if (counts.propertiesRequested !== undefined) {
       details.propertiesRequested = counts.propertiesRequested
@@ -278,23 +292,24 @@ export function extractVacantInventoryDetails(
   }
 
   // Diagnostics if available
-  const diagnostics = getNestedValue(responseData, 'diagnostics') as
-    | Record<string, unknown>
-    | undefined
+  const diagnosticsRaw = getNestedValue(responseData, 'diagnostics')
+  const diagnostics = isRecord(diagnosticsRaw) ? diagnosticsRaw : undefined
   if (diagnostics) {
     details.hasDiagnostics = true
-    const apiCalls = diagnostics.apiCalls as unknown[] | undefined
+    const apiCalls = Array.isArray(diagnostics.apiCalls) ? diagnostics.apiCalls : undefined
     if (Array.isArray(apiCalls)) {
       details.apiCallsCount = apiCalls.length
     }
-    const possibleIssues = diagnostics.possibleIssues as string[] | undefined
+    const possibleIssues = Array.isArray(diagnostics.possibleIssues)
+      ? diagnostics.possibleIssues
+      : undefined
     if (Array.isArray(possibleIssues) && possibleIssues.length > 0) {
       details.issuesIdentified = possibleIssues.length
     }
   }
 
   // Search filters
-  const propertyIds = params?.propertyIds as unknown[] | undefined
+  const propertyIds = Array.isArray(params?.propertyIds) ? params.propertyIds : undefined
   if (Array.isArray(propertyIds) && propertyIds.length > 0) {
     details.filteredByPropertyIds = propertyIds.length
   }
@@ -312,9 +327,8 @@ export function extractVacantInventoryDetails(
 export function extractMessageDetails(data: unknown, inputParams?: unknown): ApiResponseData {
   const details: ApiResponseData = {}
 
-  // Cast to ApiResponseData for internal use
-  const responseData = data as ApiResponseData
-  const params = inputParams as ApiResponseData
+  const responseData = toRecordSilent(data)
+  const params = toRecordSilent(inputParams)
 
   // Handle both string GUIDs and numeric IDs
   details.threadId =

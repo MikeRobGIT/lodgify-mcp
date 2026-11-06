@@ -150,14 +150,42 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          echo "Extracting changelog for version $VERSION"
+
+          # Make script executable if not already
+          chmod +x scripts/extract-changelog.sh
+
+          # Extract changelog section for this version
+          CHANGELOG=$(./scripts/extract-changelog.sh "$VERSION")
+
+          if [ -z "$CHANGELOG" ]; then
+            echo "Warning: No changelog found for version $VERSION"
+            CHANGELOG="No changelog entry found. See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md) for details."
+          fi
+
+          # Save to output (handle multiline with delimiter)
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          generate_release_notes: false
           body: |
-            ## Lodgify MCP Server ${{ github.ref_name }}
+            ## 📦 Lodgify MCP Server ${{ github.ref_name }}
 
-            ### Installation
+            ### 📝 What's Changed
+
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            ---
+
+            ### 📥 Installation
 
             #### Via NPX (recommended)
             ```bash
@@ -179,7 +207,7 @@ jobs:
             npm install @MikeRobGIT/lodgify-mcp@${{ steps.version.outputs.VERSION }} --registry https://npm.pkg.github.com
             ```
 
-            ### MCP Configuration
+            ### 🔧 MCP Configuration
             ```json
             {
               "mcpServers": {
@@ -194,11 +222,11 @@ jobs:
             }
             ```
 
-            ### What's Changed
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md) for details.
-
-            ### Full Changelog
-            https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref_name }}
+            ### 🔗 Links
+            - 📄 [Full Changelog](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md)
+            - 📦 [npm Package](https://www.npmjs.com/package/@mikerob/lodgify-mcp)
+            - 🐙 [GitHub Packages](https://github.com/${{ github.repository }}/packages)
+            - 🔗 [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref_name }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -56,6 +56,7 @@ import type { DailyRatesParams } from './api/v2/rates/types.js'
 import { PAGINATION } from './core/config/constants.js'
 import { ReadOnlyModeError } from './core/errors/read-only-error.js'
 import { safeLogger } from './logger.js'
+import { getErrorMessage, isRecord } from './mcp/utils/helpers.js'
 
 // Aggregated vacant inventory types
 export interface VacantInventoryParams {
@@ -65,6 +66,7 @@ export interface VacantInventoryParams {
   includeRooms?: boolean
   limit?: number
   wid?: number
+  timeoutSeconds?: number
 }
 
 export interface VacantInventoryRoomResult {
@@ -108,6 +110,31 @@ export interface VacantInventoryResult {
   }
   properties: VacantInventoryPropertyResult[]
   diagnostics?: VacantInventoryDiagnostics
+}
+
+export interface DailyBookingSummaryParams {
+  date?: string
+  includeExternal?: boolean
+  includeFullDetails?: boolean
+}
+
+export interface DailyBookingSummaryResult {
+  referenceDate: string
+  tomorrowDate: string
+  timezone: 'UTC'
+  generatedAt: string
+  counts: {
+    checkInsToday: number
+    checkOutsToday: number
+    occupancyTonight: number
+    arrivalsTomorrow: number
+    uniqueBookingsCovered: number
+  }
+  checkInsToday: Booking[]
+  checkOutsToday: Booking[]
+  occupancyTonight: Booking[]
+  arrivalsTomorrow: Booking[]
+  warnings?: string[]
 }
 
 /**
@@ -361,7 +388,19 @@ export class LodgifyOrchestrator {
       includeRooms = true,
       limit = PAGINATION.DEFAULT_VACANT_INVENTORY_LIMIT,
       wid,
+      timeoutSeconds = 180, // Default 3 minutes
     } = params
+
+    // Set up timeout for the entire operation
+    const timeoutMs = timeoutSeconds * 1000
+    const startTime = Date.now()
+
+    const checkTimeout = () => {
+      const elapsed = Date.now() - startTime
+      if (elapsed > timeoutMs) {
+        throw new Error(`Operation timeout after ${timeoutSeconds} seconds`)
+      }
+    }
 
     // Helper: exclusive-end overlap between [aStart, aEnd) and [bStart, bEnd)
     const toDateOnly = (s: string) => (s.includes('T') ? s.split('T')[0] : s)
@@ -395,18 +434,20 @@ export class LodgifyOrchestrator {
       const fetched: Property[] = []
       for (const pid of propertyIds.slice(0, limit)) {
         try {
+          checkTimeout()
           const p = await this.properties.getProperty(String(pid))
           if (p) fetched.push(p)
         } catch (e) {
           safeLogger.warn('Skipping property due to fetch error', {
             id: pid,
-            error: (e as Error)?.message,
+            error: getErrorMessage(e),
           })
         }
       }
       propertiesToCheck = fetched
     } else {
       try {
+        checkTimeout()
         const list = await this.properties.listProperties({ limit, ...(wid ? { wid } : {}) })
 
         // Track API call
@@ -418,15 +459,10 @@ export class LodgifyOrchestrator {
 
         // Handle nested response structure from Lodgify API
         if (list.data && Array.isArray(list.data) && list.data.length > 0) {
-          const firstItem = list.data[0] as unknown as Record<string, unknown>
+          const firstItem = list.data[0]
 
           // Check if properties are nested in data[0].items
-          if (
-            firstItem &&
-            typeof firstItem === 'object' &&
-            'items' in firstItem &&
-            Array.isArray(firstItem.items)
-          ) {
+          if (isRecord(firstItem) && 'items' in firstItem && Array.isArray(firstItem.items)) {
             propertiesToCheck = firstItem.items as Property[]
             diagnostics.apiCalls[diagnostics.apiCalls.length - 1].responseStructure =
               'nested_data_items'
@@ -476,6 +512,7 @@ export class LodgifyOrchestrator {
           )
 
           try {
+            checkTimeout()
             const foundProps = await this.properties.findProperties(undefined, false, limit)
             diagnostics.apiCalls.push({
               endpoint: 'findProperties (fallback)',
@@ -487,15 +524,16 @@ export class LodgifyOrchestrator {
             // Convert found properties to Property objects
             for (const prop of foundProps.properties.slice(0, limit)) {
               try {
+                checkTimeout()
                 const fullProp = await this.properties.getProperty(prop.id)
                 if (fullProp) propertiesToCheck.push(fullProp)
               } catch (e) {
                 diagnostics.debugInfo?.extractionAttempts.push(
-                  `Failed to fetch property ${prop.id}: ${(e as Error)?.message}`,
+                  `Failed to fetch property ${prop.id}: ${getErrorMessage(e)}`,
                 )
                 safeLogger.warn('Could not fetch property details', {
                   id: prop.id,
-                  error: (e as Error)?.message,
+                  error: getErrorMessage(e),
                 })
               }
             }
@@ -504,12 +542,12 @@ export class LodgifyOrchestrator {
               endpoint: 'findProperties (fallback)',
               responseStructure: 'error',
               itemsFound: 0,
-              error: (fallbackError as Error)?.message,
+              error: getErrorMessage(fallbackError),
             })
           }
         }
       } catch (error) {
-        const errorMessage = (error as Error)?.message || 'Unknown error'
+        const errorMessage = getErrorMessage(error)
         diagnostics.apiCalls.push({
           endpoint: 'listProperties',
           responseStructure: 'error',
@@ -574,6 +612,7 @@ export class LodgifyOrchestrator {
 
       try {
         // Fetch availability with details for the given range
+        checkTimeout()
         const availabilityResponse = await this.availability.getAvailabilityForProperty(
           propertyId,
           {
@@ -668,7 +707,7 @@ export class LodgifyOrchestrator {
           } catch (e) {
             safeLogger.debug('Fallback booking overlap check failed', {
               id: propertyId,
-              error: (e as Error)?.message,
+              error: getErrorMessage(e),
             })
           }
         }
@@ -689,6 +728,7 @@ export class LodgifyOrchestrator {
         }
 
         if (includeRooms) {
+          checkTimeout()
           const rooms = await this.properties.listPropertyRooms(propertyId)
           const roomResults: VacantInventoryRoomResult[] = []
           let anyRoomAvailable = false
@@ -712,84 +752,118 @@ export class LodgifyOrchestrator {
             entry.rooms = roomResults
             entry.available = false
           } else {
-            // Property is available at the property level, check individual rooms
-            for (const r of rooms) {
+            // Property is available at the property level, check individual rooms in parallel
+            // Check timeout before processing rooms
+            checkTimeout()
+
+            // Process all rooms in parallel for better performance
+            const roomCheckPromises = rooms.map(async (r) => {
               // Handle room data that could be just an ID or a full object
               const room =
                 typeof r === 'object'
                   ? (r as { id?: string | number; name?: string; maxOccupancy?: number })
                   : { id: r }
               const roomId = String(room.id ?? r)
-              // Fetch per-room availability to avoid over-reporting
-              const roomAvailability = (await this.availability.getAvailabilityForRoom(
-                propertyId,
-                roomId,
-                {
-                  from,
-                  to,
-                },
-              )) as unknown as {
-                periods?: Array<{
-                  start: string
-                  end: string
-                  available?: number | boolean
-                  bookings?: Array<{
-                    arrival?: string
-                    departure?: string
-                    checkIn?: string
-                    checkOut?: string
-                  }>
-                }>
-              }
 
-              // Track room availability API call
-              diagnostics.apiCalls.push({
-                endpoint: `getAvailabilityForRoom(${propertyId}/${roomId})`,
-                responseStructure: 'room_availability',
-                itemsFound: 1,
-              })
-
-              const rPeriods = roomAvailability?.periods ?? []
-              let roomUnavailable = false
-              for (const pr of rPeriods) {
-                // If any overlapped period is explicitly unavailable, mark room unavailable
-                if (typeof pr.available !== 'undefined') {
-                  const availBool =
-                    typeof pr.available === 'number' ? pr.available > 0 : !!pr.available
-                  if (!availBool && overlaps(pr.start, pr.end, from, to)) {
-                    roomUnavailable = true
-                    break
-                  }
-                }
-                if (Array.isArray(pr.bookings)) {
-                  for (const b of pr.bookings) {
-                    // Handle flexible booking date fields from different API versions
-                    const booking = b as {
+              try {
+                // Fetch per-room availability to avoid over-reporting
+                interface RoomAvailabilityResponse {
+                  periods?: Array<{
+                    start: string
+                    end: string
+                    available?: number | boolean
+                    bookings?: Array<{
                       arrival?: string
-                      checkIn?: string
                       departure?: string
+                      checkIn?: string
                       checkOut?: string
-                    }
-                    const bStart = booking.arrival || booking.checkIn
-                    const bEnd = booking.departure || booking.checkOut
-                    if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
+                    }>
+                  }>
+                }
+                const roomAvailability =
+                  await this.availability.getAvailabilityForRoom<RoomAvailabilityResponse>(
+                    propertyId,
+                    roomId,
+                    {
+                      from,
+                      to,
+                    },
+                  )
+
+                // Track room availability API call
+                diagnostics.apiCalls.push({
+                  endpoint: `getAvailabilityForRoom(${propertyId}/${roomId})`,
+                  responseStructure: 'room_availability',
+                  itemsFound: 1,
+                })
+
+                const rPeriods = roomAvailability?.periods ?? []
+                let roomUnavailable = false
+                for (const pr of rPeriods) {
+                  // If any overlapped period is explicitly unavailable, mark room unavailable
+                  if (typeof pr.available !== 'undefined') {
+                    const availBool =
+                      typeof pr.available === 'number' ? pr.available > 0 : !!pr.available
+                    if (!availBool && overlaps(pr.start, pr.end, from, to)) {
                       roomUnavailable = true
                       break
                     }
                   }
+                  if (Array.isArray(pr.bookings)) {
+                    for (const b of pr.bookings) {
+                      // Handle flexible booking date fields from different API versions
+                      const booking = b as {
+                        arrival?: string
+                        checkIn?: string
+                        departure?: string
+                        checkOut?: string
+                      }
+                      const bStart = booking.arrival || booking.checkIn
+                      const bEnd = booking.departure || booking.checkOut
+                      if (bStart && bEnd && overlaps(bStart, bEnd, from, to)) {
+                        roomUnavailable = true
+                        break
+                      }
+                    }
+                  }
+                  if (roomUnavailable) break
                 }
-                if (roomUnavailable) break
-              }
 
-              const roomAvailable = !roomUnavailable
-              if (roomAvailable) anyRoomAvailable = true
-              roomResults.push({
-                id: roomId,
-                name: room.name,
-                maxOccupancy: room.maxOccupancy,
-                available: roomAvailable,
-              })
-            }
+                const roomAvailable = !roomUnavailable
+                return {
+                  id: roomId,
+                  name: room.name,
+                  maxOccupancy: room.maxOccupancy,
+                  available: roomAvailable,
+                }
+              } catch (error) {
+                // Log error but return room as unavailable to avoid breaking the entire check
+                safeLogger.warn('Failed to check room availability', {
+                  propertyId,
+                  roomId,
+                  error: getErrorMessage(error),
+                })
+                return {
+                  id: roomId,
+                  name: room.name,
+                  maxOccupancy: room.maxOccupancy,
+                  available: false,
+                }
+              }
+            })
+
+            // Wait for all room checks to complete in parallel with timeout enforcement
+            const roomsChecked = await Promise.race([
+              Promise.all(roomCheckPromises),
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`Operation timeout after ${timeoutSeconds} seconds`)),
+                  Math.max(0, timeoutMs - (Date.now() - startTime)),
+                ),
+              ),
+            ])
+            roomResults.push(...roomsChecked)
+            anyRoomAvailable = roomsChecked.some((r) => r.available)
 
             entry.rooms = roomResults
             entry.available = anyRoomAvailable
@@ -801,7 +875,7 @@ export class LodgifyOrchestrator {
         if (entry.available) availableCount++
         results.push(entry)
       } catch (error) {
-        const errorMessage = (error as Error)?.message || 'Unknown error'
+        const errorMessage = getErrorMessage(error)
         safeLogger.warn('Failed to check availability for property', {
           propertyId,
           error: errorMessage,
@@ -849,6 +923,200 @@ export class LodgifyOrchestrator {
       },
       properties: results,
       diagnostics,
+    }
+  }
+
+  /**
+   * Aggregate: Daily operations summary for bookings
+   * Includes today's check-ins/check-outs, tonight occupancy, and tomorrow arrivals.
+   */
+  async getDailyBookingSummary(
+    params: DailyBookingSummaryParams = {},
+  ): Promise<DailyBookingSummaryResult> {
+    const includeExternal = params.includeExternal ?? true
+    const includeFullDetails = params.includeFullDetails ?? true
+    const referenceDate = params.date || new Date().toISOString().split('T')[0]
+
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/
+    if (!datePattern.test(referenceDate)) {
+      throw new Error(
+        `Invalid date format for daily summary: "${referenceDate}" (expected YYYY-MM-DD)`,
+      )
+    }
+
+    const parsedDate = new Date(`${referenceDate}T00:00:00Z`)
+    if (Number.isNaN(parsedDate.getTime())) {
+      throw new Error(`Invalid date value for daily summary: "${referenceDate}"`)
+    }
+
+    // JS Date auto-normalizes impossible calendar values (e.g. 2026-02-31 → 2026-03-03).
+    // Round-trip to catch those before the summary runs against the wrong day.
+    if (parsedDate.toISOString().slice(0, 10) !== referenceDate) {
+      throw new Error(
+        `Invalid calendar date for daily summary: "${referenceDate}" (does not exist)`,
+      )
+    }
+
+    const addDays = (date: string, days: number): string => {
+      const d = new Date(`${date}T00:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + days)
+      return d.toISOString().split('T')[0]
+    }
+
+    const toDateTime = (date: string): string => `${date}T00:00:00Z`
+    const toDateOnly = (value?: string): string => (value ? value.split('T')[0] : '')
+    const tomorrowDate = addDays(referenceDate, 1)
+
+    const dedupeBookings = (bookings: Booking[]): Booking[] => {
+      const byId = new Map<string, Booking>()
+      for (const booking of bookings) {
+        byId.set(String(booking.id), booking)
+      }
+      return Array.from(byId.values())
+    }
+
+    const listAllByStayFilter = async (
+      stayFilter: NonNullable<BookingSearchParams['stayFilter']>,
+      stayFilterDate?: string,
+    ): Promise<Booking[]> => {
+      const collected: Booking[] = []
+      let offset = 0
+      let page = 0
+
+      while (page < PAGINATION.MAX_PAGE_NUMBER) {
+        const searchParams: BookingSearchParams = {
+          stayFilter,
+          limit: PAGINATION.MAX_PAGE_SIZE,
+          offset,
+          includeCount: true,
+          includeExternal,
+          includeTransactions: true,
+          includeQuoteDetails: true,
+        }
+
+        if (stayFilterDate) {
+          searchParams.stayFilterDate = toDateTime(stayFilterDate)
+        }
+
+        const response = await this.bookings.listBookings(searchParams)
+        const items = Array.isArray(response.data) ? response.data : []
+        collected.push(...items)
+
+        if (items.length < PAGINATION.MAX_PAGE_SIZE) {
+          break
+        }
+
+        const pagination = response.pagination as { hasNext?: boolean; total?: number } | undefined
+        const hasNext = typeof pagination?.hasNext === 'boolean' ? pagination.hasNext : undefined
+        const total =
+          typeof pagination?.total === 'number'
+            ? pagination.total
+            : typeof response.count === 'number'
+              ? response.count
+              : undefined
+
+        if (hasNext === false) {
+          break
+        }
+
+        if (typeof total === 'number' && collected.length >= total) {
+          break
+        }
+
+        offset += PAGINATION.MAX_PAGE_SIZE
+        page += 1
+      }
+
+      return dedupeBookings(collected)
+    }
+
+    const [checkInsTodayRaw, checkOutsTodayRaw, currentRaw, arrivalsTomorrowRaw] =
+      await Promise.all([
+        listAllByStayFilter('ArrivalDate', referenceDate),
+        listAllByStayFilter('DepartureDate', referenceDate),
+        listAllByStayFilter('Current'),
+        listAllByStayFilter('ArrivalDate', tomorrowDate),
+      ])
+
+    const occupancyTonightRaw = dedupeBookings(
+      [...currentRaw, ...checkInsTodayRaw].filter((booking) => {
+        const checkIn = toDateOnly(booking.checkIn)
+        const checkOut = toDateOnly(booking.checkOut)
+        return Boolean(checkIn && checkOut && checkIn <= referenceDate && checkOut > referenceDate)
+      }),
+    )
+
+    const bookingsForDetails = dedupeBookings([
+      ...checkInsTodayRaw,
+      ...checkOutsTodayRaw,
+      ...occupancyTonightRaw,
+      ...arrivalsTomorrowRaw,
+    ])
+
+    const detailedById = new Map<string, Booking>()
+    const warnings: string[] = []
+
+    if (includeFullDetails) {
+      const batchSize = 5
+      for (let index = 0; index < bookingsForDetails.length; index += batchSize) {
+        const batch = bookingsForDetails.slice(index, index + batchSize)
+        const detailedBatch = await Promise.all(
+          batch.map(async (booking) => {
+            const bookingId = String(booking.id)
+            try {
+              const detailedBooking = await this.bookings.getBooking(bookingId)
+              return { bookingId, detailedBooking }
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Unknown error'
+              warnings.push(`Could not load full details for booking ${bookingId}: ${message}`)
+              safeLogger.warn('Failed to load booking details for daily summary', {
+                bookingId,
+                error: message,
+              })
+              return undefined
+            }
+          }),
+        )
+
+        for (const detailed of detailedBatch) {
+          if (detailed) {
+            detailedById.set(detailed.bookingId, detailed.detailedBooking)
+          }
+        }
+      }
+    }
+
+    const withDetails = (bookings: Booking[]): Booking[] =>
+      bookings.map((booking) => detailedById.get(String(booking.id)) ?? booking)
+
+    const checkInsToday = withDetails(checkInsTodayRaw)
+    const checkOutsToday = withDetails(checkOutsTodayRaw)
+    const occupancyTonight = withDetails(occupancyTonightRaw)
+    const arrivalsTomorrow = withDetails(arrivalsTomorrowRaw)
+
+    const uniqueBookingsCovered = new Set(
+      [...checkInsToday, ...checkOutsToday, ...occupancyTonight, ...arrivalsTomorrow].map(
+        (booking) => String(booking.id),
+      ),
+    ).size
+
+    return {
+      referenceDate,
+      tomorrowDate,
+      timezone: 'UTC',
+      generatedAt: new Date().toISOString(),
+      counts: {
+        checkInsToday: checkInsToday.length,
+        checkOutsToday: checkOutsToday.length,
+        occupancyTonight: occupancyTonight.length,
+        arrivalsTomorrow: arrivalsTomorrow.length,
+        uniqueBookingsCovered,
+      },
+      checkInsToday,
+      checkOutsToday,
+      occupancyTonight,
+      arrivalsTomorrow,
+      ...(warnings.length > 0 ? { warnings } : {}),
     }
   }
 

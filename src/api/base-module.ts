@@ -100,14 +100,14 @@ export abstract class BaseApiModule implements ApiModule {
    * Create resource
    */
   protected create<T>(path: string, data: unknown): Promise<T> {
-    return this.request<T>('POST', path, { body: data as Record<string, unknown> })
+    return this.request<T>('POST', path, { body: data })
   }
 
   /**
    * Update resource
    */
   protected update<T>(path: string, id: string, data: unknown): Promise<T> {
-    return this.request<T>('PUT', `${path}/${id}`, { body: data as Record<string, unknown> })
+    return this.request<T>('PUT', `${path}/${id}`, { body: data })
   }
 
   /**

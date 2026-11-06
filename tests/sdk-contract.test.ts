@@ -15,7 +15,7 @@ async function connect(readOnly: boolean) {
 describe('SDK contract', () => {
   test('every tool declares all four annotation hints', async () => {
     const { tools } = await (await connect(false)).listTools()
-    expect(tools.length).toBe(27)
+    expect(tools.length).toBe(28)
     for (const t of tools) {
       const a = t.annotations
       expect(typeof a?.readOnlyHint).toBe('boolean')
@@ -29,7 +29,7 @@ describe('SDK contract', () => {
 
   test('read-only mode hides write tools', async () => {
     const { tools } = await (await connect(true)).listTools()
-    expect(tools.length).toBe(16)
+    expect(tools.length).toBe(17)
     expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true)
   })
 
@@ -48,7 +48,7 @@ describe('SDK contract', () => {
     expect(res.isError).toBe(true)
   })
 
-  test('handler failures are isError JSON without a doubled MCP prefix', async () => {
+  test('handler failures are isError without a doubled MCP prefix', async () => {
     const res = (await (
       await connect(false)
     ).callTool({

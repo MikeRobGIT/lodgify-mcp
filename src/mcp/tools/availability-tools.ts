@@ -12,7 +12,6 @@ import { extractVacantInventoryDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
-import type { ApiResponseData } from '../utils/response/types.js'
 import { generateSuggestions } from '../utils/suggestion-generator.js'
 import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolRegistration } from '../utils/types.js'
@@ -105,24 +104,32 @@ Example request:
         }
 
         const queryParams: AvailabilityQueryParams = { from: fromNorm, to: toNorm }
-        const result = await getClient().availability.getAvailabilityForProperty(
+        const rawResult = await getClient().availability.getAvailabilityForProperty(
           propertyId,
           queryParams,
         )
 
+        // Lodgify availability API returns an array — unwrap to first element
+        const result = Array.isArray(rawResult)
+          ? rawResult.length > 0
+            ? rawResult[0]
+            : { periods: [] }
+          : rawResult
+
         // Generate summary for availability data
-        const summary = generateSummary(result as unknown as ApiResponseData, 'availability')
+        const summary = generateSummary(result, 'availability')
 
         // Generate suggestions based on availability status
+        const resultRecord = result as Record<string, unknown>
         const suggestions = generateSuggestions('availability_check', 'property', {
           propertyId,
           from: fromNorm,
           to: toNorm,
-          available: (result as Record<string, unknown>)?.available,
+          available: resultRecord?.available,
         })
 
         // Use enhanceResponse to build the response with availability context
-        const enhanced = enhanceResponseBuilder(result as unknown, {
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'availability',
           operation: 'read',
           inputParams: { propertyId, ...queryParams },
@@ -159,13 +166,17 @@ Example request:
 
 Use this to find available inventory in one call instead of checking each property separately.
 
+**Performance Note**: With many properties and includeRooms=true, this operation makes multiple API calls
+and may take 60-120 seconds. The default timeout is 180 seconds (3 minutes).
+
 Example request:
 {
   "from": "2025-11-20",
   "to": "2025-11-25",
   "propertyIds": ["435705", "435706"],  // Optional: filter to these properties
   "includeRooms": true,                    // Include room types in the result (default: true)
-  "limit": 25                              // Max number of properties when propertyIds not provided (default: 25)
+  "limit": 25,                             // Max number of properties when propertyIds not provided (default: 25)
+  "timeoutSeconds": 180                    // Optional: timeout in seconds (default: 180, max: 600)
 }`,
         inputSchema: {
           from: z.string().min(1).describe('Start date (YYYY-MM-DD)'),
@@ -184,6 +195,13 @@ Example request:
             .describe('Max number of properties when propertyIds not provided'),
           wid: z.number().int().optional().describe('Website ID filter (if supported)'),
           debug: z.boolean().optional().describe('Include diagnostic information in response'),
+          timeoutSeconds: z
+            .number()
+            .int()
+            .min(30)
+            .max(600)
+            .default(180)
+            .describe('Timeout in seconds for the entire operation (default: 180, max: 600)'),
         },
       },
       handler: wrapToolHandler(async (input) => {
@@ -195,8 +213,9 @@ Example request:
           limit?: number
           wid?: number
           debug?: boolean
+          timeoutSeconds?: number
         }
-        const { from, to, propertyIds, includeRooms, limit, wid, debug } = sanitized
+        const { from, to, propertyIds, includeRooms, limit, wid, debug, timeoutSeconds } = sanitized
 
         // Validate and normalize dates
         const validator = createValidator(DateToolCategory.AVAILABILITY)
@@ -229,6 +248,7 @@ Example request:
           includeRooms,
           limit,
           wid,
+          timeoutSeconds,
         })
 
         // Determine if operation was successful based on the result
@@ -242,7 +262,7 @@ Example request:
         const inventoryDetails = extractVacantInventoryDetails(result)
 
         // Generate summary for vacant inventory
-        const summary = generateSummary(result as unknown as ApiResponseData, 'vacant_inventory')
+        const summary = generateSummary(result, 'vacant_inventory')
 
         // Generate suggestions based on results
         const suggestions = hasProperties

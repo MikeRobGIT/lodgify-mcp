@@ -13,7 +13,6 @@ import { extractWebhookDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
 import { sanitizeInput } from '../utils/input-sanitizer.js'
 import { flexibleEnhanceResponse as enhanceResponseBuilder } from '../utils/response/builder.js'
-import type { ApiResponseData } from '../utils/response/types.js'
 import { generateSuggestions } from '../utils/suggestion-generator.js'
 import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
@@ -65,7 +64,7 @@ Example response:
         const webhookDetails = extractWebhookDetails(result)
 
         // Generate summary for webhook list
-        const summary = generateSummary(result as unknown as ApiResponseData, 'webhook_list')
+        const summary = generateSummary(result, 'webhook_list')
 
         // Generate suggestions for webhook management
         const suggestions = generateSuggestions('webhook_list', 'webhook', {
@@ -73,7 +72,7 @@ Example response:
         })
 
         // Use enhanceResponse to build the response
-        const enhanced = enhanceResponseBuilder(result as unknown, {
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'webhook',
           operation: 'list',
           extractedInfo: webhookDetails,
@@ -168,7 +167,7 @@ Example request:
         const webhookDetails = extractWebhookDetails(result)
 
         // Generate summary for webhook subscription
-        const summary = generateSummary(result as unknown as ApiResponseData, 'webhook_subscribe')
+        const summary = generateSummary(result, 'webhook_subscribe')
 
         // Generate suggestions based on the webhook type
         const suggestions = generateSuggestions('webhook_subscribed', 'webhook', {
@@ -177,10 +176,10 @@ Example request:
         })
 
         // Use enhanceResponse to build the response
-        const enhanced = enhanceResponseBuilder(result as unknown, {
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'webhook',
           operation: 'create',
-          inputParams: subscribeData as unknown as Record<string, unknown>,
+          inputParams: { ...subscribeData },
           extractedInfo: webhookDetails,
           metadata: {
             summary,
@@ -234,7 +233,7 @@ Example request:
         }
 
         // Generate summary for the unsubscribe operation
-        const summary = generateSummary(result as unknown as ApiResponseData, 'webhook_unsubscribe')
+        const summary = generateSummary(result, 'webhook_unsubscribe')
 
         // Generate suggestions after unsubscribing
         const suggestions = generateSuggestions('webhook_unsubscribed', 'webhook', {
@@ -242,7 +241,7 @@ Example request:
         })
 
         // Use enhanceResponse to build the response
-        const enhanced = enhanceResponseBuilder(result as unknown, {
+        const enhanced = enhanceResponseBuilder(result, {
           entityType: 'webhook',
           operation: 'delete',
           inputParams: { webhookId: id },

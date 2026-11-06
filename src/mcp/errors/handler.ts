@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { ReadOnlyModeError } from '../../core/errors/read-only-error.js'
 import { type EnvConfig, isProduction } from '../../env.js'
 import { safeLogger } from '../../logger.js'
+import { isRecord } from '../utils/helpers.js'
 import type { IErrorHandler } from '../utils/types.js'
 import { sanitizeErrorDetails, sanitizeErrorMessage } from './sanitizer.js'
 
@@ -75,17 +76,17 @@ export class McpErrorHandler implements IErrorHandler {
     }
 
     // Handle structured Lodgify errors first (from ErrorHandler)
-    const errorObj = error as unknown as Record<string, unknown>
     const isLodgifyError =
-      errorObj?.error === true &&
-      typeof errorObj?.status === 'number' &&
-      typeof errorObj?.message === 'string'
+      isRecord(error) &&
+      error.error === true &&
+      typeof error.status === 'number' &&
+      typeof error.message === 'string'
 
     if (isLodgifyError) {
       // Extract status and message from Lodgify error
-      const status = errorObj.status as number
-      const lodgifyMessage = errorObj.message as string
-      const detail = errorObj.detail
+      const status = error.status as number
+      const lodgifyMessage = error.message as string
+      const detail = error.detail
 
       if (process.env.DEBUG_HTTP === '1') {
         safeLogger.debug('Processing structured Lodgify error:', {
@@ -180,8 +181,12 @@ export class McpErrorHandler implements IErrorHandler {
       }
 
       // Generic API errors with details (fallback)
+      const errorRecord = isRecord(error) ? error : undefined
       const errorDetails =
-        errorObj?.detail || (errorObj as { response?: { data?: unknown } })?.response?.data
+        errorRecord?.detail ||
+        (isRecord(errorRecord?.response)
+          ? (errorRecord.response as Record<string, unknown>).data
+          : undefined)
       if (errorDetails) {
         throw new McpError(
           ErrorCode.InternalError,

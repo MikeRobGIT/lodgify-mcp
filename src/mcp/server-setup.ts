@@ -22,6 +22,7 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
   getClient: () => LodgifyOrchestrator
   toolRegistry: ToolRegistry
   resourceRegistry: ResourceRegistry
+  cleanup: () => Promise<void>
 } {
   const readOnly = injectedClient?.isReadOnly?.() ?? normalizeBoolean(process.env.LODGIFY_READ_ONLY)
 
@@ -37,7 +38,7 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
       instructions: [
         'Lodgify vacation-rental property management (API v1/v2).',
         'If you do not know a property ID, call lodgify_find_properties or lodgify_list_properties first.',
-        'Dates are YYYY-MM-DD. lodgify_list_bookings defaults to stayFilter "Upcoming"; avoid "All" (very large).',
+        'Most date inputs are YYYY-MM-DD; stayFilterDate and check-in/check-out `time` are ISO 8601 date-times. lodgify_list_bookings defaults to stayFilter "Upcoming"; avoid "All" (very large).',
         'Messaging is read-only: use lodgify_get_thread with the thread_uid from a booking; sending messages is not supported by the Lodgify API.',
         readOnly
           ? 'Read-only mode is ON: create/update/delete tools are not available.'
@@ -79,6 +80,13 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
     return client
   }
 
+  // Cleanup function for session cleanup
+  const cleanup = async () => {
+    // Clean up any resources if needed
+    // Currently no-op but can be extended for resource cleanup
+    safeLogger.debug('Cleaning up server resources')
+  }
+
   // Register all tools
   registerAllTools(toolRegistry, getClient)
   toolRegistry.registerAll(server, { readOnly })
@@ -92,6 +100,7 @@ export function setupServer(injectedClient?: LodgifyOrchestrator): {
     getClient,
     toolRegistry,
     resourceRegistry,
+    cleanup,
   }
 }
 

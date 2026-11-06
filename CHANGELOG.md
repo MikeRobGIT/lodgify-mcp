@@ -5,25 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.23] - 2026-11-05
+## [0.1.26] - 2026-11-05
 
 ### Changed
 
-- **MCP SDK**: Upgraded `@modelcontextprotocol/sdk` 1.17.4 → ^1.32.2 (zod 3.25 stays; no schema migration needed)
-- **HTTP server**: Now stateless per request (new server + transport each request, shared Lodgify client). SDK >= 1.26 refuses to `connect()` a server twice, which made every request after the first fail; also closes the shared-transport response-leak risk (GHSA-345p-7cg4-v4c7). GET/DELETE `/mcp` return 405. Bearer token compared in constant time. App factory moved to `src/http-app.ts`
+- **MCP SDK**: Upgraded `@modelcontextprotocol/sdk` ^1.26.0 → ^1.32.2 (zod 3.25 stays; no schema migration needed)
 - **Dockerfiles**: copy `bun.lock` (the tracked lockfile) instead of `bun.lockb*` so builds pin the tested SDK
 
 ### Added
 
-- **Tool annotations**: all 27 tools declare `readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint` so clients can gate confirmations
+- **Tool annotations**: all 28 tools declare `readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint` so clients can gate confirmations
 - **Server instructions** and `title`/`websiteUrl` server info
 - **Read-only mode** no longer lists write tools (they could only fail)
-- Contract tests (`tests/sdk-contract.test.ts`) and HTTP transport tests (`tests/http-server.test.ts`)
+- Contract tests (`tests/sdk-contract.test.ts`)
 
 ### Fixed
 
-- `lodgify_get_property` failures return an `isError` result instead of a JSON blob inside a doubly-prefixed protocol error; McpErrors are no longer re-wrapped ("MCP error -32602: MCP error -32602: ...")
+- McpErrors are no longer re-wrapped, which prefixed messages twice ("MCP error -32602: MCP error -32602: ...")
 - Removed the advertised `resources.subscribe` capability (no handler); `logging/setLevel` is now handled by the SDK
+
+## [0.1.25] - 2026-05-04
+
+### Added
+
+- **Manual Total Override on v1 Bookings**: `lodgify_create_booking` and `lodgify_update_booking` now forward `total` and `currency_code` so manual amounts override rate-plan calculations
+
+### Fixed
+
+- **HTTP Transport "Server not initialized" Errors**: Switched server-http to stateless MCP transport (new server+transport per request) — resolves the prior session-init race
+- **HTTP Error Logging**: `safeLogger.error` in the request error path now passes a serializable shape (message/stack/name) so non-enumerable `Error` fields are preserved through `JSON.stringify`
+- **Booking Status After Creation**: Set booking status via the dedicated v1 endpoint after creation (Lodgify ignores `status` in the POST body)
+- **Test Fidelity for `lodgify_list_bookings` and `lodgify_rate_settings`**: `tests/test-server.ts` now mirrors real handler param mapping (`size`→`limit`, `page`→`offset`, `houseId.toString()`) so test assertions reflect production call shape
+- **Quote Client Typing**: Replaced `any` casts in `tests/api/v2/quotes-client.test.ts` with proper type casts for invalid/null/undefined parameters
+- **Health-Check Flake**: Removed `responseTime >= 5` lower bound; `Date.now()` resolution + scheduler jitter can produce 0–4ms even with a 10ms `setTimeout`
+
+### Technical Details
+
+- Expanded test coverage: 40+ new test files, ~19k lines added across booking, rate, property, webhook, messaging, availability, and helper tools
+- Integration test assertions for `lodgify_list_bookings` updated to assert the mapped (flat) shape produced by `booking-tools.ts`
+- All 1385 tests passing
+
+## [0.1.24] - 2025-11-06
+
+### Added
+
+- **Stateful HTTP Session Management**: Implemented official MCP SDK stateful session pattern with per-session server instances and event stores for session resumability
+- **Session Reconnection Support**: InMemoryEventStore enables clients to reconnect and resume existing sessions after disconnection
+- **CORS Support**: Full CORS middleware implementation with proper header exposure (`mcp-session-id`, `last-event-id`) for browser-based MCP clients
+- **Session Lifecycle Management**: Comprehensive session cleanup with configurable timeout management (30-minute default) and proper resource disposal
+
+### Changed
+
+- **HTTP Server Architecture**: Refactored HTTP transport to use per-session McpServer instances following official MCP SDK patterns
+- **Docker Configuration**: Simplified `docker-compose.yml` with streamlined HTTP server setup
+- **Server Setup Module**: Exported `createMcpServer` function for better modularity and reusability
+- **Dependencies**: Added `cors` (^2.8.5) and `@types/cors` (^2.8.19) for browser client support
+
+### Technical Details
+
+- Implemented official MCP stateful session pattern with isolated server instances per HTTP session
+- Added InMemoryEventStore for session persistence and reconnection capabilities
+- Enhanced CORS middleware with proper preflight handling and header exposure for browser compatibility
+- Improved session cleanup mechanism with 30-minute timeout and graceful resource disposal
+- Enhanced error handling and logging throughout HTTP transport layer
+- Maintained full backward compatibility with existing MCP stdio transport
+- All 218 existing tests passing with new HTTP session management features
+
+## [0.1.23] - 2025-10-10
+
+### Added
+
+- **Enhanced GitHub Releases**: Automated changelog extraction system that includes version-specific changes directly in GitHub release bodies
+- **Changelog Extraction Script**: New `scripts/extract-changelog.sh` utility for extracting version-specific sections from CHANGELOG.md
+- **Configurable Timeout for Vacant Inventory**: Added `timeoutSeconds` parameter to `lodgify_list_vacant_inventory` tool (default: 180s, min: 30s, max: 600s) for better control over long-running availability operations
+
+### Changed
+
+- **GitHub Release Workflow**: Enhanced `.github/workflows/release.yml` to automatically extract and display changelog content in release bodies instead of just linking to CHANGELOG.md
+- **Release Body Format**: Improved GitHub release notes with structured sections, emoji icons, and comprehensive installation instructions
+- **Documentation**: Updated tool documentation with timeout configuration guidance and usage examples for vacant inventory operations
+
+### Technical Details
+
+- Implemented AWK-based changelog parsing script with version-specific section extraction
+- Enhanced release workflow with changelog extraction step and multiline output handling
+- Added timeout parameter validation with min/max constraints to vacant inventory tool schema
+- Improved GitHub release presentation with formatted markdown, code blocks, and resource links
+- Maintained backward compatibility with all existing MCP tools and API endpoints
 
 ## [0.1.22] - 2025-09-22
 
