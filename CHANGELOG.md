@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.23] - 2026-11-05
+
+### Changed
+
+- **MCP SDK**: Upgraded `@modelcontextprotocol/sdk` 1.17.4 → ^1.32.2 (zod 3.25 stays; no schema migration needed)
+- **HTTP server**: Now stateless per request (new server + transport each request, shared Lodgify client). SDK >= 1.26 refuses to `connect()` a server twice, which made every request after the first fail; also closes the shared-transport response-leak risk (GHSA-345p-7cg4-v4c7). GET/DELETE `/mcp` return 405. Bearer token compared in constant time. App factory moved to `src/http-app.ts`
+- **Dockerfiles**: copy `bun.lock` (the tracked lockfile) instead of `bun.lockb*` so builds pin the tested SDK
+
+### Added
+
+- **Tool annotations**: all 27 tools declare `readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint` so clients can gate confirmations
+- **Server instructions** and `title`/`websiteUrl` server info
+- **Read-only mode** no longer lists write tools (they could only fail)
+- Contract tests (`tests/sdk-contract.test.ts`) and HTTP transport tests (`tests/http-server.test.ts`)
+
+### Fixed
+
+- `lodgify_get_property` failures return an `isError` result instead of a JSON blob inside a doubly-prefixed protocol error; McpErrors are no longer re-wrapped ("MCP error -32602: MCP error -32602: ...")
+- Removed the advertised `resources.subscribe` capability (no handler); `logging/setLevel` is now handled by the SDK
+
 ## [0.1.22] - 2025-09-22
 
 ### Added

@@ -6,7 +6,7 @@ FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
 # Copy package files for dependency installation
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock ./
 
 # Install all dependencies including dev dependencies
 RUN bun install --frozen-lockfile

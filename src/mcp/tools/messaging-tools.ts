@@ -53,6 +53,12 @@ export function getMessagingTools(getClient: () => LodgifyOrchestrator): ToolReg
       category: CATEGORY,
       config: {
         title: 'Get Messaging Thread',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Retrieve a messaging conversation thread including all messages, participants, and thread metadata.
 
 This is currently the only functional messaging endpoint in Lodgify API v2.

@@ -30,8 +30,11 @@ export class ToolRegistry implements IToolRegistry {
   /**
    * Register all tools with the MCP server
    */
-  registerAll(server: McpServer): void {
+  registerAll(server: McpServer, options: { readOnly?: boolean } = {}): void {
     for (const tool of this.tools) {
+      // In read-only mode every write tool would fail, so don't advertise them
+      if (options.readOnly && tool.config.annotations?.readOnlyHint !== true) continue
+
       // Register with deprecation handling
       // The handler already has access to getClient via closure
       // biome-ignore lint/suspicious/noExplicitAny: MCP SDK requires this type cast for handler compatibility

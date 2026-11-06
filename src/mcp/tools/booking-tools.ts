@@ -37,6 +37,12 @@ export function getBookingTools(getClient: () => LodgifyOrchestrator): ToolRegis
       category: 'Booking & Reservation Management',
       config: {
         title: 'List Bookings & Reservations',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `[Booking & Reservation Management] Retrieve bookings with comprehensive filtering options. Filter by dates, status, property, guest information, and more. Returns booking details including guest info, dates, pricing, and payment status. Essential for managing reservations and analyzing booking patterns.
 
 Note: Maximum page size is 50 items per request. Default stay filter is "Upcoming" for performance and relevance. Avoid using "All" as it can return a very large dataset.
@@ -230,6 +236,12 @@ Example response:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Get Booking Details',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Retrieve complete details for a specific booking including guest information, property details, room assignments, pricing breakdown, payment status, special requests, and booking timeline. Use this for customer service inquiries and detailed booking management.
 
 Example request:
@@ -283,6 +295,12 @@ Example request:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Get Booking Payment Link',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Retrieve existing payment link for a booking including payment status, amount due, and link expiration. Use this to check if a payment link already exists or to get current payment details for customer service inquiries.
 
 Example request:
@@ -338,6 +356,12 @@ Example request:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Create Booking Payment Link',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: false,
+        },
         description: `Generate a secure payment link for a booking allowing guests to pay outstanding balances online. Useful for collecting deposits, final payments, or additional charges. The link will be sent to guests via email or can be shared directly.
 
 Example request:
@@ -422,6 +446,12 @@ Example request:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Update Access Key Codes',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Update access key codes for a booking to provide guests with property entry information. Used for smart locks, keypad codes, or other access control systems. Essential for self-check-in processes and property access management.
 
 Example request:
@@ -490,6 +520,12 @@ Example request:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Check In Booking',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Mark a booking as checked in. Updates the booking status to reflect that the guest has arrived and checked into the property. Essential for tracking guest arrivals and property occupancy.
 
 Example request:
@@ -547,6 +583,12 @@ Example request:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Check Out Booking',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Mark a booking as checked out. Updates the booking status to reflect that the guest has departed from the property. Essential for tracking guest departures and property availability.
 
 Example request:
@@ -604,6 +646,12 @@ Example request:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Get External Bookings',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Retrieve external bookings associated with a property. These are bookings made through external channels (OTAs like Booking.com, Airbnb, etc.) that are synchronized with Lodgify. Useful for understanding the full booking picture across all channels.
 
 Example request:
@@ -655,6 +703,12 @@ Example request:
       category: 'Booking & Reservation Management',
       config: {
         title: 'Create Booking (V1)',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: false,
+        },
         description: `[Booking & Reservation Management] Create a new booking in the system. This v1 endpoint provides direct booking creation functionality that is not available in v2. Essential for programmatic booking creation and channel management.
 
 **REQUIRED FIELDS**:
@@ -852,6 +906,12 @@ The transformation handles: guest name splitting, room structuring, status capit
       category: 'Booking & Reservation Management',
       config: {
         title: 'Update Booking (V1)',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `[Booking & Reservation Management] Update an existing booking's details. This v1 endpoint provides comprehensive booking modification capabilities not available in v2. Use for modifying dates, guest counts, status, or other booking attributes.
 
 **Input Format**: Accepts simple flat parameters (user-friendly)
@@ -961,6 +1021,12 @@ This gets automatically transformed to the nested API structure with guest objec
       category: 'Booking & Reservation Management',
       config: {
         title: 'Delete Booking (V1)',
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `[Booking & Reservation Management] Permanently delete a booking from the system. This v1 endpoint provides deletion capability not available in v2. Use with caution as this action cannot be undone. Consider updating status to 'declined' instead of deletion when possible.
       
 Example request:
