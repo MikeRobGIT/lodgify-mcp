@@ -61,7 +61,7 @@ cp .env.example .env  # Configure LODGIFY_API_KEY
 # Development
 bun dev              # Run TypeScript directly (Bun has built-in TS support)
 bun run build        # Compile TypeScript to dist/
-bun test             # Run unit tests
+bun run test         # Run unit tests (isolated per file; plain `bun test` can leak mocks)
 bun test --watch     # Run tests in watch mode
 bun run lint         # Run ESLint
 bun run typecheck    # Run TypeScript type checking

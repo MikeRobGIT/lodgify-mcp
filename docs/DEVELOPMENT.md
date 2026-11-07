@@ -64,7 +64,7 @@ bun run build        # Compile TypeScript to dist/
 bun start            # Run compiled server from dist/
 
 # Quality Checks
-bun test             # Run unit tests
+bun run test         # Run unit tests (isolated per file; plain `bun test` can leak mocks)
 bun test --watch     # Run tests in watch mode
 bun test --coverage  # Run tests with coverage report
 bun run lint         # Run ESLint
@@ -76,7 +76,7 @@ bun run format       # Format code with Prettier
 
 ```bash
 # Run all tests
-bun test
+bun run test
 
 # Run with coverage
 bun test --coverage
@@ -408,7 +408,7 @@ npm version major
 ```bash
 # Build and test
 bun run build
-bun test
+bun run test
 
 # Publish to npm
 npm publish

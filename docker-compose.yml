@@ -32,9 +32,7 @@ services:
       - SERVICE_FQDN_LODGIFY_MCP_3076
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3076
-      - HTTP_HOST=0.0.0.0
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      - TRUST_PROXY=${TRUST_PROXY:-true}
       - LODGIFY_API_KEY=${LODGIFY_API_KEY:?LODGIFY_API_KEY is required}
       - MCP_TOKEN=${MCP_TOKEN:?MCP_TOKEN is required}
 
