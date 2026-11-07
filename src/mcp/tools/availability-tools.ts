@@ -27,6 +27,12 @@ export function getAvailabilityTools(getClient: () => LodgifyOrchestrator): Tool
       category: 'Availability & Calendar',
       config: {
         title: 'Get Property Availability',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `Get availability for a specific property over a period. Useful for granular checks before booking or blocking dates.
 
 Example request:
@@ -150,6 +156,12 @@ Example request:
       category: 'Availability & Calendar',
       config: {
         title: 'List Vacant Inventory (Properties & Rooms)',
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         description: `List all properties that are vacant for a date range, optionally including room details.
 
 Use this to find available inventory in one call instead of checking each property separately.

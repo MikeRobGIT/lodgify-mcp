@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.26] - 2026-11-05
+
+### Changed
+
+- **MCP SDK**: Upgraded `@modelcontextprotocol/sdk` ^1.26.0 → ^1.32.2 (zod 3.25 stays; no schema migration needed)
+- **Dockerfiles**: copy `bun.lock` (the tracked lockfile) instead of `bun.lockb*` so builds pin the tested SDK
+
+### Added
+
+- **Tool annotations**: all 28 tools declare `readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint` so clients can gate confirmations
+- **Server instructions** and `title`/`websiteUrl` server info
+- **Read-only mode** no longer lists write tools (they could only fail)
+- Contract tests (`tests/sdk-contract.test.ts`)
+
+### Fixed
+
+- McpErrors are no longer re-wrapped, which prefixed messages twice ("MCP error -32602: MCP error -32602: ...")
+- Removed the advertised `resources.subscribe` capability (no handler); `logging/setLevel` is now handled by the SDK
+
 ## [0.1.25] - 2026-05-04
 
 ### Added

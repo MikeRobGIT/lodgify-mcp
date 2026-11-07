@@ -3,6 +3,7 @@
  */
 
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import type { ZodRawShape } from 'zod'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 
@@ -13,6 +14,13 @@ export interface ToolConfig<TInput extends ZodRawShape = ZodRawShape> {
   title?: string
   description?: string
   inputSchema?: TInput
+  /**
+   * MCP behavior hints. openWorldHint rule: true only when the tool sends data to,
+   * or messages, a party outside the Lodgify account (webhook target, guest email).
+   * Guest-authored text returned by read tools does not make a tool open-world.
+   * Tools without readOnlyHint: true are hidden in LODGIFY_READ_ONLY mode.
+   */
+  annotations?: ToolAnnotations
 }
 
 /**
@@ -102,7 +110,6 @@ export interface ServerConfig {
       listChanged?: boolean
     }
     resources?: {
-      subscribe?: boolean
       listChanged?: boolean
     }
     logging?: Record<string, unknown>
@@ -115,7 +122,7 @@ export interface ServerConfig {
  */
 export interface IToolRegistry {
   register<TInput extends ZodRawShape>(registration: ToolRegistration<TInput>): void
-  registerAll(server: McpServer): void
+  registerAll(server: McpServer, options?: { readOnly?: boolean }): void
   getTools(): ToolRegistration[]
   getCategories(): Record<ToolCategory, ToolRegistration[]>
 }

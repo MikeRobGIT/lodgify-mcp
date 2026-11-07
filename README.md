@@ -130,8 +130,8 @@ Ask Claude natural language questions about your Lodgify properties:
 ## Features
 
 - **🚀 Zero Installation**: Run directly with `bunx` - no local setup required
-- **🔧 20+ API Tools**: Complete property management, bookings, and availability
-- **🛡️ Read-Only Mode**: Safe testing with write operation protection
+- **🔧 28 API Tools**: Complete property management, bookings, and availability
+- **🛡️ Read-Only Mode**: Safe testing with write operation protection (write tools are hidden from `tools/list`)
 - **📝 Type-Safe**: Full TypeScript with input validation
 - **🔄 Smart Retries**: Automatic rate limit handling with exponential backoff
 - **📊 Comprehensive**: Properties, bookings, availability, rates, quotes, and more
