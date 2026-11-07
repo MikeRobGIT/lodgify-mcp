@@ -9,7 +9,7 @@ services:
       - ./src:/app/src
       - ./package.json:/app/package.json
       - ./tsconfig.json:/app/tsconfig.json
-      - ./bun.lockb:/app/bun.lockb
+      - ./bun.lock:/app/bun.lock
       # Mount .env for hot reload of environment variables
       - ./.env:/app/.env:ro
       # Prevent node_modules from being overwritten

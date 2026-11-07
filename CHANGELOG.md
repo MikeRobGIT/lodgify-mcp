@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING (Docker Compose)**: `docker-compose.yml` now defines a default `lodgify-mcp` service (HTTP transport, built from `Dockerfile.http`) with no profile, so `docker compose up -d` works. The `bridge` and `production` profiles and the GHCR stdio service are removed.
+- Published port binds to `127.0.0.1` by default; set `BIND_ADDRESS=0.0.0.0` to expose it. Host port is `HOST_PORT` (default 3076).
+- `.env` is optional; `LODGIFY_API_KEY` and `MCP_TOKEN` are required and fail fast if missing.
+- Removed fixed `container_name` and network `name` so multiple stacks and PaaS hosts (Coolify) do not clash.
+- Dev override mounts `bun.lock` instead of the stale `bun.lockb`.
+
 ## [0.1.26] - 2026-11-05
 
 ### Changed

@@ -1,82 +1,45 @@
+# Lodgify MCP server (Streamable HTTP transport).
+#
+# Quickstart:
+#   cp .env.example .env        # set LODGIFY_API_KEY and MCP_TOKEN
+#   docker compose up -d
+#   curl http://localhost:3076/health
+#
+# Variables (shell env or .env; .env is optional):
+#   LODGIFY_API_KEY  required  Lodgify API key
+#   MCP_TOKEN        required  bearer token clients must send
+#   HOST_PORT        optional  published host port (default 3076)
+#   BIND_ADDRESS     optional  host interface (default 127.0.0.1; use 0.0.0.0 to expose)
+#   LOG_LEVEL        optional  default info
+#
+# Coolify / PaaS: use the Docker Compose build pack, set the domain on the
+# `lodgify-mcp` service, and set the two required variables in the UI.
 
 services:
   lodgify-mcp:
-    # Use image for production, build for development (see profiles below)
-    image: ghcr.io/mikerobgit/lodgify-mcp:latest
-    container_name: lodgify-mcp-server
-    
-    # Environment variables from .env file
-    env_file:
-      - .env
-    
-    # Additional environment variables
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PORT=${DOCKER_PORT:-3000}
-    
-    # Port mapping
-    ports:
-      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
-    
-    # Restart policy
-    restart: unless-stopped
-    
-    # Health check
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${DOCKER_PORT:-3000}/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 60s
-      retries: 3
-    
-    # Logging configuration
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    
-    # Network for MCP client connectivity
-    networks:
-      - mcp-network
-    
-    # Resource limits for production
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-    
-    # Default profile (production)
-    profiles:
-      - production
-
-  # Primary HTTP MCP Server (Streamable HTTP Transport)
-  # Use this for production deployments
-  # Command: docker compose --profile bridge build && docker compose --profile bridge up -d
-  lodgify-mcp-bridge:
     build:
       context: .
       dockerfile: Dockerfile.http
       args:
         - PORT=3076
 
-    container_name: lodgify-mcp-bridge
-
     env_file:
-      - .env
+      - path: .env
+        required: false
 
     environment:
+      # Coolify reads this to route the generated domain to port 3076; ignored elsewhere.
+      - SERVICE_FQDN_LODGIFY_MCP_3076
       - NODE_ENV=${NODE_ENV:-production}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
       - PORT=3076
+      - HTTP_HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TRUST_PROXY=${TRUST_PROXY:-true}
+      - LODGIFY_API_KEY=${LODGIFY_API_KEY:?LODGIFY_API_KEY is required}
+      - MCP_TOKEN=${MCP_TOKEN:?MCP_TOKEN is required}
 
     ports:
-      - "3076:3076"
+      - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-3076}:3076"
 
     restart: unless-stopped
 
@@ -87,13 +50,25 @@ services:
       start_period: 60s
       retries: 3
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - mcp-network
 
-    profiles:
-      - bridge
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
-  # Development configuration
+  # Development service with hot reload: docker compose --profile dev up
   lodgify-mcp-dev:
     build:
       context: .
@@ -101,58 +76,49 @@ services:
       target: production
       args:
         - PORT=${DOCKER_PORT:-3000}
-    
-    container_name: lodgify-mcp-dev
-    
-    # Mount source code for hot reload
+
     volumes:
       - ./src:/app/src:ro
       - ./package.json:/app/package.json:ro
       - ./tsconfig.json:/app/tsconfig.json:ro
       # Prevent node_modules from being overwritten
       - /app/node_modules
-    
-    # Development environment
+
     env_file:
-      - .env
-      - .env.docker
-    
+      - path: .env
+        required: false
+      - path: .env.docker
+        required: false
+
     environment:
       - NODE_ENV=development
       - LOG_LEVEL=${LOG_LEVEL:-debug}
       - PORT=${DOCKER_PORT:-3000}
       - DEBUG_HTTP=${DEBUG_HTTP:-1}
-    
-    # Port mapping for development
+
     ports:
-      - "${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
-    
-    # Development command (uses bun dev for hot reload)
+      - "${BIND_ADDRESS:-127.0.0.1}:${DOCKER_PORT:-3000}:${DOCKER_PORT:-3000}"
+
     command: ["bun", "run", "dev"]
-    
-    # Always restart in development
+
     restart: always
-    
-    # Health check
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${DOCKER_PORT:-3000}/health"]
       interval: 30s
       timeout: 10s
       start_period: 60s
       retries: 3
-    
-    # Logging for development
+
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
-    
-    # Network
+
     networks:
       - mcp-network
-    
-    # Development profile
+
     profiles:
       - development
       - dev
@@ -160,4 +126,3 @@ services:
 networks:
   mcp-network:
     driver: bridge
-    name: lodgify-mcp-network
