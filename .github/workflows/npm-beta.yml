@@ -52,7 +52,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.13
       
       - name: Setup Node.js (for npm)
         uses: actions/setup-node@v4
@@ -60,9 +60,9 @@ jobs:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
-      # Trusted Publishing (OIDC) needs npm >= 11.5.1 (>= 11.21 for dist-tags)
+      # Trusted Publishing (OIDC) needs npm >= 11.5.1 (>= 11.21 for dist-tags); pinned, bump deliberately
       - name: Update npm
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.21.2
       
       - name: Configure Git
         run: |

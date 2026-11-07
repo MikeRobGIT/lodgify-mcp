@@ -36,6 +36,10 @@ services:
       - LODGIFY_API_KEY=${LODGIFY_API_KEY:?LODGIFY_API_KEY is required}
       - MCP_TOKEN=${MCP_TOKEN:?MCP_TOKEN is required}
 
+    # `expose` lets Coolify/other proxies route to the container; `ports` publishes it on the host
+    # (change HOST_PORT if several stacks share a host).
+    expose:
+      - "3076"
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-3076}:3076"
 

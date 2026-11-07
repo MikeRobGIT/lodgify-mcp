@@ -5,21 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.27] - 2026-11-07
+## [0.2.0] - 2026-11-07
 
-> 0.1.26 was tagged but never published to npm (expired `NPM_TOKEN`). 0.1.27 contains its changes plus the items below.
+> 0.1.26 was tagged but never published to npm (expired `NPM_TOKEN`). 0.2.0 is the first release containing its changes, listed below.
 
 ### Changed
 
-- **BREAKING (Docker Compose)**: `docker-compose.yml` now defines a default `lodgify-mcp` service (HTTP transport, built from `Dockerfile.http`) with no profile, so `docker compose up -d` works. The `bridge` and `production` profiles and the GHCR stdio service are removed.
-- Published port binds to `127.0.0.1` by default; set `BIND_ADDRESS=0.0.0.0` to expose it. Host port is `HOST_PORT` (default 3076).
+- **BREAKING (Docker Compose)**: `docker-compose.yml` now defines a default `lodgify-mcp` service (HTTP transport, built from `Dockerfile.http`) with no profile, so `docker compose up -d` works. The `bridge` and `production` profiles and the GHCR stdio service are removed. **Migration:** replace `docker compose --profile bridge up` / `--profile production up` with `docker compose up -d`; set `LODGIFY_API_KEY` and `MCP_TOKEN` in `.env` or the shell. For stdio, run `npx @mikerob/lodgify-mcp` instead of the removed compose service. Requires Docker Compose v2.24+.
+- Published port binds to `127.0.0.1` by default; set `BIND_ADDRESS=0.0.0.0` to expose it. Host port is `HOST_PORT` (default 3076). The service also declares `expose: 3076` for Coolify and other proxies.
 - `.env` is optional; `LODGIFY_API_KEY` and `MCP_TOKEN` are required and fail fast if missing.
 - Removed fixed `container_name` and network `name` so multiple stacks and PaaS hosts (Coolify) do not clash.
-- Dev override mounts `bun.lock` instead of the stale `bun.lockb`.
-- **npm publishing** (`release.yml`, `npm-beta.yml`) now uses npm Trusted Publishing (OIDC) on Node 24; the `NPM_TOKEN` secret is no longer used.
-- Tests run with `bun test --isolate` so `mock.module` in one file no longer leaks into others.
+- Dev override mounts `bun.lock` instead of the stale `bun.lockb` and no longer bind-mounts `.env`.
+- **npm publishing** (`release.yml`, `npm-beta.yml`) now uses npm Trusted Publishing (OIDC) on Node 24 with a pinned `npm@11.21.2`; the `NPM_TOKEN` secret is no longer used.
+- **Bun**: minimum raised to 1.3.13 (`engines.bun`); CI is pinned to 1.3.13. Tests run with `bun test --isolate` (via `bun run test`) so `mock.module` in one file no longer leaks into others.
+- **MCP SDK** (from 0.1.26): upgraded `@modelcontextprotocol/sdk` ^1.26.0 → ^1.32.2 (zod 3.25 stays; no schema migration needed).
+- **Dockerfiles** (from 0.1.26): copy `bun.lock` (the tracked lockfile) instead of `bun.lockb*` so builds pin the tested SDK.
+
+### Added (from 0.1.26)
+
+- **Tool annotations**: all 28 tools declare `readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint` so clients can gate confirmations.
+- **Server instructions** and `title`/`websiteUrl` server info.
+- **Read-only mode** no longer lists write tools (they could only fail).
+- Contract tests (`tests/sdk-contract.test.ts`).
+
+### Fixed (from 0.1.26)
+
+- McpErrors are no longer re-wrapped, which prefixed messages twice ("MCP error -32602: MCP error -32602: ...").
+- Removed the advertised `resources.subscribe` capability (no handler); `logging/setLevel` is now handled by the SDK.
 
 ## [0.1.26] - 2026-11-05
+
+> Tagged but not published to npm; folded into 0.2.0.
 
 ### Changed
 

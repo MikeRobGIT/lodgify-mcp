@@ -4,7 +4,7 @@ This guide covers development setup, testing, and contributing to the Lodgify MC
 
 ## Prerequisites
 
-- **Bun** ≥ 1.0 (recommended) or **Node.js** ≥ 18
+- **Bun** ≥ 1.3.13 (recommended; `bun test --isolate` needs it) or **Node.js** ≥ 18
 - **TypeScript** knowledge
 - **Lodgify API key** for testing
 

@@ -10,7 +10,7 @@ This is a Model Context Protocol (MCP) server that exposes Lodgify Public API v2
 
 ### Technology Stack
 
-- **Runtime**: Bun ≥ 1.0 (or Node.js ≥ 18)
+- **Runtime**: Bun ≥ 1.3.13 (or Node.js ≥ 18)
 - **Language**: TypeScript
 - **Protocol**: MCP over stdio
 - **SDK**: @modelcontextprotocol/sdk
