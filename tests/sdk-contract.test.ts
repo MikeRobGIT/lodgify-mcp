@@ -67,6 +67,13 @@ describe('SDK contract', () => {
     expect(names(tools)).toEqual(READ_TOOLS)
   })
 
+  test('instructions reflect read-only mode', async () => {
+    expect((await connect(true)).getInstructions()).toContain('Read-only mode is ON')
+    const rw = (await connect(false)).getInstructions()
+    expect(rw).toContain('confirm with the user')
+    expect(rw).not.toContain('Read-only mode is ON')
+  })
+
   test('write tools are not callable in read-only mode', async () => {
     const res = await (await connect(true)).callTool({
       name: 'lodgify_delete_booking',

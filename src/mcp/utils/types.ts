@@ -14,6 +14,12 @@ export interface ToolConfig<TInput extends ZodRawShape = ZodRawShape> {
   title?: string
   description?: string
   inputSchema?: TInput
+  /**
+   * MCP behavior hints. openWorldHint rule: true only when the tool sends data to,
+   * or messages, a party outside the Lodgify account (webhook target, guest email).
+   * Guest-authored text returned by read tools does not make a tool open-world.
+   * Tools without readOnlyHint: true are hidden in LODGIFY_READ_ONLY mode.
+   */
   annotations?: ToolAnnotations
 }
 
@@ -104,7 +110,6 @@ export interface ServerConfig {
       listChanged?: boolean
     }
     resources?: {
-      subscribe?: boolean
       listChanged?: boolean
     }
     logging?: Record<string, unknown>

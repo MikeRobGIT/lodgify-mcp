@@ -37,7 +37,7 @@ export function wrapToolHandler<TInput = unknown, TOutput = unknown>(
         })
       }
 
-      // If it's already an McpError, make sure it's properly serializable
+      // Already an McpError: pass through untouched
       if (error instanceof McpError) {
         // Rethrow as-is: re-wrapping would prefix the message twice ("MCP error -32602: MCP error -32602: ...")
         throw error
