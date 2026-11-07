@@ -36,7 +36,7 @@ This project is a Model Context Protocol (MCP) server that exposes Lodgify Publi
 - **Run (stdio):** `bun dev` (dev) or `bun run build && bun start` (from dist)
 - **Run (HTTP):** `bun run start:http` (requires `MCP_TOKEN`), prod: `bun run start:http:prod`
 - **Quality Gate:** `bun run check` (lint + format + typecheck + build + test)
-- **Tests:** `bun test` (watch: `bun test --watch`, coverage: `bun test --coverage`)
+- **Tests:** `bun run test` (watch: `bun run test:watch`, coverage: `bun run test:coverage`)
 
 ## Tool Implementation Example
 1. Create tool in `src/mcp/tools/[category]-tools.ts` with Zod `inputSchema` and clear `description`.

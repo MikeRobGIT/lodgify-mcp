@@ -65,8 +65,8 @@ bun start            # Run compiled server from dist/
 
 # Quality Checks
 bun run test         # Run unit tests (isolated per file; plain `bun test` can leak mocks)
-bun test --watch     # Run tests in watch mode
-bun test --coverage  # Run tests with coverage report
+bun run test:watch   # Run tests in watch mode
+bun run test:coverage # Run tests with coverage report
 bun run lint         # Run ESLint
 bun run typecheck    # Run TypeScript type checking
 bun run format       # Format code with Prettier
@@ -79,13 +79,13 @@ bun run format       # Format code with Prettier
 bun run test
 
 # Run with coverage
-bun test --coverage
+bun run test:coverage
 
 # Watch mode for development
-bun test --watch
+bun run test:watch
 
 # Run specific test file
-bun test src/core/http/http-client.test.ts
+bun test --isolate src/core/http/http-client.test.ts
 
 # Debug tests
 bun test --inspect-brk
@@ -359,7 +359,7 @@ bun --inspect server.ts
 
 ### Before Submitting
 
-1. Run the full test suite: `bun test`
+1. Run the full test suite: `bun run test`
 2. Check linting: `bun run lint`
 3. Verify types: `bun run typecheck`
 4. Format code: `bun run format`

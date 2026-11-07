@@ -22,7 +22,7 @@
     "start:http:prod": "bun dist/server-http.js",
     "check": "bun run lint --fix && bun run typecheck && bun run format && bun run build && bun run test",
     "test": "bun test --isolate",
-    "test:watch": "bun test --watch",
+    "test:watch": "bun test --isolate --watch",
     "test:coverage": "bun test --isolate --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check . --fix",
