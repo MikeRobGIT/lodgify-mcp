@@ -54,7 +54,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run tests
-        run: bun test
+        run: bun run test
         env:
           LODGIFY_API_KEY: test-api-key
           TEST_MODE: mock
