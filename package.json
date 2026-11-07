@@ -32,7 +32,7 @@
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "pre-commit": "(bun run lint:src || echo '⚠️  Linting warnings found but continuing...') && bun run format:src",
-    "pre-push": "bun test && bun run build",
+    "pre-push": "bun run test && bun run build",
     "sync-version": "node scripts/sync-version.js",
     "docker:mcp:build": "docker build -f Dockerfile.mcp -t lodgify-mcp:mcp .",
     "docker:http:build": "docker build -f Dockerfile.http -t lodgify-mcp:http ."
