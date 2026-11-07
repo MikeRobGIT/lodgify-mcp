@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.env` is optional; `LODGIFY_API_KEY` and `MCP_TOKEN` are required and fail fast if missing.
 - Removed fixed `container_name` and network `name` so multiple stacks and PaaS hosts (Coolify) do not clash.
 - Dev override mounts `bun.lock` instead of the stale `bun.lockb`.
+- **npm publishing** (`release.yml`, `npm-beta.yml`) now uses npm Trusted Publishing (OIDC) on Node 24; the `NPM_TOKEN` secret is no longer used.
+- Tests run with `bun test --isolate` so `mock.module` in one file no longer leaks into others.
 
 ## [0.1.26] - 2026-11-05
 

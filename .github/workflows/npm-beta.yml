@@ -57,8 +57,12 @@ jobs:
       - name: Setup Node.js (for npm)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
+
+      # Trusted Publishing (OIDC) needs npm >= 11.5.1 (>= 11.21 for dist-tags)
+      - name: Update npm
+        run: npm install -g npm@latest
       
       - name: Configure Git
         run: |
@@ -211,14 +215,6 @@ jobs:
           npm version "$NEW_VERSION" --no-git-tag-version
           echo "Updated package.json to version $NEW_VERSION"
       
-      - name: Verify NPM authentication
-        run: |
-          echo "Verifying NPM authentication..."
-          npm whoami || (echo "❌ NPM authentication failed. Please check NPM_TOKEN secret." && exit 1)
-          echo "✅ NPM authentication successful"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
       - name: Run npm publish dry-run
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
@@ -229,8 +225,6 @@ jobs:
             exit 1
           fi
           echo "✅ Dry-run successful"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
       - name: Publish to npm with beta tag
         run: |
@@ -249,8 +243,6 @@ jobs:
           fi
           
           echo "✅ Successfully published @mikerob/lodgify-mcp@${{ steps.next.outputs.version }} with tag: $TAG"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
       - name: Commit version change
         run: |

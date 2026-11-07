@@ -47,8 +47,12 @@ jobs:
       - name: Setup Node.js (for npm publish)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
+
+      # Trusted Publishing (OIDC) needs npm >= 11.5.1 (>= 11.21 for dist-tags)
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -115,10 +119,9 @@ jobs:
           fi
           echo "✅ Version match confirmed: $PACKAGE_VERSION"
 
+      # Authenticates via npm Trusted Publishing (OIDC); no NPM_TOKEN needed
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Setup Node.js for GitHub Packages
         uses: actions/setup-node@v4
