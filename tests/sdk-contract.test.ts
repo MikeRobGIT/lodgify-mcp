@@ -80,6 +80,7 @@ describe('SDK contract', () => {
       arguments: { id: 1 },
     })
     expect(res.isError).toBe(true)
+    expect((res.content as Array<{ text: string }>)[0].text).toContain('not found')
   })
 
   test('capabilities: no resource subscribe, logging level handled, instructions set', async () => {
