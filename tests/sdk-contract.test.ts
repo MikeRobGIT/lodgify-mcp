@@ -12,6 +12,40 @@ async function connect(readOnly: boolean) {
   return client
 }
 
+const READ_TOOLS = [
+  'lodgify_daily_booking_summary',
+  'lodgify_daily_rates',
+  'lodgify_find_properties',
+  'lodgify_get_booking',
+  'lodgify_get_booking_payment_link',
+  'lodgify_get_external_bookings',
+  'lodgify_get_property',
+  'lodgify_get_property_availability',
+  'lodgify_get_quote',
+  'lodgify_get_thread',
+  'lodgify_list_bookings',
+  'lodgify_list_deleted_properties',
+  'lodgify_list_properties',
+  'lodgify_list_property_rooms',
+  'lodgify_list_vacant_inventory',
+  'lodgify_list_webhooks',
+  'lodgify_rate_settings',
+]
+const WRITE_TOOLS = [
+  'lodgify_checkin_booking',
+  'lodgify_checkout_booking',
+  'lodgify_create_booking',
+  'lodgify_create_booking_payment_link',
+  'lodgify_create_booking_quote',
+  'lodgify_delete_booking',
+  'lodgify_subscribe_webhook',
+  'lodgify_unsubscribe_webhook',
+  'lodgify_update_booking',
+  'lodgify_update_key_codes',
+  'lodgify_update_rates',
+]
+const names = (tools: Array<{ name: string }>) => tools.map((t) => t.name).sort()
+
 describe('SDK contract', () => {
   test('every tool declares all four annotation hints', async () => {
     const { tools } = await (await connect(false)).listTools()
@@ -24,13 +58,21 @@ describe('SDK contract', () => {
       expect(typeof a?.openWorldHint).toBe('boolean')
       expect(JSON.stringify(t.inputSchema)).not.toContain('$ref')
     }
-    expect(tools.filter((t) => !t.annotations?.readOnlyHint).length).toBe(11)
+    expect(names(tools.filter((t) => t.annotations?.readOnlyHint))).toEqual(READ_TOOLS)
+    expect(names(tools.filter((t) => !t.annotations?.readOnlyHint))).toEqual(WRITE_TOOLS)
   })
 
   test('read-only mode hides write tools', async () => {
     const { tools } = await (await connect(true)).listTools()
-    expect(tools.length).toBe(17)
-    expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true)
+    expect(names(tools)).toEqual(READ_TOOLS)
+  })
+
+  test('write tools are not callable in read-only mode', async () => {
+    const res = await (await connect(true)).callTool({
+      name: 'lodgify_delete_booking',
+      arguments: { id: 1 },
+    })
+    expect(res.isError).toBe(true)
   })
 
   test('capabilities: no resource subscribe, logging level handled, instructions set', async () => {

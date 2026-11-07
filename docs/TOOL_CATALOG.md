@@ -271,7 +271,7 @@ List bookings with comprehensive filtering options. Maximum page size is 50 item
 - `includeQuoteDetails` (optional, boolean): Include quote details (default: false)
 - `includeTransactions` (optional, boolean): Include details about transactions and schedule (default: false)
 - `stayFilter` (optional, string): Filter bookings by stay dates (Upcoming, Current, Historic, All, ArrivalDate, DepartureDate). Prefer `Upcoming`; avoid `All` unless absolutely necessary. (default: `Upcoming`)
-- `stayFilterDate` (optional, string): Date (YYYY-MM-DD) required when using `ArrivalDate` or `DepartureDate` in `stayFilter`
+- `stayFilterDate` (optional, string): ISO 8601 date-time (e.g. `2024-03-15T00:00:00Z`) required when using `ArrivalDate` or `DepartureDate` in `stayFilter`
 - `updatedSince` (optional, string): Include only bookings updated since this date (ISO 8601)
 - `trash` (optional, string): Query bookings that are in trash (enum: False, True, All)
 
