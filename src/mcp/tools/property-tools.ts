@@ -8,6 +8,7 @@ import { z } from 'zod'
 import type { PropertySearchParams } from '../../api/v2/properties/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { safeLogger } from '../../logger.js'
+import { WebsiteIdSchema } from '../schemas/common.js'
 import { isISODateTime } from '../utils/date/format.js'
 // Entity extractors not needed in property tools
 import { wrapToolHandler } from '../utils/error-wrapper.js'
@@ -163,11 +164,9 @@ Example response:
   }
 }`,
         inputSchema: {
-          wid: z
-            .number()
-            .int()
-            .optional()
-            .describe('Website ID (typically a 3-5 digit number, e.g., 12345)'),
+          wid: WebsiteIdSchema.describe(
+            'Website ID (typically a 3-5 digit number, e.g., 12345). Positive integer; omit if unknown.',
+          ),
           updatedSince: z
             .string()
             .datetime()
@@ -302,7 +301,7 @@ Example response:
 }`,
         inputSchema: {
           id: z.number().int().describe('Property ID (required)'),
-          wid: z.number().int().optional().describe('Website ID'),
+          wid: WebsiteIdSchema.describe('Website ID. Positive integer; omit if unknown.'),
           includeInOut: z
             .boolean()
             .default(false)
