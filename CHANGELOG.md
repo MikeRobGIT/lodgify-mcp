@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-08
+
 ### Fixed
 
 - **Website ID validation**: `lodgify_list_properties`, `lodgify_get_property` and `lodgify_list_vacant_inventory` now reject `wid` values that are not positive integers with "wid must be a positive integer; omit it if you do not know the website ID". Lodgify's API answers `wid: 0` with an opaque .NET `NullReferenceException` (code 666), and models often fill unknown optional numbers with 0.
