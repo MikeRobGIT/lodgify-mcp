@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Website ID validation**: `lodgify_list_properties`, `lodgify_get_property` and `lodgify_list_vacant_inventory` now reject `wid` values that are not positive integers with "wid must be a positive integer; omit it if you do not know the website ID". Lodgify's API answers `wid: 0` with an opaque .NET `NullReferenceException` (code 666), and models often fill unknown optional numbers with 0.
+
 ## [0.2.0] - 2026-11-07
 
 > 0.1.26 was tagged but never published to npm (expired `NPM_TOKEN`). 0.2.0 is the first release containing its changes, listed below.

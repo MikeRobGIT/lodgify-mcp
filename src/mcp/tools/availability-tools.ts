@@ -7,6 +7,7 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import type { AvailabilityQueryParams } from '../../api/v2/availability/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
+import { WebsiteIdSchema } from '../schemas/common.js'
 import { createValidator, DateToolCategory } from '../utils/date/validator.js'
 import { extractVacantInventoryDetails } from '../utils/entity-extractors.js'
 import { wrapToolHandler } from '../utils/error-wrapper.js'
@@ -193,7 +194,9 @@ Example request:
             .max(200)
             .default(25)
             .describe('Max number of properties when propertyIds not provided'),
-          wid: z.number().int().optional().describe('Website ID filter (if supported)'),
+          wid: WebsiteIdSchema.describe(
+            'Website ID filter (if supported). Positive integer; omit if unknown.',
+          ),
           debug: z.boolean().optional().describe('Include diagnostic information in response'),
           timeoutSeconds: z
             .number()

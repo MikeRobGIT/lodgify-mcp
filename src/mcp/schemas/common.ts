@@ -6,6 +6,17 @@ import { z } from 'zod'
 import { isYYYYMMDD } from '../utils/date/format.js'
 
 /**
+ * Optional Lodgify website ID. Must be a positive integer: Lodgify's API fails with an opaque
+ * .NET NullReferenceException (code 666) for 0 or negative values, so reject them up front.
+ * Models often fill unknown optional numbers with 0; the message tells them to omit it instead.
+ */
+export const WebsiteIdSchema = z
+  .number()
+  .int()
+  .positive('wid must be a positive integer; omit it if you do not know the website ID')
+  .optional()
+
+/**
  * Date format validation for YYYY-MM-DD format
  */
 export const DateStringSchema = z.string().refine(isYYYYMMDD, 'Date must be in YYYY-MM-DD format')
