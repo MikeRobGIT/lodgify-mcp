@@ -10,11 +10,9 @@ import { isYYYYMMDD } from '../utils/date/format.js'
  * .NET NullReferenceException (code 666) for 0 or negative values, so reject them up front.
  * Models often fill unknown optional numbers with 0; the message tells them to omit it instead.
  */
-export const WebsiteIdSchema = z
-  .number()
-  .int()
-  .positive('wid must be a positive integer; omit it if you do not know the website ID')
-  .optional()
+const WID_MESSAGE = 'wid must be a positive integer; omit it if you do not know the website ID'
+
+export const WebsiteIdSchema = z.number().int(WID_MESSAGE).positive(WID_MESSAGE).optional()
 
 /**
  * Date format validation for YYYY-MM-DD format
