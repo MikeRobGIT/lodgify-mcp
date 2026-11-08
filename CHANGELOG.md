@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING (Docker Compose)**: `docker-compose.yml` now defines a default `lodgify-mcp` service (HTTP transport, built from `Dockerfile.http`) with no profile, so `docker compose up -d` works. The `bridge` and `production` profiles and the GHCR stdio service are removed. **Migration:** replace `docker compose --profile bridge up` / `--profile production up` with `docker compose up -d`; set `LODGIFY_API_KEY` and `MCP_TOKEN` in `.env` or the shell. For stdio, run `npx @mikerob/lodgify-mcp` instead of the removed compose service. Requires Docker Compose v2.24+.
 - Published port binds to `127.0.0.1` by default; set `BIND_ADDRESS=0.0.0.0` to expose it. Host port is `HOST_PORT` (default 3076). The service also declares `expose: 3076` for Coolify and other proxies.
 - `.env` is optional; `LODGIFY_API_KEY` and `MCP_TOKEN` are required and fail fast if missing.
-- Removed fixed `container_name` and network `name` so multiple stacks and PaaS hosts (Coolify) do not clash.
+- Removed fixed `container_name` and network `name` so multiple stacks and PaaS hosts (Coolify) do not clash on names. Stacks on one host still share the default host port, so give each a distinct `HOST_PORT`.
 - Dev override mounts `bun.lock` instead of the stale `bun.lockb` and no longer bind-mounts `.env`.
 - **npm publishing** (`release.yml`, `npm-beta.yml`) now uses npm Trusted Publishing (OIDC) on Node 24 with a pinned `npm@11.21.2`; the `NPM_TOKEN` secret is no longer used.
 - **Bun**: minimum raised to 1.3.13 (`engines.bun`); CI is pinned to 1.3.13. Tests run with `bun test --isolate` (via `bun run test`) so `mock.module` in one file no longer leaks into others.
