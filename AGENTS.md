@@ -10,7 +10,7 @@ This is a Model Context Protocol (MCP) server that exposes Lodgify Public API v2
 
 ### Technology Stack
 
-- Runtime: Bun ≥ 1.0 (or Node.js ≥ 18)
+- Runtime: Bun ≥ 1.3.13 (or Node.js ≥ 18)
 - Language: TypeScript
 - Protocol: MCP over stdio
 - SDK: @modelcontextprotocol/sdk
@@ -60,8 +60,8 @@ cp .env.example .env  # Configure LODGIFY_API_KEY
 # Development
 bun dev              # Run TypeScript directly (Bun has built-in TS support)
 bun run build        # Compile TypeScript to dist/
-bun test             # Run unit tests
-bun test --watch     # Run tests in watch mode
+bun run test         # Run unit tests (isolated per file)
+bun run test:watch   # Run tests in watch mode
 bun run lint         # Run ESLint
 bun run typecheck    # Run TypeScript type checking
 

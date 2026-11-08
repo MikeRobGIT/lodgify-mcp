@@ -91,6 +91,18 @@ docker run --rm \
   lodgify-mcp:http
 ```
 
+#### Docker Compose
+
+```bash
+cp .env.example .env   # set LODGIFY_API_KEY and MCP_TOKEN
+docker compose up -d
+curl http://localhost:3076/health
+```
+
+The port is bound to `127.0.0.1` by default. Set `BIND_ADDRESS=0.0.0.0` to expose it, or `HOST_PORT` to change the host port. `.env` is optional if you export the variables in your shell. Requires Docker Compose v2.24 or later.
+
+For Coolify, use the Docker Compose build pack, set the domain on the `lodgify-mcp` service, and set `LODGIFY_API_KEY` and `MCP_TOKEN` in the UI.
+
 ### API Key Rotation
 
 To rotate your LODGIFY_API_KEY safely:

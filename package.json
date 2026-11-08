@@ -1,6 +1,6 @@
 {
   "name": "@mikerob/lodgify-mcp",
-  "version": "0.1.26",
+  "version": "0.2.0",
   "description": "Model Context Protocol server for Lodgify Public API - Expose Lodgify endpoints as MCP tools for AI assistants",
   "type": "module",
   "main": "dist/server.js",
@@ -21,9 +21,9 @@
     "start:http": "bun src/server-http.ts",
     "start:http:prod": "bun dist/server-http.js",
     "check": "bun run lint --fix && bun run typecheck && bun run format && bun run build && bun run test",
-    "test": "bun test",
-    "test:watch": "bun test --watch",
-    "test:coverage": "bun test --coverage",
+    "test": "bun test --isolate",
+    "test:watch": "bun test --isolate --watch",
+    "test:coverage": "bun test --isolate --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check . --fix",
     "lint:src": "biome check src/ --fix --unsafe",
@@ -32,7 +32,7 @@
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "pre-commit": "(bun run lint:src || echo '⚠️  Linting warnings found but continuing...') && bun run format:src",
-    "pre-push": "bun test && bun run build",
+    "pre-push": "bun run test && bun run build",
     "sync-version": "node scripts/sync-version.js",
     "docker:mcp:build": "docker build -f Dockerfile.mcp -t lodgify-mcp:mcp .",
     "docker:http:build": "docker build -f Dockerfile.http -t lodgify-mcp:http ."
@@ -61,7 +61,7 @@
   "homepage": "https://github.com/MikeRobGIT/lodgify-mcp#readme",
   "engines": {
     "node": ">=18",
-    "bun": ">=1.0"
+    "bun": ">=1.3.13"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
