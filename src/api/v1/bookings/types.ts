@@ -182,6 +182,8 @@ export interface BookingV1Response {
   updated_at?: string
   amount?: number
   currency?: string
+  /** Set when the follow-up status change failed and the booking is not in the requested status */
+  statusUpdateError?: string
 }
 
 /**
@@ -194,76 +196,66 @@ export interface DeleteBookingV1Response {
 }
 
 /**
- * Create Booking Quote Request
+ * Create Booking Quote Request (CreateQuoteDto)
  * POST /v1/reservation/booking/{bookingId}/quote
+ *
+ * Lodgify prices the quote from the property's rate plans. The API has no
+ * field for a custom total, so callers cannot override the price here.
+ * `room_types[].custom_fee_amount` adds a flat "Fee" line on top of the room rate.
  */
 export interface CreateBookingQuoteRequest {
-  // Pricing adjustments
-  totalPrice?: number
-  subtotal?: number
-  currency?: string
-
-  // Price breakdown
-  breakdown?: {
-    accommodation?: number
-    taxes?: number
-    fees?: number
-    extras?: number
-    discount?: number
-  }
-
-  // Custom adjustments
-  adjustments?: Array<{
-    type: 'discount' | 'fee' | 'tax' | 'extra'
-    description: string
-    amount: number
-    isPercentage?: boolean
-  }>
-
-  // Quote metadata
-  validUntil?: string // ISO date
-  notes?: string
-  customTerms?: string
-
-  // Policy references
-  policyId?: string
-  rentalAgreementId?: string
-
-  // Optional flags
-  sendToGuest?: boolean
-  replaceExisting?: boolean
+  /**
+   * true  = attach the property's rate policy (payment schedule). Lodgify then
+   *         moves the booking to Tentative and the quote stays NotSent, so
+   *         payment links fail until the guest is sent the quote in the UI.
+   * false = quote without a policy (status NotScheduled). The booking keeps its
+   *         status and payment links work.
+   */
+  is_policy_active?: boolean
+  /** Promotion code. Lodgify silently ignores unknown codes. */
+  promotion_code?: string | null
+  add_ons?: Array<{ add_on_id: number; units?: number | null }>
+  room_types?: Array<{ room_type_id: number; custom_fee_amount?: number }>
 }
 
 /**
  * Create Booking Quote Response
- * Response from POST /v1/reservation/booking/{bookingId}/quote
+ * Lodgify answers 201 with a bare int32, the new quote id.
  */
-export interface CreateBookingQuoteResponse {
-  id: string
-  bookingId: string
-  status: 'created' | 'sent' | 'accepted' | 'rejected' | 'expired'
+export type CreateBookingQuoteResponse = number
 
-  // Quote details
-  totalPrice: number
-  currency: string
-  breakdown?: {
-    accommodation?: number
-    taxes?: number
-    fees?: number
-    extras?: number
-    discount?: number
-  }
-
-  // Metadata
-  createdAt: string
-  validUntil?: string
-  sentAt?: string
-  acceptedAt?: string
-
-  // Links
-  guestViewUrl?: string
-  paymentUrl?: string
-
-  // Additional fields
+/**
+ * Quote as returned by GET /v1/reservation/booking/{bookingId}/quote
+ */
+export interface BookingQuoteV1Response {
+  id: number
+  status: string
+  arrival?: string
+  departure?: string
+  property_id?: number
+  currency?: { code?: string }
+  amount_gross: number
+  amount_net?: number
+  is_policy_active?: boolean
+  rate_policy_name?: string | null
+  room_type_items?: Array<{
+    room_type_id: number
+    subtotal: number
+    prices?: Array<{ type: string; amount: number; description?: string }>
+  }>
   [key: string]: unknown
+}
+
+/**
+ * Result of attaching a quote and reading it back from Lodgify
+ */
+export interface AttachedQuoteResult {
+  quoteId: number
+  status: string
+  policy: string | null
+  isPolicyActive: boolean
+  totalAmount: number
+  currency?: string
+  lines: Array<{ type: string; amount: number; description?: string }>
+  bookingStatus?: string
 }

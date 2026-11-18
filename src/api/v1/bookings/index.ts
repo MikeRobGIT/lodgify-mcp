@@ -5,6 +5,8 @@
 
 export { BookingsV1Client } from './client.js'
 export type {
+  AttachedQuoteResult,
+  BookingQuoteV1Response,
   BookingV1Response,
   CreateBookingQuoteRequest,
   CreateBookingQuoteResponse,
