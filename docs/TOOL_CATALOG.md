@@ -436,6 +436,11 @@ Create a new booking in the system. This v1 endpoint provides direct booking cre
 - `status` (optional, string): Booking status (booked, tentative, declined, confirmed)
 - `source` (optional, string): Booking source or channel
 - `notes` (optional, string): Internal notes or special requests
+- `attach_quote` (optional, boolean): Attach a rate-plan quote after creating. Defaults to `true`, except for tentative or declined bookings and when `total` is given. Without a quote the booking has all-zero subtotals and payment links fail.
+- `promotion_code`, `is_policy_active`, `expected_total` (optional): Passed to the quote; see `lodgify_create_booking_quote`.
+- `total` / `currency_code` (optional): Leaves the booking **without** a quote. Combining `total` with `attach_quote: true` is rejected, because attaching a quote makes Lodgify replace the total with the rate-plan price.
+
+The result is `partial` (with `warnings`) when the quote or the follow-up status change failed; the booking id is still returned.
 
 **Example:**
 
@@ -582,60 +587,29 @@ Update rates for properties and room types. This v1 endpoint provides direct rat
 
 ### `lodgify_create_booking_quote`
 
-Create a custom quote for an existing booking with pricing adjustments. This allows property managers to provide personalized pricing for specific bookings.
+Attach a quote to an existing booking. Lodgify builds the quote from the property's **rate plans** and replaces the booking's total with it. The API cannot take a custom total, breakdown, notes or expiry, so the tool rejects the old `payload`, `totalPrice`, `breakdown`, `adjustments`, `validUntil`, `notes`, `sendToGuest`, `replaceExisting`, `policyId` and `rentalAgreementId` fields. A second call replaces the booking's quote.
+
+The result is read back from Lodgify: quote id, quote status, policy name, total, currency, price lines and the booking status.
 
 **Parameters:**
 
-- `bookingId` (required, string): Booking ID to create quote for
-- `payload` (required, object): Quote creation payload with pricing and terms
-  - `totalPrice` (optional, number): Total quote amount
-  - `currency` (optional, string): Currency code (e.g., USD, EUR)
-  - `subtotal` (optional, number): Subtotal before taxes/fees
-  - `breakdown` (optional, object): Price breakdown details
-    - `accommodation` (optional, number): Accommodation cost
-    - `taxes` (optional, number): Tax amount
-    - `fees` (optional, number): Service fees
-    - `extras` (optional, number): Extra services cost
-    - `discount` (optional, number): Discount amount
-  - `adjustments` (optional, array): Custom pricing adjustments array
-    - `type` (required, string): Type of adjustment (discount, fee, tax, extra)
-    - `description` (required, string): Description of adjustment
-    - `amount` (required, number): Adjustment amount
-    - `isPercentage` (optional, boolean): Is this a percentage?
-  - `validUntil` (optional, string): Quote expiration date (ISO 8601)
-  - `sendToGuest` (optional, boolean): Send quote to guest via email
-  - `replaceExisting` (optional, boolean): Replace existing quote if any
-  - `notes` (optional, string): Internal notes about the quote
-  - `customTerms` (optional, string): Custom terms and conditions
-  - `policyId` (optional, string): Cancellation policy ID
-  - `rentalAgreementId` (optional, string): Rental agreement ID
+- `bookingId` (required, string | number): Booking ID
+- `is_policy_active` (optional, boolean, default `false`):
+  - `false` quotes without a payment policy (status `NotScheduled`). The booking keeps its status and `lodgify_create_booking_payment_link` works.
+  - `true` attaches the rate policy and a payment schedule, but Lodgify then moves the booking to Tentative, leaves the quote `NotSent` and refuses payment links until the quote is sent from the Lodgify dashboard.
+- `promotion_code` (optional, string): Lodgify ignores unknown codes without an error. The tool warns when no `Promotion` price line appears.
+- `room_types` (optional, array): `[{ room_type_id, custom_fee_amount }]`. `custom_fee_amount` adds a flat `Fee` line; it does not set the room rate.
+- `add_ons` (optional, array): `[{ add_on_id, units }]`
+- `expected_total` (optional, number): The result is `partial` with a warning when Lodgify's total differs by more than 0.01.
 
 **Example:**
 
 ```javascript
 {
-  "bookingId": "BK12345",
-  "payload": {
-    "totalPrice": 1500.00,
-    "currency": "USD",
-    "breakdown": {
-      "accommodation": 1200.00,
-      "taxes": 150.00,
-      "fees": 100.00,
-      "discount": 50.00
-    },
-    "adjustments": [
-      {
-        "type": "discount",
-        "description": "Early booking discount",
-        "amount": 50.00,
-        "isPercentage": false
-      }
-    ],
-    "validUntil": "2024-03-31T23:59:59Z",
-    "notes": "Special rate for returning guest",
-    "sendToGuest": true
-  }
+  "bookingId": 24415735,
+  "is_policy_active": false,
+  "promotion_code": "DIRECT10",
+  "expected_total": 663.25
 }
 ```
 

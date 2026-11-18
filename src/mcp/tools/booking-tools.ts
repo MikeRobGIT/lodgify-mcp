@@ -5,6 +5,7 @@
 
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
+import type { AttachedQuoteResult } from '../../api/v1/bookings/types.js'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
 import { BOOKING_CONFIG, PAGINATION, STRING_LIMITS } from '../../core/config/constants.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
@@ -25,6 +26,7 @@ import { formatMcpResponse } from '../utils/response/index.js'
 import { generateSuggestions } from '../utils/suggestion-generator.js'
 import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolRegistration } from '../utils/types.js'
+import { quoteWarnings } from './quote-helpers.js'
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
@@ -851,6 +853,10 @@ Example request:
 - status: Booking status (booked, tentative, declined, confirmed)
 - source: Booking source/channel
 - notes: Internal notes or special requests
+- attach_quote: attach a Lodgify rate-plan quote after creating (default true, see below)
+- promotion_code, is_policy_active, expected_total: passed to the quote (see lodgify_create_booking_quote)
+
+**PRICING**: Lodgify has no way to set a custom price on a quote. By default this tool creates the booking and then attaches a quote priced from the rate plans, so the booking gets real subtotals and payment links work. Passing \`total\` skips Lodgify's calculation and leaves the booking WITHOUT a quote (attach_quote defaults to false); attaching one afterwards replaces that total with the rate-plan price, so \`total\` together with attach_quote:true is rejected. The result is "partial" when the quote or the status change failed, with the reason.
 
 **Input Format**: Accepts simple flat parameters (user-friendly)
 **API Transform**: Automatically transforms to nested structure required by Lodgify API
@@ -926,6 +932,28 @@ The transformation handles: guest name splitting, room structuring, status capit
             .describe(
               'Booking flow Lodgify should treat this reservation as. Defaults to EnquiryOnly server-side; pass "InstantBooking" for fully confirmed reservations so the dashboard renders per-unit totals.',
             ),
+          attach_quote: z
+            .boolean()
+            .optional()
+            .describe(
+              'Attach a Lodgify rate-plan quote after creating the booking. Default: true, except for tentative/declined bookings and when total is given. Without a quote the booking has all-zero subtotals and payment links fail.',
+            ),
+          promotion_code: z
+            .string()
+            .min(1)
+            .optional()
+            .describe('Lodgify promotion code to apply to the quote (needs attach_quote)'),
+          is_policy_active: z
+            .boolean()
+            .optional()
+            .describe(
+              'Quote with the rate policy. Default false: true moves the booking to Tentative and blocks payment links.',
+            ),
+          expected_total: z
+            .number()
+            .positive()
+            .optional()
+            .describe('Agreed total; the result warns when the Lodgify quote differs'),
         },
       },
       handler: wrapToolHandler(async (params) => {
@@ -991,7 +1019,59 @@ The transformation handles: guest name splitting, room structuring, status capit
           ...(sanitized.bookability && { bookability: sanitized.bookability }),
         }
 
-        const result = await getClient().createBookingV1(apiRequest)
+        const attachQuote =
+          sanitized.attach_quote ??
+          (sanitized.total === undefined &&
+            sanitized.status !== 'tentative' &&
+            sanitized.status !== 'declined')
+        if (attachQuote && sanitized.total !== undefined) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'total and attach_quote cannot be combined: attaching a quote makes Lodgify replace the total with the rate-plan price. Omit total, or pass attach_quote:false.',
+          )
+        }
+        if (!attachQuote && sanitized.promotion_code) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'promotion_code needs a quote. Remove it or allow attach_quote.',
+          )
+        }
+
+        const created = await getClient().createBookingV1(apiRequest)
+        const warnings: string[] = []
+        let quote: AttachedQuoteResult | undefined
+        let quoteError: string | undefined
+        if (created.statusUpdateError) warnings.push(created.statusUpdateError)
+
+        if (attachQuote) {
+          try {
+            quote = await getClient().attachBookingQuote(created.id, {
+              is_policy_active: sanitized.is_policy_active ?? false,
+              ...(sanitized.promotion_code && { promotion_code: sanitized.promotion_code }),
+              room_types: [{ room_type_id: sanitized.room_type_id }],
+            })
+            warnings.push(
+              ...quoteWarnings(quote, {
+                expectedTotal: sanitized.expected_total,
+                promotionCode: sanitized.promotion_code,
+              }),
+            )
+          } catch (error) {
+            quoteError = error instanceof Error ? error.message : String(error)
+            warnings.push(
+              `Booking ${created.id} was created but the quote failed: ${quoteError}. Retry with lodgify_create_booking_quote.`,
+            )
+          }
+        } else if (sanitized.total !== undefined) {
+          warnings.push(
+            `Booking ${created.id} has a custom total and no quote, so payment links will fail with "Reservation has no set Quote".`,
+          )
+        }
+        const result = {
+          ...created,
+          ...(quote && { quote }),
+          ...(quoteError && { quoteError }),
+        }
 
         // Add validation feedback to result if present
         const finalResult =
@@ -1032,8 +1112,14 @@ The transformation handles: guest name splitting, room structuring, status capit
           extractedInfo: bookingDetails,
           metadata: {
             suggestions,
-            summary: 'Booking has been successfully created',
+            warnings,
+            summary: quote
+              ? `Booking ${finalResult?.id} created with quote ${quote.quoteId}: ${quote.totalAmount} ${quote.currency ?? ''} (booking ${quote.bookingStatus ?? finalResult?.status})`
+              : warnings.length > 0
+                ? `Booking ${finalResult?.id} created with problems: ${warnings.join(' | ')}`
+                : 'Booking has been successfully created',
           },
+          status: warnings.length > 0 ? 'partial' : 'success',
         })
 
         return {

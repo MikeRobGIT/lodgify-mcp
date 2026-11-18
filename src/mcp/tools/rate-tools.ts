@@ -5,12 +5,13 @@
 
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
+import type { CreateBookingQuoteRequest } from '../../api/v1/bookings/types.js'
 import type { RateUpdateV1Request } from '../../api/v1/rates/types.js'
 import type { QuoteParams } from '../../api/v2/quotes/types.js'
 import type { DailyRatesParams } from '../../api/v2/rates/types.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { debugLogResponse, safeJsonStringify } from '../serialization/json-sanitizer.js'
-import { isISODateTime, isYYYYMMDD } from '../utils/date/format.js'
+import { isYYYYMMDD } from '../utils/date/format.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
 // Previously imported DateStringSchema from '../schemas/common.js'
 import {
@@ -28,6 +29,12 @@ import { generateSuggestions } from '../utils/suggestion-generator.js'
 import { generateSummary } from '../utils/summary-generator.js'
 import type { ToolCategory, ToolRegistration } from '../utils/types.js'
 import { validateQuoteParams } from './helper-tools.js'
+import {
+  findLegacyQuoteFields,
+  LEGACY_QUOTE_MESSAGE,
+  legacyQuoteFieldsShape,
+  quoteWarnings,
+} from './quote-helpers.js'
 
 const CATEGORY: ToolCategory = 'Rates & Pricing'
 
@@ -583,163 +590,119 @@ Example request:
       name: 'lodgify_create_booking_quote',
       category: CATEGORY,
       config: {
-        title: 'Create Custom Quote for Booking',
+        title: 'Create Quote for Booking',
         annotations: {
           readOnlyHint: false,
           destructiveHint: true,
           idempotentHint: false,
           openWorldHint: true,
         },
-        description: `[${CATEGORY}] Create a custom quote for an existing booking with pricing adjustments. This allows property managers to provide personalized pricing for specific bookings.
+        description: `[${CATEGORY}] Attach a quote to an existing booking. Lodgify builds the quote from the property's RATE PLANS and replaces the booking's total with it. The API cannot take a custom total, breakdown, notes or expiry, and this tool rejects those fields.
 
-⚠️ **Important**: This is a WRITE operation that modifies booking data. It will be blocked in read-only mode.
+⚠️ WRITE operation. Blocked in read-only mode. A second call replaces the booking's quote.
 
-⚠️ **Note**: Fees and discounts are not currently supported by this tool. The adjustments field is included for future compatibility but will not be processed.
+**What the result contains** (read back from Lodgify, never copied from the input): quote id, quote status, policy name, total, currency, price lines (RoomRate, Promotion, Tax, Fee) and the booking status.
 
-**Use Cases**:
-- Provide modified total pricing for bookings
-- Create custom quotes with specific validity periods
-- Send personalized pricing to guests
+**is_policy_active** (default false):
+- false: quote without a payment policy (status NotScheduled). The booking keeps its status and lodgify_create_booking_payment_link works.
+- true: attaches the rate policy and a payment schedule, but Lodgify then moves the booking to Tentative, leaves the quote NotSent and refuses payment links until someone sends the quote from the Lodgify dashboard.
 
-Example request:
-{
-  "bookingId": "BK12345",        // Booking ID to create quote for
-  "payload": {
-    "totalPrice": 1500.00,      // Total quote amount
-    "currency": "USD",           // Currency code (e.g., USD, EUR)
-    "breakdown": {
-      "accommodation": 1200.00, // Accommodation cost
-      "taxes": 150.00,          // Tax amount
-      "fees": 100.00,           // Service fees
-      "discount": 50.00         // Discount amount
-    },
-    "adjustments": [              // Custom pricing adjustments
-      {
-        "type": "discount",        // Type of adjustment
-        "description": "Early booking discount",  // Description of adjustment
-        "amount": 50.00,           // Adjustment amount
-        "isPercentage": false      // Is this a percentage?
-      }
-    ],
-    "validUntil": "2024-03-31T23:59:59Z",  // Quote expiration date (ISO 8601)
-    "notes": "Special rate for returning guest",  // Internal notes about the quote
-    "sendToGuest": true            // Send quote to guest via email
-  }
-}
+**promotion_code**: applies a Lodgify promotion. Lodgify silently ignores unknown codes, so check the returned price lines for a Promotion line (the tool warns when it is missing).
 
-Example response:
-{
-  "id": "Q12345",
-  "bookingId": "BK12345",
-  "status": "created",
-  "totalPrice": 1500.00,
-  "currency": "USD",
-  "createdAt": "2024-03-15T10:00:00Z",
-  "validUntil": "2024-03-31T23:59:59Z",
-  "guestViewUrl": "https://lodgify.com/quote/view/Q12345",
-  "paymentUrl": "https://lodgify.com/quote/pay/Q12345"
-}`,
+**expected_total**: optional. When Lodgify's total differs, the result is "partial" with a warning. Use it whenever a price was agreed with the guest.
+
+**room_types**: optional [{room_type_id, custom_fee_amount}]. custom_fee_amount adds a flat Fee line on top of the room rate (it does not set the room rate). Leave it out normally; Lodgify uses all rooms of the booking.
+
+Example:
+{ "bookingId": 24415718, "is_policy_active": false, "promotion_code": "DIRECT10", "expected_total": 662.09 }`,
         inputSchema: {
-          bookingId: z.string().min(1).describe('Booking ID to create quote for'),
-          payload: z
-            .object({
-              // Pricing
-              totalPrice: z.number().positive().optional().describe('Total quote amount'),
-              subtotal: z.number().positive().optional().describe('Subtotal before taxes/fees'),
-              currency: z.string().length(3).optional().describe('Currency code (e.g., USD, EUR)'),
-
-              // Breakdown
-              breakdown: z
-                .object({
-                  accommodation: z.number().optional().describe('Accommodation cost'),
-                  taxes: z.number().optional().describe('Tax amount'),
-                  fees: z.number().optional().describe('Service fees'),
-                  extras: z.number().optional().describe('Extra services cost'),
-                  discount: z.number().optional().describe('Discount amount'),
-                })
-                .optional()
-                .describe('Price breakdown details'),
-
-              // Adjustments
-              adjustments: z
-                .array(
-                  z.object({
-                    type: z
-                      .enum(['discount', 'fee', 'tax', 'extra'])
-                      .describe('Type of adjustment'),
-                    description: z.string().describe('Description of adjustment'),
-                    amount: z.number().describe('Adjustment amount'),
-                    isPercentage: z.boolean().optional().describe('Is this a percentage?'),
-                  }),
-                )
-                .optional()
-                .describe('Custom pricing adjustments'),
-
-              // Metadata
-              validUntil: z.string().optional().describe('Quote expiration date (ISO 8601)'),
-              notes: z.string().optional().describe('Internal notes about the quote'),
-              customTerms: z.string().optional().describe('Custom terms and conditions'),
-
-              // References
-              policyId: z.string().optional().describe('Cancellation policy ID'),
-              rentalAgreementId: z.string().optional().describe('Rental agreement ID'),
-
-              // Options
-              sendToGuest: z.boolean().optional().describe('Send quote to guest via email'),
-              replaceExisting: z.boolean().optional().describe('Replace existing quote if any'),
-            })
-            .describe('Quote creation payload with pricing and terms'),
+          bookingId: z
+            .union([z.string().min(1), z.number().int().positive()])
+            .describe('Booking ID to create the quote for'),
+          is_policy_active: z
+            .boolean()
+            .default(false)
+            .describe(
+              'Attach the rate policy. true moves the booking to Tentative and blocks payment links.',
+            ),
+          promotion_code: z.string().min(1).optional().describe('Lodgify promotion code to apply'),
+          room_types: z
+            .array(
+              z.object({
+                room_type_id: z.number().int().positive(),
+                custom_fee_amount: z
+                  .number()
+                  .nonnegative()
+                  .optional()
+                  .describe('Flat fee added on top of the room rate'),
+              }),
+            )
+            .optional()
+            .describe('Room types to quote; defaults to all rooms of the booking'),
+          add_ons: z
+            .array(
+              z.object({
+                add_on_id: z.number().int().positive(),
+                units: z.number().int().positive().optional(),
+              }),
+            )
+            .optional()
+            .describe('Add-ons to include'),
+          expected_total: z
+            .number()
+            .positive()
+            .optional()
+            .describe('Agreed total; the result warns when Lodgify prices the stay differently'),
+          ...legacyQuoteFieldsShape,
         },
       },
       handler: wrapToolHandler(async (input) => {
-        // Sanitize input
-        const { bookingId, payload } = sanitizeInput(input)
-
-        // Additional validation for quote payload
-        if (payload.totalPrice !== undefined && payload.totalPrice <= 0) {
-          throw new McpError(ErrorCode.InvalidParams, 'Total price must be a positive number')
+        const raw = input as Record<string, unknown>
+        const legacy = findLegacyQuoteFields(raw)
+        if (legacy.length > 0) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Unsupported field(s): ${legacy.join(', ')}. ${LEGACY_QUOTE_MESSAGE}`,
+          )
         }
 
-        if (payload.validUntil) {
-          // Validate ISO date-time format
-          if (!isISODateTime(payload.validUntil)) {
-            throw new McpError(
-              ErrorCode.InvalidParams,
-              'Invalid validUntil format. Use ISO 8601 format (e.g., 2024-03-31T23:59:59Z)',
-            )
-          }
+        const { bookingId, expected_total, ...fields } = sanitizeInput(raw) as {
+          bookingId: string | number
+          expected_total?: number
+          is_policy_active?: boolean
+          promotion_code?: string
+          room_types?: CreateBookingQuoteRequest['room_types']
+          add_ons?: CreateBookingQuoteRequest['add_ons']
         }
 
-        // Use the orchestrator's createBookingQuote method which handles read-only mode
-        const result = await getClient().createBookingQuote(bookingId, payload)
+        const request: CreateBookingQuoteRequest = {
+          is_policy_active: fields.is_policy_active ?? false,
+          ...(fields.promotion_code && { promotion_code: fields.promotion_code }),
+          ...(fields.room_types && { room_types: fields.room_types }),
+          ...(fields.add_ons && { add_ons: fields.add_ons }),
+        }
 
-        // Debug logging
-        debugLogResponse('Create booking quote response', result)
+        const quote = await getClient().attachBookingQuote(bookingId, request)
+        debugLogResponse('Create booking quote response', quote)
 
-        // Extract rate details from quote
-        const rateDetails = extractRateDetails(result)
-
-        // Generate summary for created quote
-        const summary = generateSummary(result, 'booking_quote')
-
-        // Generate suggestions for quote follow-up
-        const suggestions = generateSuggestions('create', 'quote', {
-          bookingId,
-          quoteId: result?.id,
-          totalPrice: payload.totalPrice,
-          validUntil: payload.validUntil,
-          sentToGuest: payload.sendToGuest,
+        const warnings = quoteWarnings(quote, {
+          expectedTotal: expected_total,
+          promotionCode: fields.promotion_code,
         })
 
-        // Use enhanceResponse to build the response
-        const enhanced = enhanceResponseBuilder(result, {
+        const enhanced = enhanceResponseBuilder(toApiResponseData(quote, 'booking_quote'), {
           entityType: 'quote',
           operation: 'create',
-          inputParams: { bookingId, payload },
-          extractedInfo: rateDetails,
+          status: warnings.length > 0 ? 'partial' : 'success',
+          inputParams: toApiResponseData({ bookingId, ...request }, 'booking_quote_input'),
           metadata: {
-            summary: summary || 'Quote has been successfully created',
-            suggestions,
+            summary: `Quote ${quote.quoteId} attached to booking ${bookingId}: ${quote.totalAmount} ${quote.currency ?? ''} (${quote.status}, policy ${quote.policy ?? 'none'}), booking is ${quote.bookingStatus ?? 'unknown'}`,
+            suggestions: generateSuggestions('create', 'quote', {
+              bookingId: String(bookingId),
+              quoteId: String(quote.quoteId),
+              totalPrice: quote.totalAmount,
+            }),
+            warnings,
           },
         })
 

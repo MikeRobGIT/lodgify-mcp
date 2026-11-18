@@ -7,6 +7,7 @@
 import { ApiClientOrchestrator } from './api/client-orchestrator.js'
 import { BookingsV1Client } from './api/v1/bookings/index.js'
 import type {
+  AttachedQuoteResult,
   BookingV1Response,
   CreateBookingQuoteRequest,
   CreateBookingQuoteResponse,
@@ -355,16 +356,26 @@ export class LodgifyOrchestrator {
    * Create a quote for an existing booking
    * POST /v1/reservation/booking/{id}/quote
    *
-   * This endpoint creates a new quote for an existing booking,
-   * allowing custom pricing adjustments, discounts, and fees.
+   * Lodgify prices the quote from its rate plans and returns the quote id.
    * Note: This is a v1 API endpoint.
    */
   async createBookingQuote(
-    bookingId: string,
+    bookingId: string | number,
     payload: CreateBookingQuoteRequest,
   ): Promise<CreateBookingQuoteResponse> {
     this.checkReadOnly('Create Booking Quote', `/v1/reservation/booking/${bookingId}/quote`)
     return this.bookingsV1.createBookingQuote(bookingId, payload)
+  }
+
+  /**
+   * Create a quote, then read it back so the result reflects what Lodgify stored
+   */
+  async attachBookingQuote(
+    bookingId: string | number,
+    payload: CreateBookingQuoteRequest,
+  ): Promise<AttachedQuoteResult> {
+    this.checkReadOnly('Create Booking Quote', `/v1/reservation/booking/${bookingId}/quote`)
+    return this.bookingsV1.attachQuote(bookingId, payload)
   }
 
   // Availability backward compatibility

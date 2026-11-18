@@ -7,9 +7,10 @@ import { safeLogger } from '../../../logger.js'
 import type { BaseApiClient } from '../../base-client.js'
 import { BaseApiModule, type ModuleConfig } from '../../base-module.js'
 import type {
+  AttachedQuoteResult,
+  BookingQuoteV1Response,
   BookingV1Response,
   CreateBookingQuoteRequest,
-  CreateBookingQuoteResponse,
   CreateBookingV1ApiRequest,
   CreateBookingV1Request,
   DeleteBookingV1Response,
@@ -25,6 +26,19 @@ import type {
  * Regex pattern to match numeric ID responses from the API
  */
 const NUMERIC_ID_PATTERN = /^\d+$/
+
+/**
+ * Turn any thrown value into readable text. `String(obj)` yields "[object Object]".
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
 
 /**
  * Create a masked identifier for a guest name to use in logs
@@ -160,7 +174,9 @@ export class BookingsV1Client extends BaseApiModule {
         adults: booking.adults,
       })
 
-      // Set booking status via separate endpoint (Lodgify ignores status in POST body)
+      // Set booking status via separate endpoint. A failure is reported to the caller
+      // unless Lodgify already holds the requested status (the POST body honors it).
+      let statusUpdateError: string | undefined
       if (booking.status) {
         const statusEndpoint =
           booking.status === 'booked' || booking.status === 'confirmed'
@@ -176,11 +192,19 @@ export class BookingsV1Client extends BaseApiModule {
             await this.request('PUT', `${bookingId}/${statusEndpoint}`)
             safeLogger.info('Booking status updated', { bookingId, status: booking.status })
           } catch (statusError) {
-            safeLogger.warn('Failed to update booking status', {
-              bookingId,
-              status: booking.status,
-              error: statusError instanceof Error ? statusError.message : String(statusError),
-            })
+            const message = describeError(statusError)
+            const wanted = booking.status === 'confirmed' ? 'booked' : booking.status
+            const actual = await this.readBookingStatus(bookingId)
+            if (actual?.toLowerCase() === wanted) {
+              safeLogger.info('Booking already has the requested status', { bookingId, wanted })
+            } else {
+              statusUpdateError = `Could not set status "${wanted}" (booking is ${actual ?? 'unknown'}): ${message}`
+              safeLogger.warn('Failed to update booking status', {
+                bookingId,
+                status: booking.status,
+                error: message,
+              })
+            }
           }
         }
       }
@@ -190,6 +214,7 @@ export class BookingsV1Client extends BaseApiModule {
         ...booking,
         id: bookingId,
         status: booking.status || 'booked',
+        ...(statusUpdateError && { statusUpdateError }),
       }
     }
 
@@ -545,25 +570,96 @@ export class BookingsV1Client extends BaseApiModule {
    * Create a quote for an existing booking (v1 API)
    * POST /v1/reservation/booking/{bookingId}/quote
    *
-   * This endpoint creates a new quote for an existing booking,
-   * allowing custom pricing adjustments, discounts, and fees.
+   * Lodgify builds the quote from its rate plans and answers 201 with the new
+   * quote id as a bare integer. A second call replaces the booking's quote.
    */
   async createBookingQuote(
-    bookingId: string,
+    bookingId: string | number,
     payload: CreateBookingQuoteRequest,
-  ): Promise<CreateBookingQuoteResponse> {
-    if (!bookingId) {
-      throw new Error('Booking ID is required')
+  ): Promise<number> {
+    const id = String(bookingId)
+    if (!NUMERIC_ID_PATTERN.test(id)) {
+      throw new Error('Booking ID must be numeric')
     }
     if (!payload || typeof payload !== 'object') {
       throw new Error('Valid quote creation payload is required')
     }
 
-    // Use the specific path for creating a booking quote
-    const quotePath = `reservation/booking/${bookingId}/quote`
-    return this.client.request<CreateBookingQuoteResponse>('POST', quotePath, {
+    const result = await this.client.request<unknown>('POST', `reservation/booking/${id}/quote`, {
       apiVersion: 'v1',
       body: payload,
     })
+
+    const quoteId =
+      typeof result === 'number'
+        ? result
+        : typeof result === 'string' && NUMERIC_ID_PATTERN.test(result)
+          ? Number.parseInt(result, 10)
+          : undefined
+    if (quoteId === undefined || !Number.isSafeInteger(quoteId) || quoteId <= 0) {
+      throw new Error(
+        `Lodgify did not return a quote id for booking ${id} (got ${typeof result}). ` +
+          'The quote may not have been created.',
+      )
+    }
+    return quoteId
+  }
+
+  /**
+   * Read the current quote of a booking
+   * GET /v1/reservation/booking/{bookingId}/quote
+   */
+  async getBookingQuoteV1(bookingId: string | number): Promise<BookingQuoteV1Response> {
+    const id = String(bookingId)
+    if (!NUMERIC_ID_PATTERN.test(id)) {
+      throw new Error('Booking ID must be numeric')
+    }
+    return this.client.request<BookingQuoteV1Response>('GET', `reservation/booking/${id}/quote`, {
+      apiVersion: 'v1',
+    })
+  }
+
+  /**
+   * Create a quote, then read it back so callers report what Lodgify stored
+   * rather than what was requested.
+   */
+  async attachQuote(
+    bookingId: string | number,
+    payload: CreateBookingQuoteRequest,
+  ): Promise<AttachedQuoteResult> {
+    const quoteId = await this.createBookingQuote(bookingId, payload)
+    const quote = await this.getBookingQuoteV1(bookingId)
+    if (quote.id !== quoteId) {
+      throw new Error(
+        `Lodgify created quote ${quoteId} but booking ${bookingId} now reports quote ${quote.id}.`,
+      )
+    }
+    const bookingStatus = await this.readBookingStatus(bookingId)
+    return {
+      quoteId,
+      status: quote.status,
+      policy: quote.rate_policy_name ?? null,
+      isPolicyActive: quote.is_policy_active === true,
+      totalAmount: quote.amount_gross,
+      currency: quote.currency?.code,
+      lines: (quote.room_type_items ?? []).flatMap((item) => item.prices ?? []),
+      ...(bookingStatus && { bookingStatus }),
+    }
+  }
+
+  /**
+   * Current booking status, or undefined when it cannot be read
+   */
+  async readBookingStatus(bookingId: string | number): Promise<string | undefined> {
+    try {
+      const booking = await this.client.request<{ status?: string }>(
+        'GET',
+        `reservation/booking/${bookingId}`,
+        { apiVersion: 'v1' },
+      )
+      return typeof booking?.status === 'string' ? booking.status : undefined
+    } catch {
+      return undefined
+    }
   }
 }

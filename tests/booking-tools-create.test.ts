@@ -16,6 +16,7 @@ describe('lodgify_create_booking handler - Critical Booking Creation Feature', (
   // Mock client to isolate handler logic from API calls
   const mockClient = {
     createBookingV1: vi.fn(),
+    attachBookingQuote: vi.fn(),
     bookings: {},
     properties: {},
     rates: {},
@@ -32,6 +33,16 @@ describe('lodgify_create_booking handler - Critical Booking Creation Feature', (
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockClient.attachBookingQuote.mockResolvedValue({
+      quoteId: 23159953,
+      status: 'NotScheduled',
+      policy: 'N/A',
+      isPolicyActive: false,
+      totalAmount: 663.25,
+      currency: 'USD',
+      lines: [{ type: 'RoomRate', amount: 579 }],
+      bookingStatus: 'Booked',
+    })
   })
 
   describe('Successful Booking Creation - Happy Path', () => {
@@ -91,7 +102,7 @@ describe('lodgify_create_booking handler - Critical Booking Creation Feature', (
         status: 'success',
       })
       expect(response).toHaveProperty('summary')
-      expect(response.summary).toContain('successfully created')
+      expect(response.summary).toContain('created with quote 23159953')
       // Suggestions may or may not be present based on implementation
       if (response.suggestions) {
         expect(Array.isArray(response.suggestions)).toBe(true)
@@ -594,6 +605,101 @@ describe('lodgify_create_booking handler - Critical Booking Creation Feature', (
         status: 'success',
       })
       expect(response.operation).toHaveProperty('timestamp')
+    })
+  })
+
+  describe('Quote attachment', () => {
+    const base = {
+      property_id: 684855,
+      room_type_id: 751902,
+      arrival: '2027-06-07',
+      departure: '2027-06-11',
+      guest_name: 'Test Guest',
+      adults: 2,
+      children: 0,
+    }
+
+    beforeEach(() => {
+      mockClient.createBookingV1.mockResolvedValue({ id: 24415718, status: 'booked' })
+    })
+
+    it('attaches a rate-plan quote by default without a policy', async () => {
+      const result = await createBookingTool?.handler({ ...base, status: 'booked' })
+      const response = JSON.parse(result.content[0].text)
+
+      expect(mockClient.attachBookingQuote).toHaveBeenCalledWith(24415718, {
+        is_policy_active: false,
+        room_types: [{ room_type_id: 751902 }],
+      })
+      expect(response.operation.status).toBe('success')
+      expect(response.data.quote.quoteId).toBe(23159953)
+    })
+
+    it('does not attach a quote to tentative holds', async () => {
+      await createBookingTool?.handler({ ...base, status: 'tentative' })
+      expect(mockClient.attachBookingQuote).not.toHaveBeenCalled()
+    })
+
+    it('does not attach a quote when total is given and warns it is unpayable', async () => {
+      const result = await createBookingTool?.handler({
+        ...base,
+        status: 'booked',
+        total: 3008.34,
+        currency_code: 'USD',
+      })
+      const response = JSON.parse(result.content[0].text)
+
+      expect(mockClient.attachBookingQuote).not.toHaveBeenCalled()
+      expect(response.operation.status).toBe('partial')
+      expect(response.warnings.join(' ')).toContain('no quote')
+    })
+
+    it('rejects total combined with attach_quote:true', async () => {
+      await expect(
+        createBookingTool?.handler({
+          ...base,
+          total: 100,
+          currency_code: 'USD',
+          attach_quote: true,
+        }),
+      ).rejects.toBeInstanceOf(McpError)
+      expect(mockClient.createBookingV1).not.toHaveBeenCalled()
+    })
+
+    it('reports partial with the booking id when the quote fails', async () => {
+      mockClient.attachBookingQuote.mockRejectedValueOnce(new Error('NoRateDefined'))
+      const result = await createBookingTool?.handler({ ...base, status: 'booked' })
+      const response = JSON.parse(result.content[0].text)
+
+      expect(response.operation.status).toBe('partial')
+      expect(response.data.id).toBe(24415718)
+      expect(response.data.quoteError).toBe('NoRateDefined')
+      expect(response.warnings.join(' ')).toContain('quote failed')
+    })
+
+    it('reports partial when the status change failed', async () => {
+      mockClient.createBookingV1.mockResolvedValue({
+        id: 24415718,
+        status: 'booked',
+        statusUpdateError: 'Could not set status "booked" (booking is Open): nope',
+      })
+      const result = await createBookingTool?.handler({ ...base, status: 'booked' })
+      const response = JSON.parse(result.content[0].text)
+
+      expect(response.operation.status).toBe('partial')
+      expect(response.warnings.join(' ')).toContain('Could not set status')
+    })
+
+    it('warns when Lodgify prices differently from expected_total', async () => {
+      const result = await createBookingTool?.handler({
+        ...base,
+        status: 'booked',
+        expected_total: 3008.34,
+      })
+      const response = JSON.parse(result.content[0].text)
+
+      expect(response.operation.status).toBe('partial')
+      expect(response.warnings.join(' ')).toContain('Lodgify priced the stay at 663.25')
     })
   })
 })
