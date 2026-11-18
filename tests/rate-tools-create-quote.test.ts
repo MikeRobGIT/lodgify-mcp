@@ -83,10 +83,15 @@ describe('lodgify_create_booking_quote', () => {
     expect(response.warnings.join(' ')).toContain('priced the stay at 663.25')
   })
 
-  it('stays success when the total matches within a cent', async () => {
-    const response = await run({ bookingId: 1, expected_total: 663.25 })
+  it.each([
+    [663.25, 'success'],
+    [663.26, 'success'], // exactly one cent
+    [663.24, 'success'],
+    [663.27, 'partial'], // two cents
+  ])('expected_total %p gives %s', async (expected, status) => {
+    const response = await run({ bookingId: 1, expected_total: expected })
 
-    expect(response.operation.status).toBe('success')
+    expect(response.operation.status).toBe(status)
   })
 
   it('warns when a promotion code produced no Promotion line', async () => {

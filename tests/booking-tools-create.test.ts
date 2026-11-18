@@ -666,6 +666,49 @@ describe('lodgify_create_booking handler - Critical Booking Creation Feature', (
       expect(mockClient.createBookingV1).not.toHaveBeenCalled()
     })
 
+    it.each([
+      ['is_policy_active', { is_policy_active: true }],
+      ['expected_total', { expected_total: 100 }],
+      ['promotion_code', { promotion_code: 'DIRECT10' }],
+    ])('rejects %s when no quote will be attached', async (name, extra) => {
+      const error = await createBookingTool
+        ?.handler({ ...base, status: 'tentative', ...extra })
+        .catch((e: unknown) => e)
+
+      expect(error).toBeInstanceOf(McpError)
+      expect((error as McpError).message).toContain(name)
+      expect(mockClient.createBookingV1).not.toHaveBeenCalled()
+    })
+
+    it('reports the booking status Lodgify holds after the quote', async () => {
+      mockClient.attachBookingQuote.mockResolvedValueOnce({
+        quoteId: 1,
+        status: 'NotSent',
+        policy: 'Primary policy',
+        isPolicyActive: true,
+        totalAmount: 663.25,
+        currency: 'USD',
+        lines: [],
+        bookingStatus: 'Tentative',
+      })
+      const result = await createBookingTool?.handler({
+        ...base,
+        status: 'booked',
+        is_policy_active: true,
+      })
+      const response = JSON.parse(result.content[0].text)
+
+      expect(response.data.status).toBe('Tentative')
+    })
+
+    it('keeps the real message of a structured Lodgify error', async () => {
+      mockClient.attachBookingQuote.mockRejectedValueOnce({ message: 'NoRateDefined', code: 666 })
+      const result = await createBookingTool?.handler({ ...base, status: 'booked' })
+      const response = JSON.parse(result.content[0].text)
+
+      expect(response.data.quoteError).toBe('NoRateDefined')
+    })
+
     it('reports partial with the booking id when the quote fails', async () => {
       mockClient.attachBookingQuote.mockRejectedValueOnce(new Error('NoRateDefined'))
       const result = await createBookingTool?.handler({ ...base, status: 'booked' })

@@ -3,6 +3,7 @@
  * Handles v1 booking operations that are not available in v2
  */
 
+import { describeError } from '../../../core/errors/describe-error.js'
 import { safeLogger } from '../../../logger.js'
 import type { BaseApiClient } from '../../base-client.js'
 import { BaseApiModule, type ModuleConfig } from '../../base-module.js'
@@ -26,19 +27,6 @@ import type {
  * Regex pattern to match numeric ID responses from the API
  */
 const NUMERIC_ID_PATTERN = /^\d+$/
-
-/**
- * Turn any thrown value into readable text. `String(obj)` yields "[object Object]".
- */
-function describeError(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  try {
-    return JSON.stringify(error)
-  } catch {
-    return String(error)
-  }
-}
 
 /**
  * Create a masked identifier for a guest name to use in logs

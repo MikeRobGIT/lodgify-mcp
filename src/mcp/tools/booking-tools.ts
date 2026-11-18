@@ -8,6 +8,7 @@ import { z } from 'zod'
 import type { AttachedQuoteResult } from '../../api/v1/bookings/types.js'
 import type { BookingSearchParams } from '../../api/v2/bookings/types.js'
 import { BOOKING_CONFIG, PAGINATION, STRING_LIMITS } from '../../core/config/constants.js'
+import { describeError } from '../../core/errors/describe-error.js'
 import type { LodgifyOrchestrator } from '../../lodgify-orchestrator.js'
 import { debugLogResponse, safeJsonStringify } from '../serialization/json-sanitizer.js'
 // Note: Schemas are inlined directly to avoid $ref issues with MCPO
@@ -1030,11 +1031,16 @@ The transformation handles: guest name splitting, room structuring, status capit
             'total and attach_quote cannot be combined: attaching a quote makes Lodgify replace the total with the rate-plan price. Omit total, or pass attach_quote:false.',
           )
         }
-        if (!attachQuote && sanitized.promotion_code) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            'promotion_code needs a quote. Remove it or allow attach_quote.',
+        if (!attachQuote) {
+          const quoteOnly = ['promotion_code', 'is_policy_active', 'expected_total'].filter(
+            (name) => sanitized[name] !== undefined,
           )
+          if (quoteOnly.length > 0) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `${quoteOnly.join(', ')} only apply to a quote, but no quote will be attached (attach_quote is false, or the booking is tentative/declined, or total was given). Remove them or set attach_quote:true.`,
+            )
+          }
         }
 
         const created = await getClient().createBookingV1(apiRequest)
@@ -1057,7 +1063,7 @@ The transformation handles: guest name splitting, room structuring, status capit
               }),
             )
           } catch (error) {
-            quoteError = error instanceof Error ? error.message : String(error)
+            quoteError = describeError(error)
             warnings.push(
               `Booking ${created.id} was created but the quote failed: ${quoteError}. Retry with lodgify_create_booking_quote.`,
             )
@@ -1069,6 +1075,8 @@ The transformation handles: guest name splitting, room structuring, status capit
         }
         const result = {
           ...created,
+          // The quote can move the booking (a policy quote makes it Tentative), so report Lodgify's status.
+          ...(quote?.bookingStatus && { status: quote.bookingStatus }),
           ...(quote && { quote }),
           ...(quoteError && { quoteError }),
         }

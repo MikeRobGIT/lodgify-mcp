@@ -41,7 +41,9 @@ export const LEGACY_QUOTE_MESSAGE =
   'Lodgify prices a quote from the property rate plans and cannot take a custom total, ' +
   'breakdown, notes or expiry. Use is_policy_active, promotion_code, room_types and add_ons instead.'
 
-const MONEY_TOLERANCE = 0.01
+/** Compare in whole cents so 1.01 vs 1 is exactly one cent, not 0.010000000000000009. */
+const MONEY_TOLERANCE_CENTS = 1
+const cents = (amount: number): number => Math.round(amount * 100)
 
 /**
  * Warnings about what Lodgify stored versus what the caller wanted.
@@ -54,7 +56,7 @@ export function quoteWarnings(
 
   if (
     options.expectedTotal !== undefined &&
-    Math.abs(quote.totalAmount - options.expectedTotal) > MONEY_TOLERANCE
+    Math.abs(cents(quote.totalAmount) - cents(options.expectedTotal)) > MONEY_TOLERANCE_CENTS
   ) {
     warnings.push(
       `Lodgify priced the stay at ${quote.totalAmount} ${quote.currency ?? ''}, not ${options.expectedTotal}. ` +
